@@ -131,12 +131,13 @@ async function cargarCatalogo() {
 function pintarLista() {
   const lista = $('lista');
   lista.replaceChildren();
+  $('barra-expandir').replaceChildren();
 
   if (productos.length === 0) {
     lista.append(el('p', 'vacio',
       categorias.length === 0
-        ? 'Empieza creando una categoría (botón “Categorías”) y luego agrega tu primer producto.'
-        : 'Aún no hay productos. Toca “Nuevo producto” para agregar el primero.'));
+        ? 'Empieza creando una categoría (botón “Categorías de platillos”) y luego agrega tu primer platillo.'
+        : 'Aún no hay platillos. Toca “Nuevo platillo” para agregar el primero.'));
     return;
   }
 
@@ -151,7 +152,7 @@ function pintarLista() {
   if (!yaGuardoAbiertas() && visibles.length) { categoriasAbiertas.add(visibles[0].clave); guardarAbiertas(); }
 
   // Barra con "Expandir todo / Colapsar todo"
-  const barra = el('div', 'cat-barra');
+  const barra = $('barra-expandir');
   const todo = el('button', 'btn chico', 'Expandir todo');
   todo.type = 'button';
   todo.addEventListener('click', () => { for (const g of visibles) categoriasAbiertas.add(g.clave); guardarAbiertas(); pintarLista(); });
@@ -159,13 +160,12 @@ function pintarLista() {
   nada.type = 'button';
   nada.addEventListener('click', () => { categoriasAbiertas.clear(); guardarAbiertas(); pintarLista(); });
   barra.append(todo, nada);
-  lista.append(barra);
 
   for (const g of visibles) {
     const det = el('details', 'cat-grupo');
     det.open = categoriasAbiertas.has(g.clave);
     const resumen = el('summary', 'cat-resumen');
-    resumen.append(el('span', 'cat-nombre', g.nombre), el('span', 'chip', g.items.length === 1 ? '1 producto' : `${g.items.length} productos`));
+    resumen.append(el('span', 'cat-nombre', g.nombre), el('span', 'chip', g.items.length === 1 ? '1 platillo' : `${g.items.length} platillos`));
     det.append(resumen);
     const rejilla = el('div', 'rejilla');
     for (const p of g.items) rejilla.append(tarjeta(p));
@@ -223,7 +223,7 @@ function tarjeta(p) {
   const mismos = productos.filter((x) => x.categoria_id === p.categoria_id);
   const idx = mismos.findIndex((x) => x.id === p.id);
   const mover = el('div', 'mover');
-  mover.append(botonMover('▲', 'Subir producto', idx <= 0, () => moverProducto(p, -1)), botonMover('▼', 'Bajar producto', idx === mismos.length - 1, () => moverProducto(p, 1)));
+  mover.append(botonMover('▲', 'Subir platillo', idx <= 0, () => moverProducto(p, -1)), botonMover('▼', 'Bajar platillo', idx === mismos.length - 1, () => moverProducto(p, 1)));
   acciones.append(interruptor(p), editar, mover);
 
   card.append(foto, info, acciones);
@@ -372,16 +372,16 @@ function marcarMenu(idBoton) {
 /** Muestra una sección como página: cierra la que estuviera abierta y oculta la lista de productos. */
 function abrirPagina(dlg, idBoton) {
   for (const o of paginasPortal) if (o !== dlg && o.open) o.close();
-  $('lista').hidden = true;
+  $('vista-platillos').hidden = true;
   if (!dlg.open) dlg.show();          // show() = no modal
-  marcarMenu(idBoton);
+  marcarMenu(idBoton === 'btn-categorias' ? 'btn-productos' : idBoton);   // Categorías de platillos cuelga de Platillos
   window.scrollTo({ top: 0 });
 }
 
 // Al cerrarse una página, si ya no queda ninguna abierta se regresa a Productos
 for (const d of paginasPortal) d.addEventListener('close', () => {
   if (paginasPortal.some((o) => o.open)) return;
-  $('lista').hidden = false;
+  $('vista-platillos').hidden = false;
   marcarMenu('btn-productos');
 });
 $('btn-productos').addEventListener('click', () => { for (const o of paginasPortal) if (o.open) o.close(); window.scrollTo({ top: 0 }); });
@@ -406,12 +406,12 @@ function abrirFormulario(p = null) {
   limpiarVistaPrevia();
   $('f-error').textContent = '';
   $('f-id').value = p ? String(p.id) : '';
-  $('dlg-titulo').textContent = p ? 'Editar producto' : 'Nuevo producto';
+  $('dlg-titulo').textContent = p ? 'Editar platillo' : 'Nuevo platillo';
 
   const select = $('f-categoria');
   select.replaceChildren(...categorias.map((c) => new Option(c.nombre, String(c.id))));
   if (categorias.length === 0) {
-    $('f-error').textContent = 'Primero crea una categoría (botón “Categorías”).';
+    $('f-error').textContent = 'Primero crea una categoría (botón “Categorías de platillos”).';
   }
 
   pintarExtrasProducto(p ? p.extras : [], p ? p.extras_precios || {} : {});
@@ -584,7 +584,7 @@ function pintarCategorias() {
       }
     });
 
-    fila.append(mover, nombre, guardar, borrar, el('span', 'cuenta', c.productos === 1 ? '1 producto' : `${c.productos} productos`));
+    fila.append(mover, nombre, guardar, borrar, el('span', 'cuenta', c.productos === 1 ? '1 platillo' : `${c.productos} platillos`));
     caja.append(fila);
   });
 }

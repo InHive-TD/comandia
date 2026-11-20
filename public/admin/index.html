@@ -7,7 +7,7 @@
   <title>Administración · Comandia</title>
   <link rel="icon" type="image/png" href="../img/favicon.png">
   <link rel="stylesheet" href="../css/estilos.css?v=202611202055">
-  <link rel="stylesheet" href="../css/admin.css?v=202611210130">
+  <link rel="stylesheet" href="../css/admin.css?v=202611210150">
   <link rel="stylesheet" href="../api/tema.php">
 </head>
 <body>
@@ -51,11 +51,10 @@
       <!-- Barra lateral izquierda: todas las secciones del portal. Los id de los botones no cambian
            (admin.js los usa para abrir cada sección y para ocultar los que el rol no puede ver). -->
       <nav class="menu-lateral" aria-label="Secciones del portal"><div class="menu-fijo">
-        <button id="btn-nuevo" class="btn principal" type="button">＋ Nuevo producto</button>
+        <button id="btn-nuevo" class="btn principal" type="button">＋ Nuevo platillo</button>
 
         <p class="menu-grupo">Catálogo</p>
-        <button id="btn-productos" class="btn nav-ico" data-ico="🌮" type="button">Productos</button>
-        <button id="btn-categorias" class="btn nav-ico" data-ico="🗂" type="button">Categorías</button>
+        <button id="btn-productos" class="btn nav-ico" data-ico="🌮" type="button">Platillos</button>
         <button id="btn-extras" class="btn nav-ico" data-ico="➕" type="button">Extras</button>
 
         <p class="menu-grupo">Negocio</p>
@@ -73,7 +72,14 @@
         <a class="btn nav-ico" data-ico="💵" href="../caja/">Caja y propinas</a>
       </div></nav>
       <div class="panel-contenido" id="panel-contenido">
-        <div id="lista" class="lista-cats" aria-live="polite"></div>
+        <!-- Página de Platillos: barra de acciones (categorías de platillos, expandir/colapsar) + lista por categoría -->
+        <div id="vista-platillos">
+          <div class="cat-barra" id="barra-platillos">
+            <button id="btn-categorias" class="btn" type="button">🗂 Categorías de platillos</button>
+            <span id="barra-expandir" class="cat-barra"></span>
+          </div>
+          <div id="lista" class="lista-cats" aria-live="polite"></div>
+        </div>
       </div>
     </section>
 
@@ -82,7 +88,7 @@
   <!-- Formulario de producto -->
   <dialog id="dlg-producto" class="pagina">
     <form id="form-producto" class="formulario dialogo">
-      <h2 id="dlg-titulo">Nuevo producto</h2>
+      <h2 id="dlg-titulo">Nuevo platillo</h2>
       <input type="hidden" id="f-id">
 
       <label>Nombre
@@ -150,11 +156,12 @@
   <!-- Categorías -->
   <dialog id="dlg-categorias" class="pagina">
     <div class="formulario dialogo">
-      <h2>Categorías</h2>
+      <h2>Categorías de platillos</h2>
+      <p class="ayuda">Agrupan tus platillos en el menú (Tacos, Bebidas…). Agrégalas y acomódalas en el orden en que quieres que aparezcan.</p>
       <div id="lista-categorias" class="lista-categorias"></div>
 
       <form id="form-nueva-categoria" class="fila-categoria">
-        <input id="c-nueva" type="text" maxlength="60" placeholder="Nueva categoría (ej. Quesadillas)" required>
+        <input id="c-nueva" type="text" maxlength="60" placeholder="Nueva categoría de platillos (ej. Quesadillas)" required>
         <button class="btn principal" type="submit">Agregar</button>
       </form>
 
