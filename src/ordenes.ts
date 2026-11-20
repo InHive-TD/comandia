@@ -411,7 +411,7 @@ export async function validarLineas(c: Cx, entrada: unknown): Promise<[Linea[], 
       vistos.add(extraId);
       const x = await una(
         c,
-        `SELECT e.id, e.nombre, e.codigo, e.precio, e.activo, e.grupo
+        `SELECT e.id, e.nombre, e.codigo, COALESCE(pe.precio, e.precio) AS precio, e.activo, e.grupo
            FROM extras e JOIN producto_extras pe ON pe.extra_id = e.id
           WHERE e.id = ? AND pe.producto_id = ? AND e.negocio_id = ${c.nid}
             AND EXISTS (SELECT 1 FROM productos px WHERE px.id = pe.producto_id AND px.negocio_id = e.negocio_id)`,

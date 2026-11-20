@@ -136,6 +136,29 @@ export async function rutasExtras(app: FastifyInstance): Promise<void> {
           }
           return { ok: true };
         }
+        case 'asignar_todos': {
+          // Pone (o quita) el extra en TODOS los platillos de la empresa de golpe, sin duplicar los que ya lo tenían.
+          // Después el dueño puede quitarlo o cambiarle el precio platillo por platillo desde el editor del producto.
+          await extraExiste(nid, id);
+          if (noVacio(d['asignar'])) {
+            await ejecutar(
+              `INSERT INTO producto_extras (producto_id, extra_id)
+               SELECT p.id, ? FROM productos p
+                WHERE p.negocio_id = ?
+                  AND NOT EXISTS (SELECT 1 FROM producto_extras pe WHERE pe.producto_id = p.id AND pe.extra_id = ?)`,
+              [id, nid, id],
+            );
+          } else {
+            await ejecutar('DELETE FROM producto_extras WHERE extra_id = ? AND producto_id IN (SELECT id FROM productos WHERE negocio_id = ?)', [id, nid]);
+          }
+          return { ok: true };
+        }
+        case 'precio_general': {
+          // Borra los precios propios por platillo: todos vuelven a cobrar el precio general del extra.
+          await extraExiste(nid, id);
+          await ejecutar('UPDATE producto_extras SET precio = NULL WHERE extra_id = ? AND producto_id IN (SELECT id FROM productos WHERE negocio_id = ?)', [id, nid]);
+          return { ok: true };
+        }
         case 'crear_varios': {
           // Variantes de uno o más ingredientes (Sin X, X aparte, Solo X...). Los que ya existen con ese nombre se omiten.
           const lista = Array.isArray(d['extras']) ? (d['extras'] as Record<string, unknown>[]) : [];

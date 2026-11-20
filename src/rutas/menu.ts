@@ -33,7 +33,7 @@ export async function rutasMenu(app: FastifyInstance): Promise<void> {
     // Extras activos de cada producto: producto_id → [{id, nombre, precio, codigo, grupo}]
     const extras = new Map<number, unknown[]>();
     const filasExtras = await filas(
-      `SELECT pe.producto_id, e.id, e.nombre, e.precio, e.codigo, e.grupo
+      `SELECT pe.producto_id, e.id, e.nombre, COALESCE(pe.precio, e.precio) AS precio, e.codigo, e.grupo
          FROM producto_extras pe
          JOIN extras e ON e.id = pe.extra_id
          JOIN productos pr ON pr.id = pe.producto_id

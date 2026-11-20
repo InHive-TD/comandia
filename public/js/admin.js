@@ -260,7 +260,7 @@ function interruptor(p) {
 /* ------------------------------------------------------------------ */
 
 /** Casillas con los extras (los desactivados se muestran solo si el producto los tiene). */
-function pintarExtrasProducto(marcados) {
+function pintarExtrasProducto(marcados, precios = {}) {
   const caja = $('f-extras');
   caja.replaceChildren();
   const visibles = extras.filter((x) => x.activo || marcados.includes(x.id));
@@ -275,18 +275,43 @@ function pintarExtrasProducto(marcados) {
     grupos.get(g).push(x);
   }
   for (const [g, lista] of [...grupos].filter(([, l]) => l.length)) {
-    if (grupos.size > 1) caja.append(el('p', 'grupo-titulo', g));
+    // Encabezado de sección con acceso rápido: marcar / quitar toda la sección en este platillo
+    const cab = el('div', 'grupo-cab');
+    cab.append(el('p', 'grupo-titulo', g));
+    const todos = el('button', 'btn-mini', 'Todos');
+    todos.type = 'button';
+    const ninguno = el('button', 'btn-mini', 'Ninguno');
+    ninguno.type = 'button';
+    cab.append(todos, ninguno);
+    caja.append(cab);
+    const filas = [];
     for (const x of lista) {
-      const fila = el('label', 'casilla');
+      const fila = el('label', 'casilla fila-extra-prod');
       const caja_ = document.createElement('input');
       caja_.type = 'checkbox';
       caja_.value = String(x.id);
       caja_.checked = marcados.includes(x.id);
       const texto = el('span', '', (x.codigo ? `${x.codigo} · ` : '') + x.nombre + ' ');
       texto.append(el('small', '', x.precio > 0 ? `+${dinero.format(x.precio)}` : 'sin costo'));
-      fila.append(caja_, texto);
+      // Precio propio en ESTE platillo (vacío = usa el precio general del extra)
+      const precio = document.createElement('input');
+      precio.type = 'number';
+      precio.min = '0';
+      precio.step = '0.50';
+      precio.className = 'precio-extra-prod';
+      precio.placeholder = `$ ${x.precio}`;
+      precio.title = 'Precio de este extra solo en este platillo (vacío = precio general)';
+      precio.dataset.extra = String(x.id);
+      if (precios[x.id] !== undefined) precio.value = String(precios[x.id]);
+      const sync = () => { precio.hidden = !caja_.checked; };
+      caja_.addEventListener('change', sync);
+      sync();
+      fila.append(caja_, texto, precio);
       caja.append(fila);
+      filas.push([caja_, sync]);
     }
+    todos.addEventListener('click', () => filas.forEach(([c, sync]) => { c.checked = true; sync(); }));
+    ninguno.addEventListener('click', () => filas.forEach(([c, sync]) => { c.checked = false; sync(); }));
   }
 }
 
@@ -317,7 +342,7 @@ function abrirFormulario(p = null) {
     $('f-error').textContent = 'Primero crea una categoría (botón “Categorías”).';
   }
 
-  pintarExtrasProducto(p ? p.extras : []);
+  pintarExtrasProducto(p ? p.extras : [], p ? p.extras_precios || {} : {});
 
   if (p) {
     $('f-codigo').value = p.codigo || '';
@@ -405,7 +430,13 @@ formProducto.addEventListener('submit', async (ev) => {
     datos.append('pedir_opciones', $('f-pedir').checked ? '1' : '0');
     datos.append('codigo', $('f-codigo').value.trim());
     datos.append('porcion', $('f-porcion').value.trim());
-    datos.append('extras', [...$('f-extras').querySelectorAll('input:checked')].map((c) => c.value).join(','));
+    datos.append('extras', [...$('f-extras').querySelectorAll('input[type=checkbox]:checked')].map((c) => c.value).join(','));
+    // Precios propios de este platillo: solo los extras marcados que tengan un precio escrito
+    const preciosExtra = {};
+    for (const i of $('f-extras').querySelectorAll('input.precio-extra-prod')) {
+      if (!i.hidden && i.value.trim() !== '') preciosExtra[i.dataset.extra] = i.value.trim();
+    }
+    datos.append('precios_extra', JSON.stringify(preciosExtra));
     if ($('f-quitar').checked) datos.append('quitar_foto', '1');
 
     const archivo = $('f-foto').files[0];
@@ -1246,6 +1277,22 @@ function tarjetaExtra(x) {
   if (categorias.length) {
     const disp = el('div', 'ex-disp');
     disp.append(el('span', 'ex-etq', 'Disponible en:'));
+    // Atajo: ponerlo (o quitarlo) en TODOS los platillos de golpe; luego se afina platillo por platillo
+    const totalProd = productos.length;
+    const conTodos = productos.filter((p) => p.extras.includes(x.id)).length;
+    const todosOk = totalProd > 0 && conTodos === totalProd;
+    const btnTodos = el('button', 'ex-cat ex-todos ' + (todosOk ? 'todos' : 'ninguno'), todosOk ? '✓ Todos los platillos' : '★ Todos los platillos');
+    btnTodos.type = 'button';
+    btnTodos.title = todosOk ? 'Toca para quitarlo de todos los platillos.' : 'Toca para ponerlo en todos los platillos (después puedes quitarlo en los que no).';
+    btnTodos.addEventListener('click', () => accionExtra({ accion: 'asignar_todos', id: x.id, asignar: !todosOk }, todosOk ? 'Quitado de todos los platillos' : 'Agregado a todos los platillos'));
+    disp.append(btnTodos);
+    if (productos.some((p) => p.extras_precios && p.extras_precios[x.id] !== undefined)) {
+      const igualar = el('button', 'ex-cat algunos', '↺ Igualar precio en todos');
+      igualar.type = 'button';
+      igualar.title = 'Algunos platillos cobran este extra con precio propio. Toca para que todos cobren el precio general.';
+      igualar.addEventListener('click', () => accionExtra({ accion: 'precio_general', id: x.id }, 'Precio general aplicado a todos'));
+      disp.append(igualar);
+    }
     for (const c of categorias) {
       const deCat = productos.filter((p) => p.categoria_id === c.id);
       if (deCat.length === 0) continue;

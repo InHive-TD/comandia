@@ -218,6 +218,15 @@ fieldset.extras-campo { border: 1px solid #d9c690; border-radius: 10px; padding:
 .lista-extras-prod { display: grid; grid-template-columns: repeat(auto-fill, minmax(190px, 1fr)); gap: 0 12px; }
 .lista-extras-prod .casilla span small { color: #8a7a6c; }
 .lista-extras-prod .vacio { padding: 8px 0; }
+/* Encabezado de sección dentro del editor de producto: título + accesos rápidos Todos/Ninguno */
+.lista-extras-prod .grupo-cab { grid-column: 1 / -1; display: flex; align-items: center; gap: 6px; margin-top: 8px; }
+.lista-extras-prod .grupo-cab .grupo-titulo { margin: 0; flex: 1; }
+.lista-extras-prod .btn-mini { border: 1px solid #d9cbbd; background: #fff; border-radius: 6px; padding: 2px 8px; font-size: .75rem; cursor: pointer; color: #6b5a4c; }
+.lista-extras-prod .btn-mini:hover { background: #f6efe7; }
+/* Fila de extra: casilla + nombre + (si está marcado) precio propio de este platillo */
+.lista-extras-prod .fila-extra-prod { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+.lista-extras-prod .precio-extra-prod { width: 76px; padding: 3px 6px; font-size: .8rem; margin-left: auto; }
+.lista-extras-prod .precio-extra-prod[hidden] { display: none; }
 
 .ayuda { margin: 0; font-size: .88rem; color: #6f5f52; }
 

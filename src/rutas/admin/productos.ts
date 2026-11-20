@@ -30,6 +30,8 @@ interface CamposProducto {
   porcion: string | null;
   estacionId: number | null;
   extras: number[];
+  /** Precio propio de algunos extras en este platillo: extra_id → precio (los demás usan el precio general). */
+  preciosExtra: Map<number, number>;
   nombre: string;
   descripcion: string | null;
   categoriaId: number;
@@ -81,11 +83,29 @@ async function leerCampos(nid: number, alcance: number | null, f: Formulario, id
     if (Number(n?.['n']) !== extras.length) throw fallo('Alguno de los extras elegidos ya no existe. Recarga la página.');
   }
 
+  // Precios propios por platillo: JSON {"<extra_id>": precio}. Solo cuentan los extras marcados; precio vacío = el general.
+  const preciosExtra = new Map<number, number>();
+  const crudo = f.texto('precios_extra').trim();
+  if (crudo !== '') {
+    let obj: unknown;
+    try { obj = JSON.parse(crudo); } catch { throw fallo('Los precios por platillo no son válidos.'); }
+    if (typeof obj === 'object' && obj !== null) {
+      for (const [k, v] of Object.entries(obj as Record<string, unknown>)) {
+        const id = Number(k);
+        if (!extras.includes(id) || v === null || v === '') continue;
+        const num = Number(v);
+        if (!Number.isFinite(num) || num < 0 || num > 99999) throw fallo('Un precio de extra no es válido.');
+        preciosExtra.set(id, Math.round(num * 100) / 100);
+      }
+    }
+  }
+
   return {
     codigo: codigo === '' ? null : codigo,
     porcion: porcion === '' ? null : porcion,
     estacionId: estacionId > 0 ? estacionId : null,
     extras,
+    preciosExtra,
     nombre,
     descripcion: descripcion === '' ? null : descripcion,
     categoriaId,
@@ -117,9 +137,9 @@ async function fotoActual(nid: number, id: number): Promise<string | null> {
 }
 
 /** Deja en producto_extras exactamente los extras indicados (dentro de una transacción). */
-async function guardarExtras(tx: { ejecutar: (sql: string, p?: unknown[]) => Promise<unknown> }, productoId: number, extras: number[]): Promise<void> {
+async function guardarExtras(tx: { ejecutar: (sql: string, p?: unknown[]) => Promise<unknown> }, productoId: number, extras: number[], precios: Map<number, number>): Promise<void> {
   await tx.ejecutar('DELETE FROM producto_extras WHERE producto_id = ?', [productoId]);
-  for (const extraId of extras) await tx.ejecutar('INSERT INTO producto_extras (producto_id, extra_id) VALUES (?, ?)', [productoId, extraId]);
+  for (const extraId of extras) await tx.ejecutar('INSERT INTO producto_extras (producto_id, extra_id, precio) VALUES (?, ?, ?)', [productoId, extraId, precios.get(extraId) ?? null]);
 }
 
 /** GET: la carta completa que ve cada rol, junto con categorías, parrillas y extras. */
@@ -140,9 +160,11 @@ async function listar(nid: number, alcance: number | null): Promise<Record<strin
 
   // Extras asignados a cada producto: producto_id → [extra_id, ...]
   const asignados = new Map<number, number[]>();
-  for (const a of await filas('SELECT pe.producto_id, pe.extra_id FROM producto_extras pe JOIN productos pr ON pr.id = pe.producto_id WHERE pr.negocio_id = ? ORDER BY pe.extra_id', [nid])) {
+  const precios = new Map<number, Record<number, number>>();   // producto_id → {extra_id: precio propio}
+  for (const a of await filas('SELECT pe.producto_id, pe.extra_id, pe.precio FROM producto_extras pe JOIN productos pr ON pr.id = pe.producto_id WHERE pr.negocio_id = ? ORDER BY pe.extra_id', [nid])) {
     const k = Number(a['producto_id']);
     asignados.set(k, [...(asignados.get(k) ?? []), Number(a['extra_id'])]);
+    if (a['precio'] !== null) precios.set(k, { ...(precios.get(k) ?? {}), [Number(a['extra_id'])]: Number(a['precio']) });
   }
 
   const productos = prods.map((f) => ({
@@ -159,6 +181,7 @@ async function listar(nid: number, alcance: number | null): Promise<Record<strin
     estacion_id: f['estacion_id'] === null ? null : Number(f['estacion_id']),
     pedir_opciones: Boolean(Number(f['pedir_opciones'])),
     extras: asignados.get(Number(f['id'])) ?? [],
+    extras_precios: precios.get(Number(f['id'])) ?? {},
     sucursal_id: f['sucursal_id'] === null ? null : Number(f['sucursal_id']),
     sucursal: f['sucursal'], // producto propio de una sucursal (null = carta general)
     propio: alcance !== null && f['sucursal_id'] !== null, // el gerente lo puede editar por completo
@@ -216,7 +239,7 @@ export async function rutasAdminProductos(app: FastifyInstance): Promise<void> {
                  VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
                 [nid, alcance, c.categoriaId, c.nombre, c.descripcion, c.precio, foto, c.disponible, c.codigo, c.porcion, c.estacionId, c.pedirOpciones, Number(sig?.['n'])],
               );
-              await guardarExtras(tx, r.insertId, c.extras);
+              await guardarExtras(tx, r.insertId, c.extras, c.preciosExtra);
               return r.insertId;
             });
             reply.code(201);
@@ -242,7 +265,7 @@ export async function rutasAdminProductos(app: FastifyInstance): Promise<void> {
                         codigo = ?, porcion = ?, estacion_id = ?, pedir_opciones = ? WHERE id = ? AND negocio_id = ?`,
                 [c.categoriaId, c.nombre, c.descripcion, c.precio, foto, c.disponible, c.codigo, c.porcion, c.estacionId, c.pedirOpciones, id, nid],
               );
-              await guardarExtras(tx, id, c.extras);
+              await guardarExtras(tx, id, c.extras, c.preciosExtra);
             });
           } catch (e) {
             await borrarFoto(nueva, nid);

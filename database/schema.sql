@@ -186,6 +186,7 @@ CREATE TABLE IF NOT EXISTS extras (
 CREATE TABLE IF NOT EXISTS producto_extras (
     producto_id INT UNSIGNED NOT NULL,
     extra_id    INT UNSIGNED NOT NULL,
+    precio      DECIMAL(10,2) NULL,   -- precio de este extra SOLO en este platillo (NULL = usa el precio general del extra)
     PRIMARY KEY (producto_id, extra_id),
     CONSTRAINT fk_pe_producto FOREIGN KEY (producto_id) REFERENCES productos(id) ON DELETE CASCADE,
     CONSTRAINT fk_pe_extra    FOREIGN KEY (extra_id)    REFERENCES extras(id)    ON DELETE CASCADE
