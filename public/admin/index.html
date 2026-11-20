@@ -7,7 +7,7 @@
   <title>Administración · Comandia</title>
   <link rel="icon" type="image/png" href="../img/favicon.png">
   <link rel="stylesheet" href="../css/estilos.css?v=202611202055">
-  <link rel="stylesheet" href="../css/admin.css?v=202611202010">
+  <link rel="stylesheet" href="../css/admin.css?v=202611202140">
   <link rel="stylesheet" href="../api/tema.php">
 </head>
 <body>
@@ -154,20 +154,39 @@
 
   <!-- Extras -->
   <dialog id="dlg-extras">
-    <div class="formulario dialogo">
+    <div class="formulario dialogo ex-dialogo">
       <h2>Extras</h2>
-      <p class="ayuda">Variantes que se pueden pedir: “sin cebolla”, “con queso” (con costo), “orden doble”…
-        Marca “Con costo” solo en los extras que se cobran aparte. El código (ej. XQ) es lo que verá la cocina en la comanda; el grupo (Ensaladas, Salsas…) los ordena al elegirlos. Se activan por producto (en cada producto) o por categoría completa aquí.</p>
-      <div id="lista-extras" class="lista-categorias"></div>
+      <p class="ayuda">Son las opciones que el cliente puede <strong>añadir</strong> a un platillo (con queso, orden doble) o <strong>pedir sin algo</strong> (sin cebolla).
+        Los creas una vez aquí y eliges en qué platillos aparecen.</p>
 
-      <form id="form-nuevo-extra" class="fila-extra nuevo">
-        <input id="x-nombre" type="text" maxlength="60" placeholder="Nuevo extra (ej. Con queso)" required>
-        <input id="x-codigo" type="text" maxlength="20" autocapitalize="characters" autocomplete="off" placeholder="Código" aria-label="Código (ej. XQ)">
-        <input id="x-grupo" type="text" maxlength="40" list="lista-grupos" autocomplete="off" placeholder="Grupo (ej. Salsas)" aria-label="Grupo">
-        <div id="x-costo-caja" class="costo"></div>
-        <button class="btn principal" type="submit">Agregar</button>
+      <button id="ex-nuevo-abrir" class="btn principal ex-abrir" type="button">＋ Nuevo extra</button>
+      <form id="form-nuevo-extra" class="ex-nuevo" hidden autocomplete="off">
+        <label>¿Cómo se llama?
+          <input id="x-nombre" type="text" maxlength="60" placeholder="Ej. Con queso, Sin cebolla, Orden doble" required>
+        </label>
+        <div class="ex-campo">
+          <span class="ex-etq">¿Se cobra aparte?</span>
+          <div id="x-costo-caja" class="costo"></div>
+        </div>
+        <details class="ex-mas">
+          <summary>Más opciones (opcional)</summary>
+          <label>Código para la cocina
+            <input id="x-codigo" type="text" maxlength="20" autocapitalize="characters" autocomplete="off" placeholder="Ej. XQ" aria-label="Código (ej. XQ)">
+            <small>Abreviatura que verá la cocina en la comanda (XQ = extra queso).</small>
+          </label>
+          <label>Grupo
+            <input id="x-grupo" type="text" maxlength="40" list="lista-grupos" autocomplete="off" placeholder="Ej. Salsas, Quesos, Sin ingrediente" aria-label="Grupo">
+            <small>Sirve para ordenarlos en secciones al elegirlos.</small>
+          </label>
+        </details>
+        <div class="ex-acciones">
+          <button class="btn principal" type="submit">Guardar extra</button>
+          <button id="ex-nuevo-cancelar" class="btn" type="button">Cancelar</button>
+        </div>
       </form>
       <datalist id="lista-grupos"></datalist>
+
+      <div id="lista-extras" class="ex-lista"></div>
 
       <p id="x-error" class="msg-error" role="alert"></p>
       <div class="acciones-dialogo">
@@ -349,6 +368,6 @@
   <div id="toast" class="toast" role="status" hidden></div>
 
   <script src="../js/comun.js?v=202611202055"></script>
-  <script src="../js/admin.js?v=202611202000"></script>
+  <script src="../js/admin.js?v=202611202130"></script>
 </body>
 </html>

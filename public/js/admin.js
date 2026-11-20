@@ -1187,6 +1187,15 @@ function campoCosto(precioInicial = 0) {
 const costoNuevo = campoCosto(0);
 $('x-costo-caja').append(...costoNuevo.caja.children);
 
+/**
+ * Tarjetas de extras, agrupadas en secciones (por "grupo"). Cada tarjeta muestra de un vistazo:
+ *   · el nombre, su código para cocina y si es gratis o cuesta (+$10);
+ *   · en qué categorías está disponible (✓ todos · 3/5 algunos · ○ ninguno). Tocar una categoría lo pone (o lo quita)
+ *     en TODOS los platillos de esa categoría; para elegir platillo por platillo se hace desde el producto;
+ *   · "Editar" abre el formulario de esa tarjeta (nombre, código, grupo, costo, activo) con su botón Guardar.
+ */
+const extraAbierto = new Set();   // tarjetas con el formulario de edición desplegado
+
 function pintarExtras() {
   // Sugerencias de grupo (los que ya existen)
   $('lista-grupos').replaceChildren(...[...new Set(extras.map((x) => x.grupo).filter(Boolean))].map((g) => new Option(g)));
@@ -1194,78 +1203,104 @@ function pintarExtras() {
   const caja = $('lista-extras');
   caja.replaceChildren();
   if (extras.length === 0) {
-    caja.append(el('p', '', 'Todavía no hay extras. Agrega el primero abajo (por ejemplo, Sin cebolla).'));
+    caja.append(el('p', 'ayuda ex-vacio', 'Todavía no hay extras. Toca “＋ Nuevo extra” para crear el primero (por ejemplo, Sin cebolla).'));
     return;
   }
+  if (categorias.length) caja.append(el('p', 'ayuda ex-leyenda', 'Toca una categoría para poner el extra (o quitarlo) en todos sus platillos. Verde = en todos · amarillo = en algunos · gris = en ninguno.'));
+
+  // Secciones por grupo, en orden de aparición; los que no tienen grupo van en "Otros"
+  const grupos = new Map();
   for (const x of extras) {
-    const fila = el('div', 'fila-extra' + (x.activo ? '' : ' inactivo'));
+    const g = x.grupo || 'Otros';
+    if (!grupos.has(g)) grupos.set(g, []);
+    grupos.get(g).push(x);
+  }
+  for (const [g, lista] of grupos) {
+    if (grupos.size > 1) caja.append(el('h3', 'ex-grupo', `${g} (${lista.length})`));
+    const rejilla = el('div', 'ex-rejilla');
+    for (const x of lista) rejilla.append(tarjetaExtra(x));
+    caja.append(rejilla);
+  }
+}
 
+function tarjetaExtra(x) {
+  const abierta = extraAbierto.has(x.id);
+  const tarjeta = el('article', 'ex-tarjeta' + (x.activo ? '' : ' inactivo'));
+
+  // Cabecera: nombre, código y precio
+  const cab = el('div', 'ex-cab');
+  const titulo = el('div', 'ex-titulo');
+  titulo.append(el('strong', 'ex-nombre', x.nombre));
+  if (x.codigo) titulo.append(el('span', 'chip', x.codigo));
+  if (!x.activo) titulo.append(el('span', 'chip sin', 'Desactivado'));
+  cab.append(titulo, el('span', 'ex-precio' + (x.precio > 0 ? ' paga' : ''), x.precio > 0 ? `+${dinero.format(x.precio)}` : 'Gratis'));
+  tarjeta.append(cab);
+
+  // Disponibilidad por categoría
+  if (categorias.length) {
+    const disp = el('div', 'ex-disp');
+    disp.append(el('span', 'ex-etq', 'Disponible en:'));
+    for (const c of categorias) {
+      const deCat = productos.filter((p) => p.categoria_id === c.id);
+      if (deCat.length === 0) continue;
+      const con = deCat.filter((p) => p.extras.includes(x.id)).length;
+      const estado = con === 0 ? 'ninguno' : con === deCat.length ? 'todos' : 'algunos';
+      const chip = el('button', 'ex-cat ' + estado, `${estado === 'todos' ? '✓ ' : ''}${c.nombre}${estado === 'algunos' ? ` ${con}/${deCat.length}` : ''}`);
+      chip.type = 'button';
+      chip.title = estado === 'todos'
+        ? `Está en todos los platillos de ${c.nombre}. Toca para quitarlo de todos.`
+        : `Toca para ponerlo en todos los platillos de ${c.nombre}.`;
+      chip.addEventListener('click', () => accionExtra({ accion: 'asignar', id: x.id, categoria_id: c.id, asignar: estado !== 'todos' },
+        estado === 'todos' ? `Quitado de ${c.nombre}` : `Agregado a ${c.nombre}`));
+      disp.append(chip);
+    }
+    tarjeta.append(disp);
+  }
+
+  // Pie: cuántos platillos lo llevan + editar / eliminar
+  const usado = productos.filter((p) => p.extras.includes(x.id)).length;
+  const pie = el('div', 'ex-pie');
+  pie.append(el('span', 'ex-cuenta', usado === 0 ? 'Aún no está en ningún platillo' : `En ${usado} platillo${usado === 1 ? '' : 's'}`));
+  const editar = el('button', 'btn chico', abierta ? 'Cerrar edición' : '✎ Editar');
+  editar.type = 'button';
+  editar.addEventListener('click', () => { if (abierta) extraAbierto.delete(x.id); else extraAbierto.add(x.id); pintarExtras(); });
+  const borrar = el('button', 'btn chico peligro', '🗑');
+  borrar.type = 'button'; borrar.title = 'Eliminar extra'; borrar.setAttribute('aria-label', 'Eliminar extra');
+  borrar.addEventListener('click', async () => {
+    if (await confirmar(`¿Eliminar el extra “${x.nombre}”? Se quita de todos los platillos.`, { si: 'Eliminar', peligro: true })) {
+      extraAbierto.delete(x.id);
+      accionExtra({ accion: 'eliminar', id: x.id }, 'Extra eliminado');
+    }
+  });
+  pie.append(editar, borrar);
+  tarjeta.append(pie);
+
+  // Formulario de edición (desplegable)
+  if (abierta) {
+    const form = el('div', 'ex-editar');
+    const campo = (texto, input) => { const l = el('label', '', texto); l.append(input); return l; };
     const nombre = document.createElement('input');
-    nombre.type = 'text';
-    nombre.maxLength = 60;
-    nombre.value = x.nombre;
-    nombre.setAttribute('aria-label', 'Nombre del extra');
-
+    nombre.type = 'text'; nombre.maxLength = 60; nombre.value = x.nombre;
     const codigo = document.createElement('input');
-    codigo.type = 'text';
-    codigo.className = 'cod';
-    codigo.maxLength = 20;
-    codigo.value = x.codigo || '';
-    codigo.placeholder = 'Código';
-    codigo.setAttribute('aria-label', 'Código del extra (ej. XQ)');
-
+    codigo.type = 'text'; codigo.className = 'cod'; codigo.maxLength = 20; codigo.value = x.codigo || ''; codigo.placeholder = 'Ej. XQ';
     const grupo = document.createElement('input');
-    grupo.type = 'text';
-    grupo.maxLength = 40;
-    grupo.setAttribute('list', 'lista-grupos');
-    grupo.autocomplete = 'off';
-    grupo.value = x.grupo || '';
-    grupo.placeholder = 'Grupo';
-    grupo.setAttribute('aria-label', 'Grupo del extra (ej. Salsas)');
-
+    grupo.type = 'text'; grupo.maxLength = 40; grupo.setAttribute('list', 'lista-grupos'); grupo.autocomplete = 'off'; grupo.value = x.grupo || ''; grupo.placeholder = 'Ej. Salsas';
     const costo = campoCosto(x.precio);
-
-    const botones = el('div', 'botones');
     const activo = el('label', 'switch');
     const casilla = document.createElement('input');
-    casilla.type = 'checkbox';
-    casilla.checked = x.activo;
-    activo.append(casilla, el('span', 'slider'), el('span', '', 'Activo'));
-
-    const guardar = el('button', 'btn', 'Guardar');
+    casilla.type = 'checkbox'; casilla.checked = x.activo;
+    activo.append(casilla, el('span', 'slider'), el('span', '', 'Disponible para pedir'));
+    const guardar = el('button', 'btn principal', 'Guardar cambios');
     guardar.type = 'button';
     guardar.addEventListener('click', () => accionExtra(
       { accion: 'actualizar', id: x.id, nombre: nombre.value.trim(), codigo: codigo.value.trim(), grupo: grupo.value.trim(), precio: costo.valor(), activo: casilla.checked },
       'Extra actualizado'));
-
-    const borrar = el('button', 'btn peligro', 'Eliminar');
-    borrar.type = 'button';
-    borrar.addEventListener('click', async () => {
-      if (await confirmar(`¿Eliminar el extra “${x.nombre}”? Se quita de todos los productos.`, { si: 'Eliminar', peligro: true })) {
-        accionExtra({ accion: 'eliminar', id: x.id }, 'Extra eliminado');
-      }
-    });
-    botones.append(activo, guardar, borrar);
-
-    // Asignar a toda una categoría de un golpe
-    const asignar = el('div', 'asignar');
-    const cat = document.createElement('select');
-    cat.setAttribute('aria-label', 'Categoría');
-    cat.append(...categorias.map((c) => new Option(`Categoría: ${c.nombre}`, String(c.id))));
-    const poner = el('button', 'btn', 'Poner a todos');
-    poner.type = 'button';
-    poner.addEventListener('click', () => accionExtra({ accion: 'asignar', id: x.id, categoria_id: Number(cat.value), asignar: true }, 'Extra agregado a la categoría'));
-    const quitar = el('button', 'btn', 'Quitar a todos');
-    quitar.type = 'button';
-    quitar.addEventListener('click', () => accionExtra({ accion: 'asignar', id: x.id, categoria_id: Number(cat.value), asignar: false }, 'Extra quitado de la categoría'));
-    if (categorias.length) asignar.append(cat, poner, quitar);
-
-    const usado = productos.filter((p) => p.extras.includes(x.id)).length;
-    fila.append(nombre, codigo, grupo, costo.caja, botones);
-    if (categorias.length) fila.append(asignar);
-    fila.append(el('span', 'cuenta', `En ${usado} producto(s)`));
-    caja.append(fila);
+    const costoFila = el('div', 'ex-campo');
+    costoFila.append(el('span', 'ex-etq', '¿Se cobra aparte?'), costo.caja);
+    form.append(campo('Nombre', nombre), costoFila, campo('Código para la cocina', codigo), campo('Grupo', grupo), activo, guardar);
+    tarjeta.append(form);
   }
+  return tarjeta;
 }
 
 async function accionExtra(cuerpo, mensajeOk) {
@@ -1286,6 +1321,8 @@ $('btn-extras').addEventListener('click', () => {
   dlgExtras.showModal();
 });
 $('x-cerrar').addEventListener('click', () => dlgExtras.close());
+$('ex-nuevo-abrir').addEventListener('click', () => { $('form-nuevo-extra').hidden = false; $('ex-nuevo-abrir').hidden = true; $('x-nombre').focus(); });
+$('ex-nuevo-cancelar').addEventListener('click', () => { $('form-nuevo-extra').hidden = true; $('ex-nuevo-abrir').hidden = false; });
 $('form-nuevo-extra').addEventListener('submit', async (ev) => {
   ev.preventDefault();
   await accionExtra({
@@ -1294,7 +1331,8 @@ $('form-nuevo-extra').addEventListener('submit', async (ev) => {
   }, 'Extra creado');
   if (!$('x-error').textContent) {
     $('x-nombre').value = ''; $('x-codigo').value = '';
-    costoNuevo.reiniciar();        // el grupo se conserva: se suelen agregar varios seguidos
+    costoNuevo.reiniciar();        // el grupo se conserva: se suelen agregar varios seguidos; el formulario sigue abierto para el siguiente
+    $('x-nombre').focus();
   }
 });
 
