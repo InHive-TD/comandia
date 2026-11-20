@@ -723,62 +723,108 @@ async function cargarUsuarios() {
     extraNuevo = casillasSucursalesExtra(r.sucursales, sel, marcadasPrevias);
     $('us-extra-caja').append(...extraNuevo.caja.childNodes);
   }
+  // ---- Lista jerárquica y colapsada: Administración → cada sucursal (gerente, caja, mesero, cocina) ----
   const caja = $('lista-usuarios');
   caja.replaceChildren();
-  for (const u of r.usuarios) {
-    const fila = el('div', 'fila-usuario' + (u.activo ? '' : ' inactivo'));
-    const cab = el('div', 'us-cab');
-    cab.append(el('strong', '', u.nombre), el('span', 'chip', '@' + u.usuario), el('span', 'chip', ROL_TEXTO[u.rol]));
-    const nombresExtra = (u.sucursales_extra || []).map((id) => (r.sucursales.find((x) => x.id === id) || {}).nombre).filter(Boolean);
-    cab.append(el('span', 'chip', u.sucursal ? '📍 ' + [u.sucursal, ...nombresExtra].join(' + ') : 'Todas las sucursales'));
-    if (!u.activo) cab.append(el('span', 'chip sin', 'Desactivado'));
-    if (u.id === r.yo) cab.append(el('span', 'chip', 'Tú'));
-    fila.append(cab);
+  usuariosCtx = { r, ROLES_PERSONAL, hayVarias };
+  const JERARQUIA = ['gerente', 'caja', 'mesero', 'taquero'];       // orden dentro de cada sucursal
+  const porRol = (a, b) => (JERARQUIA.indexOf(a.rol) - JERARQUIA.indexOf(b.rol)) || a.nombre.localeCompare(b.nombre, 'es');
 
-    const ctl = el('div', 'us-ctl');
-    const nombre = document.createElement('input');
-    nombre.type = 'text'; nombre.maxLength = 80; nombre.value = u.nombre; nombre.setAttribute('aria-label', 'Nombre');
-    ctl.append(nombre);
-    let rol = null, suc = null, extraFila = null;
-    if (u.rol !== 'admin') {
-      rol = document.createElement('select');
-      rol.setAttribute('aria-label', 'Rol');
-      for (const [v, t] of ROLES_PERSONAL) { const o = document.createElement('option'); o.value = v; o.textContent = t; rol.append(o); }
-      rol.value = u.rol;
-      ctl.append(rol);
-      suc = document.createElement('select');
-      suc.setAttribute('aria-label', 'Sucursal');
-      for (const s of r.sucursales) { const o = document.createElement('option'); o.value = String(s.id); o.textContent = s.nombre; suc.append(o); }
-      suc.value = String(u.sucursal_id || (r.sucursales[0] && r.sucursales[0].id) || '');
-      ctl.append(suc);
-      if (hayVarias) { extraFila = casillasSucursalesExtra(r.sucursales, suc, u.sucursales_extra || []); ctl.append(extraFila.caja); }
-    }
-    const guardar = el('button', 'btn', 'Guardar');
-    guardar.type = 'button';
-    guardar.addEventListener('click', () => accionUsuario({ accion: 'editar', id: u.id, nombre: nombre.value.trim(), rol: rol ? rol.value : u.rol, sucursal_id: suc ? Number(suc.value) : null, ...(extraFila ? { sucursales_extra: extraFila.valor() } : {}), activo: u.activo }, 'Usuario actualizado'));
-    ctl.append(guardar);
-
-    const clave = el('button', 'btn', 'Nueva contraseña');
-    clave.type = 'button';
-    clave.addEventListener('click', async () => {
-      const p = await pedirTexto(`Nueva contraseña para ${u.nombre} (mínimo 10 caracteres):`, { si: 'Cambiar', tipo: 'password', minimo: 10 });
-      if (p) accionUsuario({ accion: 'clave', id: u.id, password: p }, 'Contraseña cambiada');
-    });
-    ctl.append(clave);
-
-    if (u.rol !== 'admin') {
-      const act = el('button', 'btn ' + (u.activo ? 'peligro' : ''), u.activo ? 'Desactivar' : 'Reactivar');
-      act.type = 'button';
-      act.addEventListener('click', async () => {
-        if (u.activo && !(await confirmar(`¿Desactivar a ${u.nombre}? Perderá el acceso de inmediato.`, { si: 'Desactivar', peligro: true }))) return;
-        accionUsuario({ accion: 'editar', id: u.id, nombre: nombre.value.trim(), rol: rol.value, sucursal_id: Number(suc.value), ...(extraFila ? { sucursales_extra: extraFila.valor() } : {}), activo: !u.activo }, u.activo ? 'Usuario desactivado' : 'Usuario reactivado');
-      });
-      ctl.append(act);
-    }
-    fila.append(ctl);
-    caja.append(fila);
+  const duenos = r.usuarios.filter((u) => u.rol === 'admin');
+  if (duenos.length) caja.append(grupoUsuarios('dueno', '👑 Administración de la empresa', duenos, r, false));
+  const sinSucursal = r.usuarios.filter((u) => u.rol !== 'admin' && !r.sucursales.some((s) => s.id === u.sucursal_id));
+  for (const s of r.sucursales) {
+    const gente = r.usuarios.filter((u) => u.rol !== 'admin' && u.sucursal_id === s.id).sort(porRol);
+    caja.append(grupoUsuarios('s' + s.id, '📍 ' + s.nombre, gente, r, true));
   }
+  if (sinSucursal.length) caja.append(grupoUsuarios('sin', 'Sin sucursal asignada', sinSucursal.sort(porRol), r, true));
 }
+
+let usuariosCtx = null;                 // datos de la última carga (para la ventana de edición)
+const usuariosAbiertos = new Set();     // grupos expandidos (por defecto todos colapsados)
+
+/** Un grupo (administración o sucursal) con sus renglones compactos; las sucursales se expanden/colapsan. */
+function grupoUsuarios(clave, titulo, gente, r, colapsable) {
+  const det = el('details', 'us-grupo');
+  det.open = !colapsable || usuariosAbiertos.has(clave);
+  const resumen = el('summary', 'us-grupo-resumen');
+  const activos = gente.filter((u) => u.activo).length;
+  resumen.append(el('span', 'cat-nombre', titulo), el('span', 'chip', `${gente.length} persona${gente.length === 1 ? '' : 's'}`));
+  if (activos !== gente.length) resumen.append(el('span', 'chip sin', `${gente.length - activos} desactivada${gente.length - activos === 1 ? '' : 's'}`));
+  det.append(resumen);
+  if (!colapsable) resumen.classList.add('fijo');
+  if (gente.length === 0) det.append(el('p', 'ayuda us-vacio', 'Aún no hay personas en esta sucursal.'));
+  for (const u of gente) det.append(renglonUsuario(u, r));
+  if (colapsable) det.addEventListener('toggle', () => { if (det.open) usuariosAbiertos.add(clave); else usuariosAbiertos.delete(clave); });
+  else det.addEventListener('click', (ev) => { if (ev.target.closest('summary')) ev.preventDefault(); });   // el grupo del dueño siempre visible
+  return det;
+}
+
+/** Renglón compacto: nombre, usuario, rol, estado y botón Editar. */
+function renglonUsuario(u, r) {
+  const fila = el('div', 'us-renglon' + (u.activo ? '' : ' inactivo'));
+  const quien = el('div', 'us-quien');
+  quien.append(el('strong', '', u.nombre), el('span', 'ayuda', '@' + u.usuario));
+  const chips = el('div', 'us-chips');
+  chips.append(el('span', 'chip rol-' + u.rol, ROL_TEXTO[u.rol]));
+  const extra = (u.sucursales_extra || []).map((id) => (r.sucursales.find((x) => x.id === id) || {}).nombre).filter(Boolean);
+  if (extra.length) chips.append(el('span', 'chip', '+ ' + extra.join(' + ')));
+  if (u.id === r.yo) chips.append(el('span', 'chip', 'Tú'));
+  chips.append(el('span', 'chip ' + (u.activo ? 'activo' : 'sin'), u.activo ? '● Activo' : 'Desactivado'));
+  const editar = el('button', 'btn chico', '✎ Editar');
+  editar.type = 'button';
+  editar.addEventListener('click', () => abrirEditarUsuario(u));
+  fila.append(quien, chips, editar);
+  return fila;
+}
+
+/** Ventana (modal) para editar a una persona: datos, sucursales, contraseña y el interruptor "Activo". */
+function abrirEditarUsuario(u) {
+  const { r, ROLES_PERSONAL, hayVarias } = usuariosCtx;
+  const dlg = $('dlg-usuario-editar');
+  $('ue-error').textContent = '';
+  $('ue-titulo').textContent = u.nombre;
+  $('ue-usuario').textContent = '@' + u.usuario;
+  $('ue-nombre').value = u.nombre;
+  const esAdmin = u.rol === 'admin';
+  $('ue-fila-rol').hidden = esAdmin;
+  $('ue-fila-suc').hidden = esAdmin;
+  $('ue-activo-fila').hidden = esAdmin || u.id === r.yo;   // al dueño (o a uno mismo) no se le desactiva
+  $('ue-activo').checked = !!u.activo;
+  const rol = $('ue-rol'); rol.replaceChildren();
+  for (const [v, t] of ROLES_PERSONAL) { const o = document.createElement('option'); o.value = v; o.textContent = t; rol.append(o); }
+  rol.value = u.rol;
+  const suc = $('ue-sucursal'); suc.replaceChildren();
+  for (const x of r.sucursales) { const o = document.createElement('option'); o.value = String(x.id); o.textContent = x.nombre; suc.append(o); }
+  suc.value = String(u.sucursal_id || (r.sucursales[0] && r.sucursales[0].id) || '');
+  const cajaExtra = $('ue-extra'); cajaExtra.replaceChildren();
+  let extraFila = null;
+  cajaExtra.hidden = esAdmin || !hayVarias;
+  if (!esAdmin && hayVarias) { extraFila = casillasSucursalesExtra(r.sucursales, suc, u.sucursales_extra || []); cajaExtra.append(...extraFila.caja.childNodes); }
+
+  $('ue-guardar').onclick = async () => {
+    const activo = esAdmin ? u.activo : $('ue-activo').checked;
+    if (u.activo && !activo && !(await confirmar(`¿Desactivar a ${u.nombre}? Perderá el acceso de inmediato.`, { si: 'Desactivar', peligro: true }))) return;
+    $('ue-error').textContent = '';
+    try {
+      await enviarJson(API + 'admin/usuarios.php', {
+        accion: 'editar', id: u.id, nombre: $('ue-nombre').value.trim(), rol: esAdmin ? u.rol : rol.value,
+        sucursal_id: esAdmin ? null : Number(suc.value), ...(extraFila ? { sucursales_extra: extraFila.valor() } : {}), activo,
+      });
+      dlg.close();
+      await cargarUsuarios();
+      avisar('Usuario actualizado');
+    } catch (err) { $('ue-error').textContent = err.message; }
+  };
+  $('ue-clave').onclick = async () => {
+    const p = await pedirTexto(`Nueva contraseña para ${u.nombre} (mínimo 10 caracteres):`, { si: 'Cambiar', tipo: 'password', minimo: 10 });
+    if (!p) return;
+    try { await enviarJson(API + 'admin/usuarios.php', { accion: 'clave', id: u.id, password: p }); avisar('Contraseña cambiada'); }
+    catch (err) { $('ue-error').textContent = err.message; }
+  };
+  dlg.showModal();
+}
+$('ue-cerrar').addEventListener('click', () => $('dlg-usuario-editar').close());
 
 async function accionUsuario(cuerpo, mensajeOk) {
   $('us-error').textContent = '';

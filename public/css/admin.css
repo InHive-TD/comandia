@@ -515,3 +515,23 @@ fieldset.extras-campo { border: 1px solid #d9c690; border-radius: 10px; padding:
 
 /* Inicio (reportes): es la página de entrada, no se cierra */
 #dlg-reportes .dlg-barra { display: none; }
+
+/* ---------- Usuarios: lista jerárquica y colapsada ---------- */
+.us-grupo { background: #fff; border: 1px solid var(--color-borde); border-radius: 12px; margin-bottom: 10px; }
+.us-grupo-resumen { display: flex; align-items: center; gap: 8px; padding: 10px 14px; cursor: pointer; list-style: none; font-weight: 700; }
+.us-grupo-resumen::-webkit-details-marker { display: none; }
+.us-grupo-resumen:not(.fijo)::before { content: '▸'; color: var(--color-vino); transition: transform .15s; }
+.us-grupo[open] > .us-grupo-resumen:not(.fijo)::before { transform: rotate(90deg); }
+.us-grupo-resumen.fijo { cursor: default; }
+.us-vacio { margin: 0; padding: 0 14px 12px; }
+.us-renglon { display: grid; grid-template-columns: minmax(150px, 1.2fr) 2fr auto; gap: 8px 12px; align-items: center; padding: 8px 14px; border-top: 1px solid var(--color-borde); }
+.us-renglon.inactivo { opacity: .6; }
+.us-quien { display: flex; flex-direction: column; min-width: 0; }
+.us-chips { display: flex; flex-wrap: wrap; gap: 6px; }
+.chip.activo { background: #e3f3e3; color: #256b2a; }
+.chip.rol-gerente { background: var(--color-vino); color: #fff; }
+.us-nuevo-det { margin-top: 12px; }
+.us-nuevo-det > summary { display: inline-flex; align-items: center; cursor: pointer; list-style: none; }
+.us-nuevo-det > summary::-webkit-details-marker { display: none; }
+.ue-activo { display: flex; align-items: center; gap: 8px; }
+@media (max-width: 640px) { .us-renglon { grid-template-columns: 1fr auto; } .us-chips { grid-column: 1 / -1; order: 3; } }
