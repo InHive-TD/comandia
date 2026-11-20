@@ -154,7 +154,14 @@ export async function crearApp(): Promise<FastifyInstance> {
 
       if (!ruta.endsWith('/') && partes.length === 1) return reply.redirect(ruta + '/', 302);
       if (!ruta.endsWith('/') && /^(admin|pedidos|cocina|caja)$/.test(resto)) return reply.redirect(ruta + '/', 302);
-      relativa = resto === '' ? 'cliente/index.html' : resto;
+      // Secciones del portal de administración con su propia dirección: /<empresa>/admin/usuarios (sin "/" al final,
+      // para que las rutas relativas de la página sigan funcionando). Todas muestran la misma pantalla y ella elige la sección.
+      if (/^admin\/(platillos|categorias|extras|sucursales|usuarios|ajustes|apariencia)\/?$/i.test(resto)) {
+        if (ruta.endsWith('/')) return reply.redirect(ruta.replace(/\/+$/, ''), 302);
+        relativa = 'admin/index.html';
+      } else {
+        relativa = resto === '' ? 'cliente/index.html' : resto;
+      }
     } else {
       relativa = partes.join('/');
     }

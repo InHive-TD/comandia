@@ -75,7 +75,7 @@ async function entrar(usuario) {
   mostrar('vista-panel');
   await cargarCatalogo();
   // Entra a la sección de la dirección (#usuarios…) si es válida y permitida; si no, al Inicio (reportes)
-  const pedida = RUTAS[location.hash.slice(1)] && $(RUTAS[location.hash.slice(1)]);
+  const pedida = RUTAS[seccionDeLaDireccion()] && $(RUTAS[seccionDeLaDireccion()]);
   (pedida && !pedida.hidden ? pedida : $('btn-reportes')).click();
 }
 
@@ -373,17 +373,21 @@ function marcarMenu(idBoton) {
 }
 
 /** Muestra una sección como página: cierra la que estuviera abierta y oculta la lista de productos. */
-/* Cada sección tiene su propia dirección (#usuarios, #extras…): se puede recargar, guardar en favoritos y usar "atrás". */
+/* Cada sección tiene su propia dirección: /<empresa>/admin/usuarios, /extras… (Inicio es solo /<empresa>/admin/).
+   Se puede recargar, guardar en favoritos y usar "atrás". Las direcciones no llevan "#". */
 const RUTAS = { inicio: 'btn-reportes', platillos: 'btn-productos', categorias: 'btn-categorias', extras: 'btn-extras', sucursales: 'btn-sucursales', usuarios: 'btn-usuarios', ajustes: 'btn-prioridades', apariencia: 'btn-apariencia' };
-let rutaActual = '';
+const BASE_ADMIN = location.pathname.replace(/\/admin(\/.*)?$/, '/admin/');   // "/lavale/admin/"
+const seccionDeLaDireccion = () => (location.pathname.startsWith(BASE_ADMIN) ? location.pathname.slice(BASE_ADMIN.length).replace(/\/+$/, '') : '') || 'inicio';
+let rutaActual = seccionDeLaDireccion();
 function fijarRuta(idBoton) {
   const nombre = Object.keys(RUTAS).find((k) => RUTAS[k] === idBoton);
   if (!nombre || nombre === rutaActual) return;
   rutaActual = nombre;
-  if (location.hash !== '#' + nombre) location.hash = nombre;
+  if (seccionDeLaDireccion() === nombre) return;   // la dirección ya es la de esta sección (carga directa o botón "atrás"): no se agrega otra entrada
+  history.pushState({ seccion: nombre }, '', nombre === 'inicio' ? BASE_ADMIN : BASE_ADMIN + nombre);
 }
-window.addEventListener('hashchange', () => {
-  const nombre = location.hash.slice(1);
+window.addEventListener('popstate', () => {
+  const nombre = seccionDeLaDireccion();
   const b = RUTAS[nombre] && $(RUTAS[nombre]);
   if (!b || b.hidden || nombre === rutaActual) return;
   b.click();

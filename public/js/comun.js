@@ -74,8 +74,10 @@ function aplicarNegocio(nombre) {
 function slugActual() {
   const partes = location.pathname.split('/').filter(Boolean).filter((p) => !/\.html?$/i.test(p));
   if (sucursalDeLaDireccion()) partes.pop();   // /lavale/centro/ → la empresa es "lavale"; "centro" es la sucursal
-  const ultimo = partes[partes.length - 1] || '';
-  return (['admin', 'pedidos', 'cocina', 'caja'].includes(ultimo) ? partes[partes.length - 2] : ultimo) || 'comandia';
+  // /lavale/admin/usuarios → la empresa es lo que va antes de la pantalla (admin|pedidos|cocina|caja)
+  const i = partes.findIndex((p) => ['admin', 'pedidos', 'cocina', 'caja'].includes(p));
+  if (i > 0) return partes[i - 1];
+  return partes[partes.length - 1] || 'comandia';
 }
 /* Sucursal que trae la dirección de la pantalla del cliente (/lavale/centro/); '' si no trae (ej. /lavale/ o el personal). */
 function sucursalDeLaDireccion() {
