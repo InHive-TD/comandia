@@ -964,6 +964,20 @@ async function pintarMesas(caja, s) {
   caja.append(uno, lote);
 }
 
+/** Dibuja el QR en un canvas grande (con margen blanco) y lo baja como PNG. */
+function descargarQr(qr, nombreArchivo) {
+  const n = qr.getModuleCount(), celda = 24, margen = 4 * celda, lado = n * celda + margen * 2;
+  const lienzo = document.createElement('canvas');
+  lienzo.width = lado; lienzo.height = lado;
+  const c = lienzo.getContext('2d');
+  c.fillStyle = '#ffffff'; c.fillRect(0, 0, lado, lado);
+  c.fillStyle = '#000000';
+  for (let f = 0; f < n; f++) for (let col = 0; col < n; col++) if (qr.isDark(f, col)) c.fillRect(margen + col * celda, margen + f * celda, celda, celda);
+  const a = document.createElement('a');
+  a.href = lienzo.toDataURL('image/png'); a.download = nombreArchivo;
+  document.body.append(a); a.click(); a.remove();
+}
+
 async function cargarSucursales() {
   const r = await pedir(API + 'admin/sucursales.php');
   const lista = $('lista-sucursales');
@@ -1011,6 +1025,16 @@ async function cargarSucursales() {
     const filaQr = el('div', 'su-qr');
     filaQr.append(campoEnlace, copiar);
     const lq = el('div', 'su-campo'); lq.append(el('span', 'su-etq', 'Enlace para el QR de esta sucursal'), filaQr);
+    // Código QR del enlace, debajo, con botón para descargarlo como imagen (para imprimirlo)
+    const qr = qrcode(0, 'M');
+    qr.addData(enlace);
+    qr.make();
+    const cajaQr = el('div', 'su-qr-img');
+    cajaQr.innerHTML = qr.createSvgTag({ cellSize: 4, margin: 4, scalable: true });   // SVG que genera la librería (solo cuadros, sin texto del usuario)
+    cajaQr.setAttribute('role', 'img'); cajaQr.setAttribute('aria-label', 'Código QR de ' + s.nombre);
+    const bajar = el('button', 'btn chico', 'Descargar QR (PNG)'); bajar.type = 'button';
+    bajar.addEventListener('click', () => descargarQr(qr, `qr-${s.slug || 'sucursal'}.png`));
+    lq.append(cajaQr, bajar);
     cuerpo.append(lq);
 
     // Las mesas se administran en su propia ventana
