@@ -2,13 +2,15 @@
  * Usuarios del equipo de una empresa. Lo usan el dueño y el gerente.
  *
  *   GET  → lista de usuarios, las sucursales disponibles y los roles que quien consulta puede asignar.
- *   POST { accion: 'crear',  nombre, usuario, password, rol, sucursal_id }
- *   POST { accion: 'editar', id, nombre, rol, activo, sucursal_id }
+ *   POST { accion: 'crear',  nombre, usuario, password, rol, sucursal_id, sucursales_extra? }
+ *   POST { accion: 'editar', id, nombre, rol, activo, sucursal_id, sucursales_extra? }
  *   POST { accion: 'clave',  id, password }
  *
  * Roles asignables:
  *   - Dueño:   cocina (taquero), caja, mesero y gerente.
  *   - Gerente: cocina, caja y mesero, siempre en SU sucursal. No ve ni toca a otros gerentes ni al dueño.
+ * Varias sucursales: sucursal_id es la principal y sucursales_extra (solo el dueño la envía) las demás; la persona cambia
+ * entre ellas con el selector de la pantalla. Un gerente solo ve y administra al personal que trabaja ÚNICAMENTE en su sucursal.
  * Los administradores (dueños) no se crean ni se degradan desde aquí; solo se les puede cambiar el nombre.
  */
 import bcrypt from 'bcryptjs';
@@ -47,23 +49,40 @@ export async function rutasUsuarios(app: FastifyInstance): Promise<void> {
       };
 
       /** ¿Puede quien consulta tocar a este usuario? El gerente solo al personal de su sucursal. */
-      const puedeTocar = (o: { rol: string; sucursal_id: number | null }): boolean =>
-        alcance === null || (ROLES_GERENTE.includes(o.rol) && o.sucursal_id === alcance);
+      const puedeTocar = (o: { rol: string; sucursal_id: number | null; extras: number }): boolean =>
+        alcance === null || (ROLES_GERENTE.includes(o.rol) && o.sucursal_id === alcance && o.extras === 0);
+
+      /** Sucursales adicionales que envía el dueño (sin repetir la principal). undefined = no se mandó, no se toca. */
+      const extrasDe = (v: unknown, principal: number): number[] | undefined => {
+        if (alcance !== null || v === undefined) return undefined;
+        const ids = [...new Set((Array.isArray(v) ? v : []).map(entero))].filter((id) => id !== principal);
+        for (const id of ids) if (!activas.some((s) => s.id === id)) throw fallo('Una de las sucursales elegidas ya no existe.');
+        return ids;
+      };
+      /** Reemplaza las sucursales adicionales de un usuario. */
+      const guardarExtras = async (usuarioId: number, ids: number[] | undefined): Promise<void> => {
+        if (ids === undefined) return;
+        await ejecutar('DELETE FROM usuario_sucursales WHERE usuario_id = ?', [usuarioId]);
+        for (const sid of ids) await ejecutar('INSERT INTO usuario_sucursales (usuario_id, sucursal_id, negocio_id) VALUES (?, ?, ?)', [usuarioId, sid, nid]);
+      };
 
       if (req.method === 'GET') {
         const r = await filas(
           `SELECT u.id, u.nombre, u.usuario, u.rol, u.activo, u.creado_en, u.sucursal_id, s.nombre AS sucursal
              FROM usuarios u LEFT JOIN sucursales s ON s.id = u.sucursal_id
-            WHERE u.negocio_id = ?${alcance !== null ? " AND u.sucursal_id = ? AND u.rol IN ('taquero','caja','mesero')" : ''}
+            WHERE u.negocio_id = ?${alcance !== null ? " AND u.sucursal_id = ? AND u.rol IN ('taquero','caja','mesero') AND NOT EXISTS (SELECT 1 FROM usuario_sucursales x WHERE x.usuario_id = u.id)" : ''}
             ORDER BY u.activo DESC, u.rol = 'admin' DESC, u.nombre`,
           alcance !== null ? [nid, alcance] : [nid],
         );
+        const extras = await filas('SELECT usuario_id, sucursal_id FROM usuario_sucursales WHERE negocio_id = ?', [nid]);
+        const extrasDeUsuario = (id: number): number[] => extras.filter((x) => Number(x['usuario_id']) === id).map((x) => Number(x['sucursal_id']));
         return {
           ok: true,
           yo: yo.id,
           usuarios: r.map((u) => ({
             id: Number(u['id']), nombre: u['nombre'], usuario: u['usuario'], rol: u['rol'], activo: Boolean(Number(u['activo'])), creado_en: u['creado_en'],
             sucursal_id: u['sucursal_id'] === null ? null : Number(u['sucursal_id']), sucursal: u['sucursal'],
+            sucursales_extra: extrasDeUsuario(Number(u['id'])),
           })),
           sucursales: alcance === null ? activas : activas.filter((s) => s.id === alcance),
           roles,
@@ -74,9 +93,9 @@ export async function rutasUsuarios(app: FastifyInstance): Promise<void> {
       const d = cuerpoJson(req);
 
       /** Busca al usuario objetivo en esta empresa; si el gerente no puede tocarlo, "ya no existe". */
-      const objetivo = async (id: number): Promise<{ rol: string; sucursal_id: number | null }> => {
-        const o = await fila('SELECT rol, sucursal_id FROM usuarios WHERE id = ? AND negocio_id = ?', [id, nid]);
-        const dato = o ? { rol: String(o['rol']), sucursal_id: o['sucursal_id'] === null ? null : Number(o['sucursal_id']) } : null;
+      const objetivo = async (id: number): Promise<{ rol: string; sucursal_id: number | null; extras: number }> => {
+        const o = await fila('SELECT rol, sucursal_id, (SELECT COUNT(*) FROM usuario_sucursales x WHERE x.usuario_id = usuarios.id) AS extras FROM usuarios WHERE id = ? AND negocio_id = ?', [id, nid]);
+        const dato = o ? { rol: String(o['rol']), sucursal_id: o['sucursal_id'] === null ? null : Number(o['sucursal_id']), extras: Number(o['extras']) } : null;
         if (!dato || !puedeTocar(dato)) throw new ErrorHttp(404, 'validacion', 'Ese usuario ya no existe.');
         return dato;
       };
@@ -97,6 +116,7 @@ export async function rutasUsuarios(app: FastifyInstance): Promise<void> {
           const r = await ejecutar('INSERT INTO usuarios (negocio_id, sucursal_id, nombre, usuario, password_hash, rol) VALUES (?, ?, ?, ?, ?, ?)', [
             nid, sucursalId, nombre, usuario, await bcrypt.hash(password, 10), rol,
           ]);
+          await guardarExtras(r.insertId, extrasDe(d['sucursales_extra'], sucursalId));
           reply.code(201);
           return { ok: true, id: r.insertId };
         }
@@ -112,9 +132,14 @@ export async function rutasUsuarios(app: FastifyInstance): Promise<void> {
           }
           const rol = String(d['rol'] ?? '');
           if (!roles.includes(rol)) throw fallo(`Elige el rol: ${textoRoles}.`);
+          const principal = sucursalDelPersonal(d['sucursal_id']);
+          const extras = extrasDe(d['sucursales_extra'], principal);
           await ejecutar('UPDATE usuarios SET nombre = ?, rol = ?, activo = ?, sucursal_id = ? WHERE id = ? AND negocio_id = ?', [
-            nombre, rol, noVacio(d['activo']) ? 1 : 0, sucursalDelPersonal(d['sucursal_id']), id, nid,
+            nombre, rol, noVacio(d['activo']) ? 1 : 0, principal, id, nid,
           ]);
+          // Si cambió la principal y no se mandaron extras, se quita la nueva principal de las adicionales (no se repite).
+          if (extras === undefined) await ejecutar('DELETE FROM usuario_sucursales WHERE usuario_id = ? AND sucursal_id = ?', [id, principal]);
+          await guardarExtras(id, extras);
           return { ok: true };
         }
         case 'clave': {

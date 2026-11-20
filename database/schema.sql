@@ -421,3 +421,14 @@ CREATE TABLE IF NOT EXISTS orden_cambios (
     INDEX idx_cambios_orden (orden_id),
     CONSTRAINT fk_cambios_orden FOREIGN KEY (orden_id) REFERENCES ordenes(id) ON DELETE CASCADE
 ) ENGINE=InnoDB;
+
+-- Sucursales adicionales de un usuario (además de usuarios.sucursal_id, la principal). La app también la crea sola al arrancar.
+CREATE TABLE IF NOT EXISTS usuario_sucursales (
+    usuario_id  INT UNSIGNED NOT NULL,
+    sucursal_id INT UNSIGNED NOT NULL,
+    negocio_id  INT UNSIGNED NOT NULL,
+    PRIMARY KEY (usuario_id, sucursal_id),
+    INDEX idx_us_sucursal (sucursal_id),
+    CONSTRAINT fk_us_usuario FOREIGN KEY (usuario_id) REFERENCES usuarios(id) ON DELETE CASCADE,
+    CONSTRAINT fk_us_sucursal FOREIGN KEY (sucursal_id) REFERENCES sucursales(id) ON DELETE CASCADE
+) ENGINE=InnoDB;

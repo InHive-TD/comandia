@@ -40,7 +40,7 @@ export async function rutasSucursales(app: FastifyInstance): Promise<void> {
         const r = await filas(
           `SELECT s.id, s.slug, s.nombre, s.direccion, s.activa, s.orden,
                   (SELECT COUNT(*) FROM mesas m WHERE m.sucursal_id = s.id AND m.activa = 1) AS mesas,
-                  (SELECT COUNT(*) FROM usuarios u WHERE u.sucursal_id = s.id AND u.activo = 1) AS usuarios
+                  (SELECT COUNT(*) FROM usuarios u WHERE u.activo = 1 AND (u.sucursal_id = s.id OR EXISTS (SELECT 1 FROM usuario_sucursales x WHERE x.usuario_id = u.id AND x.sucursal_id = s.id))) AS usuarios
              FROM sucursales s WHERE s.negocio_id = ?${alcance !== null ? ' AND s.id = ?' : ''} ORDER BY s.activa DESC, s.orden, s.id`,
           alcance !== null ? [nid, alcance] : [nid],
         );

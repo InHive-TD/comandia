@@ -57,7 +57,7 @@ export async function rutasEmpresa(app: FastifyInstance): Promise<void> {
       usuario: usuario ? { nombre: usuario.nombre, rol: usuario.rol } : null,
       negocio: { nombre: req.negocio.nombre, slug: req.negocio.slug },
       sucursal: suc || null,
-      sucursales: usuario && usuario.sucursalId === null ? lista : lista.filter((s) => s.id === suc),
+      sucursales: usuario && usuario.sucursalesPermitidas === null ? lista : lista.filter((s) => s.id === suc),
       csrf: csrfToken(ses),
     };
   });
@@ -112,8 +112,8 @@ export async function rutasEmpresa(app: FastifyInstance): Promise<void> {
   });
 
   /**
-   * Sucursal con la que trabaja el administrador (el personal tiene una sola, fija).
-   * GET → { sucursales, actual } · POST { sucursal_id } → el administrador cambia de sucursal.
+   * Sucursal con la que trabaja la persona: el dueño elige entre todas; el personal, entre las suyas (casi siempre una sola).
+   * GET → { sucursales, actual } · POST { sucursal_id } → cambia de sucursal (solo entre las permitidas).
    */
   app.route({
     method: ['GET', 'POST'],
@@ -123,14 +123,15 @@ export async function rutasEmpresa(app: FastifyInstance): Promise<void> {
       let actual = u.sucursalActiva;
       if (req.method === 'POST') {
         const id = Number(cuerpoJson(req)['sucursal_id'] ?? 0);
-        if (u.sucursalId !== null) throw new ErrorHttp(403, 'sin_permiso', 'Tu usuario trabaja en una sola sucursal.');
+        if (u.sucursalesPermitidas !== null && u.sucursalesPermitidas.length < 2) throw new ErrorHttp(403, 'sin_permiso', 'Tu usuario trabaja en una sola sucursal.');
         const activas = await sucursalesActivas(req.negocio.id);
         if (!activas.some((s) => s.id === id)) throw new ErrorHttp(404, 'validacion', 'Esa sucursal no existe.');
+        if (u.sucursalesPermitidas !== null && !u.sucursalesPermitidas.includes(id)) throw new ErrorHttp(403, 'sin_permiso', 'No trabajas en esa sucursal.');
         (await sesionDeNegocio(req)).poner('sucursal_id', id);
         actual = id;
       }
       const lista = (await sucursalesActivas(req.negocio.id)).map((s) => ({ id: s.id, nombre: s.nombre, direccion: s.direccion }));
-      return { ok: true, sucursales: u.sucursalId !== null ? lista.filter((s) => s.id === u.sucursalId) : lista, actual };
+      return { ok: true, sucursales: u.sucursalesPermitidas !== null ? lista.filter((s) => (u.sucursalesPermitidas as number[]).includes(s.id)) : lista, actual };
     },
   });
 }

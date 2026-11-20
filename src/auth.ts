@@ -1,6 +1,6 @@
 import { randomBytes, timingSafeEqual } from 'node:crypto';
 import type { FastifyRequest } from 'fastify';
-import { fila } from './db.js';
+import { fila, filas } from './db.js';
 import { ErrorHttp } from './errores.js';
 import { sucursalesActivas } from './negocio.js';
 import { type ContextoSesion, type Sesion, sesionDe } from './sesion.js';
@@ -12,8 +12,10 @@ export interface Usuario {
   nombre: string;
   usuario: string;
   rol: Rol;
-  /** null = el administrador (puede cambiar de sucursal). */
+  /** Sucursal principal. null = el administrador (puede cambiar entre todas). */
   sucursalId: number | null;
+  /** Todas las sucursales donde puede trabajar (la principal + las adicionales). null = el dueño: todas. */
+  sucursalesPermitidas: number[] | null;
   /** Sucursal con la que trabaja ahora (0 si la empresa no tiene sucursales activas). */
   sucursalActiva: number;
   /** null = dueño (toda la empresa); id = gerente (solo su sucursal). */
@@ -69,22 +71,26 @@ export async function usuarioActual(req: FastifyRequest): Promise<Omit<Usuario, 
     ses.datos = {};
     return null;
   }
-  return {
-    id: Number(f['id']),
-    nombre: String(f['nombre']),
-    usuario: String(f['usuario']),
-    rol: f['rol'] as Rol,
-    sucursalId: f['sucursal_id'] === null ? null : Number(f['sucursal_id']),
-  };
+  const sucursalId = f['sucursal_id'] === null ? null : Number(f['sucursal_id']);
+  let sucursalesPermitidas: number[] | null = null;
+  if (sucursalId !== null) {
+    const extra = await filas('SELECT sucursal_id FROM usuario_sucursales WHERE usuario_id = ?', [Number(f['id'])]);
+    sucursalesPermitidas = [sucursalId, ...extra.map((x) => Number(x['sucursal_id']))];
+  }
+  return { id: Number(f['id']), nombre: String(f['nombre']), usuario: String(f['usuario']), rol: f['rol'] as Rol, sucursalId, sucursalesPermitidas };
 }
 
-/** Sucursal de trabajo: el personal la suya; el administrador la que eligió (o la primera). 0 si no hay. */
-export async function resolverSucursal(req: FastifyRequest, u: { sucursalId: number | null }): Promise<number> {
-  const activas = (await sucursalesActivas(req.negocio.id)).map((s) => s.id);
-  if (u.sucursalId !== null) return activas.includes(u.sucursalId) ? u.sucursalId : 0;
+/**
+ * Sucursal de trabajo. El dueño: la que eligió (o la primera). El personal: la que eligió entre las suyas
+ * (si trabaja en varias), o su sucursal principal. 0 si no tiene ninguna activa.
+ */
+export async function resolverSucursal(req: FastifyRequest, u: { sucursalId: number | null; sucursalesPermitidas: number[] | null }): Promise<number> {
+  const todas = (await sucursalesActivas(req.negocio.id)).map((s) => s.id);
+  const activas = u.sucursalesPermitidas === null ? todas : todas.filter((id) => (u.sucursalesPermitidas as number[]).includes(id));
   const ses = await sesionDeNegocio(req);
   const elegida = Number(ses.obtener('sucursal_id') ?? 0);
   if (elegida && activas.includes(elegida)) return elegida;
+  if (u.sucursalId !== null && activas.includes(u.sucursalId)) return u.sucursalId;
   return activas[0] ?? 0;
 }
 
@@ -102,7 +108,8 @@ export async function requerirRol(req: FastifyRequest, ...roles: Rol[]): Promise
     throw new ErrorHttp(403, 'sin_sucursal', 'Tu usuario no tiene una sucursal activa asignada. Pide al administrador que la configure.');
   }
   req.sucursalId = suc;
-  return { ...u, sucursalActiva: suc, alcance: u.rol === 'gerente' ? u.sucursalId : null };
+  // El gerente administra la sucursal en la que está trabajando ahora (si tiene varias, la que eligió en el selector).
+  return { ...u, sucursalActiva: suc, alcance: u.rol === 'gerente' ? suc : null };
 }
 
 /** Panel de administración: el dueño (alcance = empresa) o el gerente (alcance = su sucursal). */

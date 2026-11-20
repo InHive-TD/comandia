@@ -75,4 +75,14 @@ async function actualizarV2(): Promise<void> {
     CONSTRAINT fk_ps_producto FOREIGN KEY (producto_id) REFERENCES productos(id) ON DELETE CASCADE,
     CONSTRAINT fk_ps_sucursal FOREIGN KEY (sucursal_id) REFERENCES sucursales(id) ON DELETE CASCADE
   ) ENGINE=InnoDB`);
+  // Sucursales ADICIONALES de un usuario (además de usuarios.sucursal_id, que es la principal). Sin filas = una sola sucursal.
+  await ejecutar(`CREATE TABLE IF NOT EXISTS usuario_sucursales (
+    usuario_id  INT UNSIGNED NOT NULL,
+    sucursal_id INT UNSIGNED NOT NULL,
+    negocio_id  INT UNSIGNED NOT NULL,
+    PRIMARY KEY (usuario_id, sucursal_id),
+    INDEX idx_us_sucursal (sucursal_id),
+    CONSTRAINT fk_us_usuario FOREIGN KEY (usuario_id) REFERENCES usuarios(id) ON DELETE CASCADE,
+    CONSTRAINT fk_us_sucursal FOREIGN KEY (sucursal_id) REFERENCES sucursales(id) ON DELETE CASCADE
+  ) ENGINE=InnoDB`);
 }

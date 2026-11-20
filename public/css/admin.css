@@ -382,3 +382,7 @@ fieldset.extras-campo { border: 1px solid #d9c690; border-radius: 10px; padding:
 /* Gerente: ajustes de una carta general en su sucursal */
 .ajuste-sucursal { display: flex; flex-wrap: wrap; gap: .5rem; align-items: center; }
 .ajuste-sucursal input[type="text"] { width: 11rem; }
+
+/* Usuarios en varias sucursales: casillas "También trabaja en" */
+.us-extra { display: flex; flex-direction: column; gap: 6px; flex-basis: 100%; }
+.us-extra .lote-lista { display: flex; flex-wrap: wrap; gap: 8px; }

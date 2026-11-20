@@ -552,6 +552,32 @@ const dlgUsuarios = $('dlg-usuarios');
 const ROL_TEXTO = { admin: 'Administrador', gerente: 'Gerente', caja: 'Caja', mesero: 'Mesero', taquero: 'Cocina' };
 const ROLES_ORDEN = ['mesero', 'caja', 'taquero', 'gerente'];
 
+/**
+ * "También trabaja en": casillas con las demás sucursales (solo las ve el dueño). La principal se elige en el selector
+ * de al lado y su casilla se desactiva sola. Devuelve { caja, valor() } con las sucursales adicionales marcadas.
+ */
+function casillasSucursalesExtra(sucursales, selPrincipal, marcadas) {
+  const caja = el('div', 'us-extra');
+  caja.append(el('span', 'ayuda', 'También trabaja en (podrá cambiar de sucursal desde la pantalla):'));
+  const fila = el('div', 'lote-lista');
+  const casillas = [];
+  for (const s of sucursales) {
+    const f = el('label', 'lote-op');
+    const x = document.createElement('input');
+    x.type = 'checkbox'; x.value = String(s.id); x.checked = marcadas.includes(s.id);
+    casillas.push(x);
+    f.append(x, el('span', '', s.nombre));
+    fila.append(f);
+  }
+  caja.append(fila);
+  const sincronizar = () => casillas.forEach((x) => { const esPrincipal = x.value === selPrincipal.value; x.disabled = esPrincipal; if (esPrincipal) x.checked = false; });
+  selPrincipal.addEventListener('change', sincronizar);
+  sincronizar();
+  return { caja, valor: () => casillas.filter((x) => x.checked && !x.disabled).map((x) => Number(x.value)) };
+}
+
+let extraNuevo = null;   // casillas del formulario "Nuevo usuario"
+
 async function cargarUsuarios() {
   const r = await pedir(API + 'admin/usuarios.php');
   const ROLES_PERSONAL = ROLES_ORDEN.filter((v) => r.roles.includes(v)).map((v) => [v, ROL_TEXTO[v]]);
@@ -565,13 +591,24 @@ async function cargarUsuarios() {
   sel.replaceChildren();
   for (const s of r.sucursales) { const o = document.createElement('option'); o.value = String(s.id); o.textContent = s.nombre; sel.append(o); }
   if (previa) sel.value = previa;
+  // Solo el dueño (que ve más de una sucursal) asigna sucursales adicionales.
+  const hayVarias = r.sucursales.length > 1;
+  const marcadasPrevias = extraNuevo ? extraNuevo.valor() : [];
+  $('us-extra-caja').replaceChildren();
+  $('us-extra-caja').hidden = !hayVarias;
+  extraNuevo = null;
+  if (hayVarias) {
+    extraNuevo = casillasSucursalesExtra(r.sucursales, sel, marcadasPrevias);
+    $('us-extra-caja').append(...extraNuevo.caja.childNodes);
+  }
   const caja = $('lista-usuarios');
   caja.replaceChildren();
   for (const u of r.usuarios) {
     const fila = el('div', 'fila-usuario' + (u.activo ? '' : ' inactivo'));
     const cab = el('div', 'us-cab');
     cab.append(el('strong', '', u.nombre), el('span', 'chip', '@' + u.usuario), el('span', 'chip', ROL_TEXTO[u.rol]));
-    cab.append(el('span', 'chip', u.sucursal ? '📍 ' + u.sucursal : 'Todas las sucursales'));
+    const nombresExtra = (u.sucursales_extra || []).map((id) => (r.sucursales.find((x) => x.id === id) || {}).nombre).filter(Boolean);
+    cab.append(el('span', 'chip', u.sucursal ? '📍 ' + [u.sucursal, ...nombresExtra].join(' + ') : 'Todas las sucursales'));
     if (!u.activo) cab.append(el('span', 'chip sin', 'Desactivado'));
     if (u.id === r.yo) cab.append(el('span', 'chip', 'Tú'));
     fila.append(cab);
@@ -580,7 +617,7 @@ async function cargarUsuarios() {
     const nombre = document.createElement('input');
     nombre.type = 'text'; nombre.maxLength = 80; nombre.value = u.nombre; nombre.setAttribute('aria-label', 'Nombre');
     ctl.append(nombre);
-    let rol = null, suc = null;
+    let rol = null, suc = null, extraFila = null;
     if (u.rol !== 'admin') {
       rol = document.createElement('select');
       rol.setAttribute('aria-label', 'Rol');
@@ -592,10 +629,11 @@ async function cargarUsuarios() {
       for (const s of r.sucursales) { const o = document.createElement('option'); o.value = String(s.id); o.textContent = s.nombre; suc.append(o); }
       suc.value = String(u.sucursal_id || (r.sucursales[0] && r.sucursales[0].id) || '');
       ctl.append(suc);
+      if (hayVarias) { extraFila = casillasSucursalesExtra(r.sucursales, suc, u.sucursales_extra || []); ctl.append(extraFila.caja); }
     }
     const guardar = el('button', 'btn', 'Guardar');
     guardar.type = 'button';
-    guardar.addEventListener('click', () => accionUsuario({ accion: 'editar', id: u.id, nombre: nombre.value.trim(), rol: rol ? rol.value : u.rol, sucursal_id: suc ? Number(suc.value) : null, activo: u.activo }, 'Usuario actualizado'));
+    guardar.addEventListener('click', () => accionUsuario({ accion: 'editar', id: u.id, nombre: nombre.value.trim(), rol: rol ? rol.value : u.rol, sucursal_id: suc ? Number(suc.value) : null, ...(extraFila ? { sucursales_extra: extraFila.valor() } : {}), activo: u.activo }, 'Usuario actualizado'));
     ctl.append(guardar);
 
     const clave = el('button', 'btn', 'Nueva contraseña');
@@ -611,7 +649,7 @@ async function cargarUsuarios() {
       act.type = 'button';
       act.addEventListener('click', async () => {
         if (u.activo && !(await confirmar(`¿Desactivar a ${u.nombre}? Perderá el acceso de inmediato.`, { si: 'Desactivar', peligro: true }))) return;
-        accionUsuario({ accion: 'editar', id: u.id, nombre: nombre.value.trim(), rol: rol.value, sucursal_id: Number(suc.value), activo: !u.activo }, u.activo ? 'Usuario desactivado' : 'Usuario reactivado');
+        accionUsuario({ accion: 'editar', id: u.id, nombre: nombre.value.trim(), rol: rol.value, sucursal_id: Number(suc.value), ...(extraFila ? { sucursales_extra: extraFila.valor() } : {}), activo: !u.activo }, u.activo ? 'Usuario desactivado' : 'Usuario reactivado');
       });
       ctl.append(act);
     }
@@ -644,6 +682,7 @@ $('form-nuevo-usuario').addEventListener('submit', async (ev) => {
   const ok = await accionUsuario({
     accion: 'crear', nombre: $('us-nombre').value.trim(), usuario: $('us-usuario').value.trim(),
     password: $('us-password').value, rol: $('us-rol').value, sucursal_id: Number($('us-sucursal').value),
+    ...(extraNuevo ? { sucursales_extra: extraNuevo.valor() } : {}),
   }, 'Usuario creado');
   if (ok) { $('us-nombre').value = ''; $('us-usuario').value = ''; $('us-password').value = ''; }
 });
