@@ -446,8 +446,9 @@ fieldset.extras-campo { border: 1px solid #d9c690; border-radius: 10px; padding:
 .ex-sec-nueva input { flex: 1; min-width: 180px; }
 .var-tipos { display: flex; flex-direction: column; gap: 6px; }
 .var-tipo { display: grid; grid-template-columns: 28px minmax(120px, 1.4fr) minmax(90px, 1fr) 90px; gap: 6px; align-items: center; }
+.var-tipo.propia { grid-template-columns: 28px minmax(120px, 1.4fr) minmax(90px, 1fr) 90px 34px; }
 .var-tipo input[type="checkbox"] { width: 22px; height: 22px; }
 .var-tipo.apagado input[type="text"] { opacity: .55; }
 .var-lista { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 6px; }
 .var-vista { padding: 8px 10px; background: #fff; border: 1px dashed var(--color-borde); border-radius: 10px; }
-@media (max-width: 520px) { .var-tipo { grid-template-columns: 28px 1fr 1fr; } .var-tipo input:nth-child(4) { grid-column: 2 / -1; } }
+@media (max-width: 520px) { .var-tipo.propia { grid-template-columns: 28px 1fr 1fr 34px; } .var-tipo { grid-template-columns: 28px 1fr 1fr; } .var-tipo input:nth-child(4) { grid-column: 2 / -1; } }

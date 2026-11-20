@@ -12,6 +12,7 @@ let categorias = [];
 let estaciones = [];
 let extras = [];
 let gruposExtras = [];            // secciones de extras (Quitar, Aparte, Solo...) en el orden elegido
+let variantesPropias = [];   // patrones de variante propios del negocio [{texto, seccion, precio}]
 
 const $ = (id) => document.getElementById(id);
 
@@ -119,6 +120,7 @@ async function cargarCatalogo() {
     estaciones = r.estaciones;
     extras = r.extras;
     gruposExtras = r.grupos_extras || [];
+    variantesPropias = r.variantes_propias || [];
     pintarLista();
   } catch (err) {
     if (err.estado === 401) { await iniciar(); return; }
@@ -1410,6 +1412,10 @@ const VARIANTES_BASE = [
   { texto: '{x} aparte', seccion: 'Aparte', activo: true },
   { texto: 'Solo {x}', seccion: 'Solo', activo: true },
   { texto: 'Extra {x}', seccion: 'Extras', activo: false, precio: '' },
+  { texto: 'Poco {x}', seccion: 'Cantidad', activo: false },
+  { texto: 'Mucho {x}', seccion: 'Cantidad', activo: false },
+  { texto: 'Doble {x}', seccion: 'Cantidad', activo: false, precio: '' },
+  { texto: '{x} al lado', seccion: 'Aparte', activo: false },
 ];
 let variantesEstado = null;     // [{texto, seccion, activo, precio}] editable en pantalla
 let varCategorias = new Set();  // categorías elegidas
@@ -1429,7 +1435,8 @@ function variantesPorCrear() {
   for (const ing of ingredientesEscritos()) {
     for (const v of variantesEstado) {
       if (!v.activo || !v.texto.trim()) continue;
-      const nombre = mayusInicial(v.texto.replaceAll('{x}', ing.toLocaleLowerCase('es-MX')).trim());
+      const patron = v.texto.includes('{x}') ? v.texto : `${v.texto} {x}`;   // sin {x}, el ingrediente va al final
+      const nombre = mayusInicial(patron.replaceAll('{x}', ing.toLocaleLowerCase('es-MX')).trim());
       const seccion = v.seccion.trim() ? seccionExistente(v.seccion) : '';
       const existe = extras.some((x) => x.nombre.toLowerCase() === nombre.toLowerCase() && (x.grupo || '').toLowerCase() === seccion.toLowerCase());
       lista.push({ nombre, seccion, precio: v.precio.trim() || '0', existe });
@@ -1439,7 +1446,8 @@ function variantesPorCrear() {
 }
 
 function pintarVariantesTipos() {
-  if (!variantesEstado) variantesEstado = VARIANTES_BASE.map((v) => ({ ...v, precio: v.precio || '' }));
+  // Estado inicial: las variantes base + las propias que el negocio guardó (estas últimas marcadas como propias)
+  if (!variantesEstado) variantesEstado = [...VARIANTES_BASE.map((v) => ({ ...v, precio: v.precio || '' })), ...variantesPropias.map((v) => ({ texto: v.texto, seccion: v.seccion, precio: v.precio || '', activo: false, propia: true }))];
   const caja = $('var-tipos');
   caja.replaceChildren();
   variantesEstado.forEach((v) => {
@@ -1451,6 +1459,18 @@ function pintarVariantesTipos() {
     const cambio = () => { v.activo = marca.checked; v.texto = texto.value; v.seccion = seccion.value; v.precio = precio.value; fila.classList.toggle('apagado', !v.activo); pintarVistaVariantes(); };
     for (const c of [marca, texto, seccion, precio]) c.addEventListener('input', cambio);
     fila.append(marca, texto, seccion, precio);
+    if (v.propia) {
+      // Las variantes propias se pueden quitar de la lista guardada del negocio
+      const quitar = el('button', 'btn chico peligro', '✕');
+      quitar.type = 'button'; quitar.title = 'Quitar esta variante de mi lista'; quitar.setAttribute('aria-label', 'Quitar variante propia');
+      quitar.addEventListener('click', async () => {
+        variantesEstado = variantesEstado.filter((o) => o !== v);
+        await guardarVariantesPropias();
+        pintarVariantesTipos();
+      });
+      fila.append(quitar);
+      fila.classList.add('propia');
+    }
     caja.append(fila);
   });
   const cats = $('var-cats');
@@ -1490,10 +1510,12 @@ $('form-variantes').addEventListener('submit', async (ev) => {
   const nuevos = variantesPorCrear().filter((x) => !x.existe);
   if (nuevos.length === 0) return;
   $('x-error').textContent = '';
+  await guardarVariantesPropias();   // lo que el dueño escribió como variante propia queda guardado para la próxima
   try {
     const r = await enviarJson(API + 'admin/extras.php', { accion: 'crear_varios', extras: nuevos.map((x) => ({ nombre: x.nombre, precio: x.precio, grupo: x.seccion })), categorias: [...varCategorias] });
     await cargarCatalogo();
     $('var-ingredientes').value = '';
+    variantesEstado = null;   // se reconstruye con la lista propia ya guardada
     pintarExtras();
     avisar(`${r.creados.length} extra${r.creados.length === 1 ? '' : 's'} creado${r.creados.length === 1 ? '' : 's'}` + (varCategorias.size ? ' y agregados a las categorías elegidas' : ''));
   } catch (err) {
@@ -1501,6 +1523,25 @@ $('form-variantes').addEventListener('submit', async (ev) => {
   }
 });
 
+
+/** Guarda en el servidor la lista de variantes propias (para reusarlas con cualquier ingrediente). */
+async function guardarVariantesPropias() {
+  const lista = variantesEstado.filter((v) => v.propia && v.texto.trim()).map((v) => ({ texto: v.texto.trim(), seccion: v.seccion.trim(), precio: v.precio.trim() }));
+  try {
+    await enviarJson(API + 'admin/extras.php', { accion: 'variantes_guardar', lista });
+    variantesPropias = lista.map((v) => ({ ...v, texto: v.texto.includes('{x}') ? v.texto : v.texto + ' {x}' }));
+  } catch (err) {
+    $('x-error').textContent = err.message;
+  }
+}
+
+$('var-propia').addEventListener('click', () => {
+  // Fila nueva y vacía, ya marcada para crear; se guarda en la lista del negocio al crear los extras
+  variantesEstado.push({ texto: '', seccion: '', precio: '', activo: true, propia: true });
+  pintarVariantesTipos();
+  const textos = $('var-tipos').querySelectorAll('.var-tipo.propia input[type="text"]:first-of-type');
+  textos[textos.length - 1]?.focus();
+});
 
 async function accionExtra(cuerpo, mensajeOk) {
   $('x-error').textContent = '';

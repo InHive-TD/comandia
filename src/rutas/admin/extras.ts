@@ -56,6 +56,18 @@ async function leerCodigo(nid: number, d: Record<string, unknown>, idActual = 0)
  * Secciones de extras. Las que ya existen escritas en algún extra (extras.grupo) se "adoptan" solas en la tabla
  * extra_grupos, para que la lista siempre esté completa y ordenable. Devuelve las secciones en su orden.
  */
+/** Variantes propias del negocio (patrones tipo "Bien cocido {x}") guardadas en ajustes como JSON. */
+export interface VariantePropia { texto: string; seccion: string; precio: string }
+const CLAVE_VARIANTES = 'variantes_propias';
+
+export async function listarVariantesPropias(nid: number): Promise<VariantePropia[]> {
+  const r = await fila('SELECT valor FROM ajustes WHERE negocio_id = ? AND clave = ?', [nid, CLAVE_VARIANTES]);
+  try {
+    const v: unknown = JSON.parse(String(r?.['valor'] ?? '[]'));
+    return Array.isArray(v) ? (v as VariantePropia[]) : [];
+  } catch { return []; }
+}
+
 export async function listarGruposExtras(nid: number): Promise<{ nombre: string; orden: number }[]> {
   await ejecutar(
     `INSERT IGNORE INTO extra_grupos (negocio_id, nombre, orden)
@@ -134,6 +146,24 @@ export async function rutasExtras(app: FastifyInstance): Promise<void> {
               [id, nid, categoriaId],
             );
           }
+          return { ok: true };
+        }
+        case 'variantes_guardar': {
+          // Reemplaza la lista de variantes propias del negocio. Cada texto lleva {x} donde va el ingrediente.
+          const lista = Array.isArray(d['lista']) ? (d['lista'] as Record<string, unknown>[]) : [];
+          if (lista.length > 30) throw fallo('Máximo 30 variantes propias.');
+          const limpias: VariantePropia[] = [];
+          for (const v of lista) {
+            let texto = String(v['texto'] ?? '').trim();
+            if (texto === '') continue;
+            if (largo(texto) > 50) throw fallo('El texto de una variante no puede pasar de 50 caracteres.');
+            if (!texto.includes('{x}')) texto += ' {x}';
+            const seccion = String(v['seccion'] ?? '').trim().slice(0, 40);
+            const precio = String(v['precio'] ?? '').trim().replace(',', '.');
+            if (precio !== '' && !(Number(precio) >= 0 && Number(precio) < 100000)) throw fallo('Un costo de variante no es válido.');
+            if (!limpias.some((x) => x.texto.toLowerCase() === texto.toLowerCase())) limpias.push({ texto, seccion, precio });
+          }
+          await ejecutar('INSERT INTO ajustes (negocio_id, clave, valor) VALUES (?, ?, ?) ON DUPLICATE KEY UPDATE valor = VALUES(valor)', [nid, CLAVE_VARIANTES, JSON.stringify(limpias)]);
           return { ok: true };
         }
         case 'asignar_todos': {

@@ -7,7 +7,7 @@
   <title>Administración · Comandia</title>
   <link rel="icon" type="image/png" href="../img/favicon.png">
   <link rel="stylesheet" href="../css/estilos.css?v=202611202055">
-  <link rel="stylesheet" href="../css/admin.css?v=202611202330">
+  <link rel="stylesheet" href="../css/admin.css?v=202611202350">
   <link rel="stylesheet" href="../api/tema.php">
 </head>
 <body>
@@ -184,6 +184,8 @@
         <div class="ex-campo">
           <span class="ex-etq">¿Qué variantes quieres crear? <small>(puedes cambiar el texto, la sección o ponerles costo)</small></span>
           <div id="var-tipos" class="var-tipos"></div>
+          <button id="var-propia" class="btn chico" type="button" title="Escribe tu propio patrón, por ejemplo “Bien cocido {x}”. Se guarda para reusarlo.">＋ Variante propia</button>
+          <small class="ayuda">Usa <code>{x}</code> donde va el ingrediente. Las propias se guardan para reusarlas.</small>
         </div>
         <div class="ex-campo">
           <span class="ex-etq">¿Ponerlas ya en alguna categoría? <small>(opcional: se agregan a todos sus platillos)</small></span>
@@ -402,7 +404,7 @@
 
   <div id="toast" class="toast" role="status" hidden></div>
 
-  <script src="../js/comun.js?v=202611202330"></script>
-  <script src="../js/admin.js?v=202611202330"></script>
+  <script src="../js/comun.js?v=202611202350"></script>
+  <script src="../js/admin.js?v=202611202350"></script>
 </body>
 </html>

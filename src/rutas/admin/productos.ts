@@ -21,7 +21,7 @@ import { ErrorHttp, fallo } from '../../errores.js';
 import { type Formulario, leerFormulario } from '../../formulario.js';
 import { borrarFoto, procesarFoto } from '../../fotos.js';
 import { sucursalesActivas } from '../../negocio.js';
-import { listarGruposExtras } from './extras.js';
+import { listarGruposExtras, listarVariantesPropias } from './extras.js';
 import { entero, esDuplicado, largo, mayusculas } from '../../util.js';
 
 /** Campos de un producto ya validados, listos para guardar. */
@@ -205,7 +205,7 @@ async function listar(nid: number, alcance: number | null): Promise<Record<strin
 
   // Secciones de extras en el orden que eligió el dueño (incluye las que aún no tienen extras)
   const gruposExtras = await listarGruposExtras(nid);
-  return { ok: true, productos, categorias, estaciones, extras, grupos_extras: gruposExtras.map((g) => g.nombre) };
+  return { ok: true, productos, categorias, estaciones, extras, grupos_extras: gruposExtras.map((g) => g.nombre), variantes_propias: await listarVariantesPropias(nid) };
 }
 
 export async function rutasAdminProductos(app: FastifyInstance): Promise<void> {
