@@ -9,7 +9,7 @@
   <link rel="stylesheet" href="css/estilos.css?v=202611201300">
   <link rel="stylesheet" href="css/admin.css?v=202611192050">
   <link rel="stylesheet" href="css/pedidos.css?v=202611192050">
-  <link rel="stylesheet" href="css/cliente.css?v=202611201650">
+  <link rel="stylesheet" href="css/cliente.css?v=202611201900">
   <link rel="stylesheet" href="api/tema.php">
 </head>
 <body>
@@ -20,7 +20,7 @@
       <div>
         <h1 class="nombre-negocio">Comandia</h1>
         <p id="subtitulo">Haz tu pedido</p>
-        <select id="sel-sucursal-cliente" class="sel-sucursal" aria-label="Sucursal" hidden></select>
+        <p id="sucursal-fija" class="sucursal-fija" hidden></p>
       </div>
     </div>
   </header>
@@ -41,13 +41,6 @@
       <h2 id="aviso-titulo"></h2>
       <p id="aviso-texto"></p>
       <button id="aviso-reintentar" class="btn principal" type="button">Reintentar</button>
-    </section>
-
-    <!-- ===== Elegir sucursal (solo si el enlace/QR no trae una y la empresa tiene varias) ===== -->
-    <section id="vista-sucursal" class="tarjeta angosta" hidden>
-      <h2>¿En qué sucursal estás?</h2>
-      <p class="ayuda">Elígela para ver su menú y que tu pedido llegue al lugar correcto.</p>
-      <div id="lista-sucursal-elegir" class="acciones-dialogo"></div>
     </section>
 
     <!-- ===== Menú y carrito ===== -->
@@ -210,7 +203,7 @@
 
   <div id="toast" class="toast" role="status" hidden></div>
 
-  <script src="js/comun.js?v=202611201400"></script>
-  <script src="js/cliente.js?v=202611201710"></script>
+  <script src="js/comun.js?v=202611201900"></script>
+  <script src="js/cliente.js?v=202611201900"></script>
 </body>
 </html>

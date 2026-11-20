@@ -770,7 +770,7 @@ async function cargarSucursales() {
     mesasBtn.addEventListener('click', () => { if (sucAbierta.has(s.id)) sucAbierta.delete(s.id); else sucAbierta.add(s.id); cargarSucursales(); });
     if (esGerente) { tarj.append(cab); } else { ctl.append(nombre, dir, guardar, pausa, mesasBtn); tarj.append(cab, ctl); }
     // Enlace para el QR de esta sucursal (el cliente abre el menú y sus pedidos van a esta sucursal)
-    const enlace = location.origin + location.pathname.replace(/admin\/(index\.html)?$/, '') + '?s=' + (s.slug || s.id);
+    const enlace = location.origin + location.pathname.replace(/admin\/(index\.html)?$/, '') + (s.slug || '') + '/';
     const fila = el('div', 'fila-mesas');
     const campoEnlace = document.createElement('input');
     campoEnlace.type = 'text'; campoEnlace.readOnly = true; campoEnlace.value = enlace; campoEnlace.setAttribute('aria-label', 'Enlace para el QR');

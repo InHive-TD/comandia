@@ -42,6 +42,9 @@ export async function cargarNegocio(slugCrudo: string): Promise<Negocio> {
   return { id: Number(f['id']), slug: String(f['slug']), nombre: String(f['nombre']) };
 }
 
+/** Nombres que NO pueden ser el nombre corto de una sucursal: ya son carpetas o pantallas de la empresa (/lavale/admin/, /lavale/css/...). */
+export const SLUGS_SUCURSAL_RESERVADOS = new Set(['admin', 'pedidos', 'cocina', 'caja', 'api', 'css', 'js', 'img', 'uploads', 'plataforma', 'cliente', 'favicon.ico', 'index.html']);
+
 /**
  * Da su "slug" (nombre para el enlace del QR) a las sucursales que aún no lo tienen: sucursales nuevas o de bases anteriores.
  * Es único dentro de la empresa ("centro", y si se repite "centro-2"). Una vez asignado no se vuelve a tocar,
@@ -49,15 +52,16 @@ export async function cargarNegocio(slugCrudo: string): Promise<Negocio> {
  */
 export async function completarSlugsSucursales(negocioId: number): Promise<void> {
   const todas = await filas('SELECT id, nombre, slug FROM sucursales WHERE negocio_id = ? ORDER BY id', [negocioId]);
-  if (todas.every((x) => x['slug'])) return;
-  const usados = new Set(todas.map((x) => x['slug']).filter(Boolean).map(String));
+  const malo = (x: Record<string, unknown>): boolean => !x['slug'] || SLUGS_SUCURSAL_RESERVADOS.has(String(x['slug']));   // sin slug, o con uno reservado
+  if (!todas.some(malo)) return;
+  const usados = new Set([...SLUGS_SUCURSAL_RESERVADOS, ...todas.filter((x) => !malo(x)).map((x) => String(x['slug']))]);
   for (const x of todas) {
-    if (x['slug']) continue;
+    if (!malo(x)) continue;
     const base = slugDeTexto(String(x['nombre']));
     let slug = base;
     for (let n = 2; usados.has(slug); n++) slug = `${base}-${n}`;
     usados.add(slug);
-    await ejecutar('UPDATE sucursales SET slug = ? WHERE id = ? AND slug IS NULL', [slug, Number(x['id'])]);
+    await ejecutar('UPDATE sucursales SET slug = ? WHERE id = ?', [slug, Number(x['id'])]);
   }
 }
 

@@ -4,14 +4,15 @@
  * Mapa de rutas (igual que la versión PHP, para reutilizar las pantallas sin cambios):
  *   /api/plataforma/...      API del dueño de Comandia (sesión aparte)
  *   /<empresa>/api/...       API de cada empresa (login, menú, administración...)
- *   /<empresa>/              pantalla del cliente (QR)
+ *   /<empresa>/<sucursal>/   pantalla del cliente de ESA sucursal (el QR de cada sucursal; ej. /lavale/centro/)
+ *   /<empresa>/              pantalla del cliente (solo sirve si la empresa tiene una sola sucursal)
  *   /<empresa>/admin/ ...    pantallas del personal (admin, pedidos, cocina, caja)
  *   /plataforma/, /css, /js  pantallas y archivos comunes
  *   /<empresa>/uploads/...   fotos de productos
  * Las pantallas llaman a "/api/xxx.php": el servidor quita el ".php" internamente (ver rewriteUrl).
  */
 import { join, normalize, resolve, sep } from 'node:path';
-import { existsSync, statSync } from 'node:fs';
+import { existsSync, readFileSync, statSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import Fastify, { type FastifyInstance } from 'fastify';
 import cookie from '@fastify/cookie';
@@ -19,13 +20,39 @@ import estatico from '@fastify/static';
 import multipart from '@fastify/multipart';
 import { config } from './config.js';
 import { ErrorHttp } from './errores.js';
-import { cargarNegocio, slugValido } from './negocio.js';
+import { SLUGS_SUCURSAL_RESERVADOS, cargarNegocio, slugValido } from './negocio.js';
+import { filas } from './db.js';
 import { persistirSesion } from './sesion.js';
 import { rutasEmpresa } from './rutas/empresa.js';
 import { rutasPlataforma } from './rutas/plataforma.js';
 import './tipos.js';
 
 const RAIZ_PUBLICA = resolve(fileURLToPath(new URL('../public', import.meta.url)));
+
+/**
+ * Busca una sucursal de la empresa por su nombre corto (o por id, para QR antiguos). Devuelve null si no existe
+ * (o si la empresa no existe / está pausada). Las pausadas SÍ se reconocen: su página muestra "no disponible".
+ */
+async function sucursalDeEmpresa(slugEmpresa: string, slugSucursal: string | null, idOSlug: string | null): Promise<{ id: number; slug: string } | null> {
+  try {
+    const negocio = await cargarNegocio(slugEmpresa);
+    const r = await filas('SELECT id, slug FROM sucursales WHERE negocio_id = ? AND slug IS NOT NULL', [negocio.id]);
+    const buscado = slugSucursal ?? idOSlug ?? '';
+    const f = r.find((x) => String(x['slug']) === buscado) ?? (slugSucursal === null ? r.find((x) => String(x['id']) === buscado) : undefined);
+    return f ? { id: Number(f['id']), slug: String(f['slug']) } : null;
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Pantalla del cliente de una sucursal. Es la misma página de siempre, pero con <base href="/<empresa>/"> (para que sus
+ * archivos y su API se encuentren aunque la dirección tenga un nivel más) y una marca con la sucursal de la dirección.
+ */
+function paginaCliente(slugEmpresa: string, slugSucursal: string): string {
+  const html = readFileSync(join(RAIZ_PUBLICA, 'cliente', 'index.html'), 'utf8');
+  return html.replace('<head>', `<head>\n  <base href="/${slugEmpresa}/">\n  <meta name="comandia-sucursal" content="${slugSucursal}">`);
+}
 
 export async function crearApp(): Promise<FastifyInstance> {
   const app = Fastify({
@@ -107,6 +134,24 @@ export async function crearApp(): Promise<FastifyInstance> {
       relativa = 'index.html';
     } else if (slugValido(primero)) {
       const resto = partes.slice(1).join('/');
+      const segundo = partes[1]?.toLowerCase() ?? '';
+
+      // QR antiguos: /lavale/?s=centro (o ?s=3) → se pasa a la dirección con el nombre de la sucursal: /lavale/centro/
+      const antiguo = String((req.query as Record<string, unknown>)['s'] ?? '').trim().toLowerCase();
+      if (partes.length === 1 && antiguo !== '') {
+        const suc = await sucursalDeEmpresa(primero, null, antiguo);
+        if (suc) return reply.redirect(`/${primero}/${suc.slug}/`, 302);
+      }
+
+      // Pantalla del cliente de una sucursal: /<empresa>/<sucursal>/  (el nombre corto lo da cada sucursal)
+      if (partes.length === 2 && segundo !== '' && !SLUGS_SUCURSAL_RESERVADOS.has(segundo)) {
+        const suc = await sucursalDeEmpresa(primero, segundo, null);
+        if (suc) {
+          if (!ruta.endsWith('/')) return reply.redirect(ruta + '/', 302);
+          return reply.type('text/html; charset=utf-8').send(paginaCliente(primero, suc.slug));
+        }
+      }
+
       if (!ruta.endsWith('/') && partes.length === 1) return reply.redirect(ruta + '/', 302);
       if (!ruta.endsWith('/') && /^(admin|pedidos|cocina|caja)$/.test(resto)) return reply.redirect(ruta + '/', 302);
       relativa = resto === '' ? 'cliente/index.html' : resto;

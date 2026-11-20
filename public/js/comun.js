@@ -58,7 +58,7 @@ async function pedir(ruta, opciones = {}) {
   return datos;
 }
 
-/* Sucursal que eligió el cliente por QR (el personal usa la de su sesión) */
+/* Sucursal del cliente: la fija la dirección del QR (/lavale/centro/); el personal usa la de su sesión */
 let sucursalPublica = null;
 
 /* Negocio (empresa) al que pertenece esta pantalla: se aprende de la respuesta del servidor */
@@ -73,10 +73,17 @@ function aplicarNegocio(nombre) {
 /* Slug de la empresa según la dirección (/lavale/admin/, /lavale/): sirve para no mezclar lo guardado en el navegador */
 function slugActual() {
   const partes = location.pathname.split('/').filter(Boolean).filter((p) => !/\.html?$/i.test(p));
+  if (sucursalDeLaDireccion()) partes.pop();   // /lavale/centro/ → la empresa es "lavale"; "centro" es la sucursal
   const ultimo = partes[partes.length - 1] || '';
   return (['admin', 'pedidos', 'cocina', 'caja'].includes(ultimo) ? partes[partes.length - 2] : ultimo) || 'comandia';
 }
-const claveLS = (k) => `${slugActual()}:${k}`;
+/* Sucursal que trae la dirección de la pantalla del cliente (/lavale/centro/); '' si no trae (ej. /lavale/ o el personal). */
+function sucursalDeLaDireccion() {
+  const m = document.querySelector('meta[name="comandia-sucursal"]');
+  return m ? m.content : '';
+}
+/* Lo guardado en el navegador (pedidos, contacto) se separa por empresa Y por sucursal: un pedido de una sucursal no se mezcla con otra. */
+const claveLS = (k) => `${slugActual()}${sucursalDeLaDireccion() ? '/' + sucursalDeLaDireccion() : ''}:${k}`;
 
 /** Envía un objeto como JSON por POST. */
 function enviarJson(ruta, objeto) {

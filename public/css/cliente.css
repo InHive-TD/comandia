@@ -152,3 +152,6 @@ body.nav-oculta .cliente-nav { transform: translateY(-110%); box-shadow: none; }
 .solo-menu .carrito-vacio .btn { display: none; }
 /* En "solo menú" siguen disponibles Menú, Mi pedido (seguimiento) y Pagar; solo se quita lo que crea pedidos nuevos. */
 .solo-menu #mis-nuevo { display: none; }
+
+/* Sucursal fija (la manda la dirección del QR): etiqueta, no selector */
+.sucursal-fija { margin: 4px 0 0; display: inline-block; padding: 3px 12px; border-radius: 10px; background: var(--color-amarillo, #f4b400); color: #3b2a00; font-weight: 800; }

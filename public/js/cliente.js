@@ -68,7 +68,7 @@ function nuevaClave() {
 /*  Pantallas                                                          */
 /* ------------------------------------------------------------------ */
 function mostrar(vista) {
-  for (const id of ['vista-cargando', 'vista-aviso', 'vista-sucursal', 'vista-pedido', 'vista-mis', 'vista-pagar']) $(id).hidden = id !== vista;
+  for (const id of ['vista-cargando', 'vista-aviso', 'vista-pedido', 'vista-mis', 'vista-pagar']) $(id).hidden = id !== vista;
   $('subtitulo').textContent = vista === 'vista-mis' ? 'Sigue tus pedidos' : vista === 'vista-pagar' ? 'Paga por transferencia' : 'Haz tu pedido';
   if (vista === 'vista-mis') iniciarSondeo(); else detenerSondeo();
 }
@@ -90,42 +90,29 @@ function falloGrave(titulo, texto) {
 }
 $('aviso-reintentar').addEventListener('click', iniciar);
 
-/* Sucursal: viene en el QR (?s=ID). Si la empresa tiene varias y el enlace NO la trae (o trae una que no existe), no se adivina:
-   se le pregunta al cliente. Antes se usaba la última sucursal recordada o la primera, y por eso podía caer en una equivocada. */
-function preguntarSucursal(sucursales) {
-  return new Promise((resolver) => {
-    const caja = $('lista-sucursal-elegir');
-    caja.replaceChildren();
-    for (const s of sucursales) {
-      const b = el('button', 'btn principal grande', '📍 ' + s.nombre);
-      b.type = 'button';
-      b.addEventListener('click', () => resolver(String(s.id)));
-      caja.append(b);
-    }
-    mostrar('vista-sucursal');
-  });
-}
-
+/* Sucursal: la fija la DIRECCIÓN del QR (/lavale/centro/). El cliente no puede cambiarla ni elegirla, para que nadie levante
+   un pedido en una sucursal equivocada. Sin sucursal en la dirección solo se atiende si la empresa tiene una única sucursal. */
 async function cargarNegocio() {
   const r = await pedir(API + 'negocio.php');
   sucursalesNegocio = r.sucursales;
-  // ?s= puede ser el nombre corto ("centro") o, en QR antiguos, el id numérico.
-  const pedida = (new URLSearchParams(location.search).get('s') || '').trim().toLowerCase();
-  const enLink = r.sucursales.find((s) => s.slug === pedida) || r.sucursales.find((s) => String(s.id) === pedida);
-  let elegida = enLink ? String(enLink.id) : null;
-  if (elegida === null) elegida = r.sucursales.length > 1 ? await preguntarSucursal(r.sucursales) : String(r.sucursales[0].id);
-  try { localStorage.setItem(claveLS('sucursal'), String(elegida)); } catch { /* sin almacenamiento */ }
+  const deLaDireccion = sucursalDeLaDireccion();
+  let suc = null;
+  if (deLaDireccion) {
+    suc = r.sucursales.find((s) => s.slug === deLaDireccion) || null;
+    if (!suc) throw new Error('Esta sucursal no está disponible por ahora. Pregunta en el mostrador.');
+  } else if (r.sucursales.length === 1) {
+    suc = r.sucursales[0];
+  } else {
+    throw new Error('Escanea el código QR de tu sucursal para ver el menú y hacer tu pedido.');
+  }
+  const elegida = String(suc.id);
   mostrar('vista-cargando');
   sucursalPublica = Number(elegida);
   aplicarModoPedidos();
-  const sel = $('sel-sucursal-cliente');
-  if (r.sucursales.length > 1) {
-    sel.replaceChildren();
-    for (const s of r.sucursales) { const o = document.createElement('option'); o.value = String(s.id); o.textContent = '📍 ' + s.nombre; sel.append(o); }
-    sel.value = String(sucursalPublica);
-    sel.hidden = false;
-    sel.onchange = () => { sucursalPublica = Number(sel.value); aplicarModoPedidos(); cargarMenu().catch(() => {}); try { localStorage.setItem(claveLS('sucursal'), sel.value); } catch { /* sin almacenamiento */ } };
-  }
+  // Con varias sucursales se muestra, fija y bien visible, en cuál está el cliente (no es un selector).
+  const fija = $('sucursal-fija');
+  fija.hidden = r.sucursales.length < 2;
+  fija.textContent = '📍 ' + suc.nombre;
 }
 
 /* Si en esta sucursal el cliente no puede pedir (lo desactivó el dueño o el gerente), la pantalla queda en "solo menú":
