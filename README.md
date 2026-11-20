@@ -28,9 +28,19 @@ npm run dev
 | 2 | Menú, categorías, parrillas, extras, productos (con fotos), sucursales, mesas y usuarios (incluye gerente y carta por sucursal) | ✅ |
 | 3 | Pedidos, cocina y caja | ✅ listo (pedidos, cocina, caja, agotar, prioridades, tiempos) |
 | 4 | Cliente por QR (pedir, espera, concepto, búsqueda), reportes, apariencia (colores y logo) | ✅ |
-| 5 | Panel de plataforma: empresas (lista, crear, editar, pausar, clave) | ✅ (falta la migración de bases viejas) |
+| 5 | Panel de plataforma (empresas) y herramientas: migrar una base de un solo negocio, crear el primer administrador de plataforma | ✅ |
 
 Las pantallas llaman a `/api/xxx.php`; el servidor acepta esos nombres (quita el `.php` internamente).
+
+## Herramientas de línea de comandos
+
+```
+npm run crear-plataforma                       # crea el primer administrador de la plataforma (pide usuario y contraseña)
+npm run migrar -- lavale "Los Tacos D'La Vale" # pasa una base de UN solo negocio (versión anterior) a Comandia
+```
+
+Ambas usan la base de tu `.env`. **Haz una copia de seguridad antes de migrar** (los cambios de estructura de MySQL no se deshacen).
+Al arrancar, el servidor también agrega solo las tablas y columnas que falten de versiones intermedias.
 
 ## Estructura
 
