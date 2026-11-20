@@ -424,3 +424,21 @@ fieldset.extras-campo { border: 1px solid #d9c690; border-radius: 10px; padding:
 .ex-campo .costo { display: flex; flex-direction: row; align-items: center; gap: 12px; flex-wrap: wrap; }
 .ex-campo .costo label.casilla { flex-direction: row; align-items: center; font-weight: 600; }
 .ex-campo .costo input[type="text"] { width: 130px; }
+
+/* ---------- Extras: secciones y variantes ---------- */
+.ex-botones { display: flex; flex-wrap: wrap; gap: 8px; }
+.ex-subtitulo { margin: 0; font-size: 1.05rem; color: var(--color-vino); }
+.ex-etq small, .ex-nuevo label small { font-weight: 500; color: #7a6a5c; }
+.ex-sec-lista { display: flex; flex-direction: column; gap: 6px; }
+.ex-sec-fila { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; padding: 6px 8px; background: #fff; border: 1px solid var(--color-borde); border-radius: 12px; }
+.ex-sec-nombre { flex: 1; min-width: 120px; }
+.ex-sec-nombre small { color: #8a7a6c; }
+.ex-sec-nueva { display: flex; gap: 8px; flex-wrap: wrap; }
+.ex-sec-nueva input { flex: 1; min-width: 180px; }
+.var-tipos { display: flex; flex-direction: column; gap: 6px; }
+.var-tipo { display: grid; grid-template-columns: 28px minmax(120px, 1.4fr) minmax(90px, 1fr) 90px; gap: 6px; align-items: center; }
+.var-tipo input[type="checkbox"] { width: 22px; height: 22px; }
+.var-tipo.apagado input[type="text"] { opacity: .55; }
+.var-lista { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 6px; }
+.var-vista { padding: 8px 10px; background: #fff; border: 1px dashed var(--color-borde); border-radius: 10px; }
+@media (max-width: 520px) { .var-tipo { grid-template-columns: 28px 1fr 1fr; } .var-tipo input:nth-child(4) { grid-column: 2 / -1; } }

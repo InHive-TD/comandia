@@ -432,3 +432,12 @@ CREATE TABLE IF NOT EXISTS usuario_sucursales (
     CONSTRAINT fk_us_usuario FOREIGN KEY (usuario_id) REFERENCES usuarios(id) ON DELETE CASCADE,
     CONSTRAINT fk_us_sucursal FOREIGN KEY (sucursal_id) REFERENCES sucursales(id) ON DELETE CASCADE
 ) ENGINE=InnoDB;
+
+-- Secciones (grupos) de extras: Quitar, Aparte, Solo... (extras.grupo guarda el nombre). La app también la crea sola al arrancar.
+CREATE TABLE IF NOT EXISTS extra_grupos (
+    id         INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+    negocio_id INT UNSIGNED NOT NULL,
+    nombre     VARCHAR(40) NOT NULL,
+    orden      INT NOT NULL DEFAULT 0,
+    UNIQUE KEY uq_extra_grupo (negocio_id, nombre)
+) ENGINE=InnoDB;

@@ -7,7 +7,7 @@
   <title>Administración · Comandia</title>
   <link rel="icon" type="image/png" href="../img/favicon.png">
   <link rel="stylesheet" href="../css/estilos.css?v=202611202055">
-  <link rel="stylesheet" href="../css/admin.css?v=202611202140">
+  <link rel="stylesheet" href="../css/admin.css?v=202611202200">
   <link rel="stylesheet" href="../api/tema.php">
 </head>
 <body>
@@ -159,7 +159,42 @@
       <p class="ayuda">Son las opciones que el cliente puede <strong>añadir</strong> a un platillo (con queso, orden doble) o <strong>pedir sin algo</strong> (sin cebolla).
         Los creas una vez aquí y eliges en qué platillos aparecen.</p>
 
-      <button id="ex-nuevo-abrir" class="btn principal ex-abrir" type="button">＋ Nuevo extra</button>
+      <div class="ex-botones">
+        <button id="ex-nuevo-abrir" class="btn principal ex-abrir" type="button">＋ Nuevo extra</button>
+        <button id="ex-var-abrir" class="btn" type="button" title="Crea de golpe Sin X, X aparte, Solo X... para uno o varios ingredientes">✨ Variantes de un ingrediente</button>
+        <button id="ex-sec-abrir" class="btn" type="button" title="Crear, renombrar, ordenar o quitar las secciones (Quitar, Aparte, Solo...)">🗂 Secciones</button>
+      </div>
+
+      <section id="ex-secciones" class="ex-nuevo" hidden>
+        <h3 class="ex-subtitulo">Secciones de extras</h3>
+        <p class="ayuda">Son los títulos con los que se acomodan los extras al editar un platillo (Quitar, Aparte, Solo…). Crea las que necesites, cámbiales el nombre o el orden. Al quitar una sección <strong>sus extras no se borran</strong>: pasan a “Otros”.</p>
+        <div id="ex-sec-lista" class="ex-sec-lista"></div>
+        <form id="ex-sec-form" class="ex-sec-nueva" autocomplete="off">
+          <input id="ex-sec-nueva" type="text" maxlength="40" placeholder="Nueva sección (ej. Picante, Tamaño)" aria-label="Nueva sección" required>
+          <button class="btn principal" type="submit">Agregar sección</button>
+        </form>
+        <div class="ex-acciones"><button id="ex-sec-cerrar" class="btn" type="button">Listo</button></div>
+      </section>
+
+      <form id="form-variantes" class="ex-nuevo" hidden autocomplete="off">
+        <h3 class="ex-subtitulo">Variantes de un ingrediente</h3>
+        <label>¿De qué ingrediente? <small>Puedes escribir varios separados por coma.</small>
+          <input id="var-ingredientes" type="text" maxlength="200" placeholder="Ej. Mayonesa, Tomate, Queso panela" required>
+        </label>
+        <div class="ex-campo">
+          <span class="ex-etq">¿Qué variantes quieres crear? <small>(puedes cambiar el texto, la sección o ponerles costo)</small></span>
+          <div id="var-tipos" class="var-tipos"></div>
+        </div>
+        <div class="ex-campo">
+          <span class="ex-etq">¿Ponerlas ya en alguna categoría? <small>(opcional: se agregan a todos sus platillos)</small></span>
+          <div id="var-cats" class="ex-disp"></div>
+        </div>
+        <div id="var-vista" class="var-vista ayuda"></div>
+        <div class="ex-acciones">
+          <button id="var-crear" class="btn principal" type="submit">Crear extras</button>
+          <button id="var-cancelar" class="btn" type="button">Cancelar</button>
+        </div>
+      </form>
       <form id="form-nuevo-extra" class="ex-nuevo" hidden autocomplete="off">
         <label>¿Cómo se llama?
           <input id="x-nombre" type="text" maxlength="60" placeholder="Ej. Con queso, Sin cebolla, Orden doble" required>
@@ -367,7 +402,7 @@
 
   <div id="toast" class="toast" role="status" hidden></div>
 
-  <script src="../js/comun.js?v=202611202055"></script>
-  <script src="../js/admin.js?v=202611202130"></script>
+  <script src="../js/comun.js?v=202611202200"></script>
+  <script src="../js/admin.js?v=202611202200"></script>
 </body>
 </html>

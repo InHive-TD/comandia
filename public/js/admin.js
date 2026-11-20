@@ -11,6 +11,7 @@ let productos = [];
 let categorias = [];
 let estaciones = [];
 let extras = [];
+let gruposExtras = [];            // secciones de extras (Quitar, Aparte, Solo...) en el orden elegido
 
 const $ = (id) => document.getElementById(id);
 
@@ -117,6 +118,7 @@ async function cargarCatalogo() {
     categorias = r.categorias;
     estaciones = r.estaciones;
     extras = r.extras;
+    gruposExtras = r.grupos_extras || [];
     pintarLista();
   } catch (err) {
     if (err.estado === 401) { await iniciar(); return; }
@@ -266,13 +268,13 @@ function pintarExtrasProducto(marcados) {
     caja.append(el('p', 'vacio ayuda', 'Aún no hay extras. Créalos con el botón “Extras”.'));
     return;
   }
-  const grupos = new Map();                      // grupo → extras (en orden de aparición)
+  const grupos = new Map(gruposExtras.map((g) => [g, []]));   // secciones en el orden que eligió el dueño
   for (const x of visibles) {
-    const g = x.grupo || 'Otros';
+    const g = x.grupo && grupos.has(x.grupo) ? x.grupo : 'Otros';
     if (!grupos.has(g)) grupos.set(g, []);
     grupos.get(g).push(x);
   }
-  for (const [g, lista] of grupos) {
+  for (const [g, lista] of [...grupos].filter(([, l]) => l.length)) {
     if (grupos.size > 1) caja.append(el('p', 'grupo-titulo', g));
     for (const x of lista) {
       const fila = el('label', 'casilla');
@@ -1198,7 +1200,9 @@ const extraAbierto = new Set();   // tarjetas con el formulario de edición desp
 
 function pintarExtras() {
   // Sugerencias de grupo (los que ya existen)
-  $('lista-grupos').replaceChildren(...[...new Set(extras.map((x) => x.grupo).filter(Boolean))].map((g) => new Option(g)));
+  $('lista-grupos').replaceChildren(...gruposExtras.map((g) => new Option(g)));
+  pintarSeccionesExtras();
+  pintarVariantesTipos();
 
   const caja = $('lista-extras');
   caja.replaceChildren();
@@ -1208,15 +1212,17 @@ function pintarExtras() {
   }
   if (categorias.length) caja.append(el('p', 'ayuda ex-leyenda', 'Toca una categoría para poner el extra (o quitarlo) en todos sus platillos. Verde = en todos · amarillo = en algunos · gris = en ninguno.'));
 
-  // Secciones por grupo, en orden de aparición; los que no tienen grupo van en "Otros"
-  const grupos = new Map();
+  // Secciones en el orden elegido (las vacías también se muestran); los extras sin sección van al final, en "Otros"
+  const grupos = new Map(gruposExtras.map((g) => [g, []]));
   for (const x of extras) {
-    const g = x.grupo || 'Otros';
+    const g = x.grupo && grupos.has(x.grupo) ? x.grupo : 'Otros';
     if (!grupos.has(g)) grupos.set(g, []);
     grupos.get(g).push(x);
   }
+  if (grupos.has('Otros') && grupos.get('Otros').length === 0) grupos.delete('Otros');
   for (const [g, lista] of grupos) {
-    if (grupos.size > 1) caja.append(el('h3', 'ex-grupo', `${g} (${lista.length})`));
+    if (grupos.size > 1 || lista.length === 0) caja.append(el('h3', 'ex-grupo', lista.length ? `${g} (${lista.length})` : `${g} (vacía)`));
+    if (lista.length === 0) { caja.append(el('p', 'ayuda', 'Sin extras todavía. Crea uno con “＋ Nuevo extra” y elige esta sección en “Más opciones”.')); continue; }
     const rejilla = el('div', 'ex-rejilla');
     for (const x of lista) rejilla.append(tarjetaExtra(x));
     caja.append(rejilla);
@@ -1302,6 +1308,152 @@ function tarjetaExtra(x) {
   }
   return tarjeta;
 }
+
+/* ------------------------------------------------------------------ */
+/*  Secciones de extras (Quitar, Aparte, Solo...) y variantes          */
+/* ------------------------------------------------------------------ */
+
+/** Panel "Secciones": subir/bajar, renombrar y quitar. Quitar una sección NO borra sus extras (pasan a "Otros"). */
+function pintarSeccionesExtras() {
+  const caja = $('ex-sec-lista');
+  caja.replaceChildren();
+  if (gruposExtras.length === 0) { caja.append(el('p', 'ayuda', 'Todavía no hay secciones. Agrega la primera abajo.')); return; }
+  gruposExtras.forEach((g, i) => {
+    const fila = el('div', 'ex-sec-fila');
+    const sube = el('button', 'btn chico', '▲'); sube.type = 'button'; sube.disabled = i === 0; sube.setAttribute('aria-label', 'Subir');
+    const baja = el('button', 'btn chico', '▼'); baja.type = 'button'; baja.disabled = i === gruposExtras.length - 1; baja.setAttribute('aria-label', 'Bajar');
+    sube.addEventListener('click', () => accionExtra({ accion: 'grupo_mover', nombre: g, direccion: 'subir' }));
+    baja.addEventListener('click', () => accionExtra({ accion: 'grupo_mover', nombre: g, direccion: 'bajar' }));
+    const n = extras.filter((x) => x.grupo === g).length;
+    const nombre = el('span', 'ex-sec-nombre'); nombre.append(el('strong', '', g), el('small', '', ` · ${n} extra${n === 1 ? '' : 's'}`));
+    const renombrar = el('button', 'btn chico', '✎ Renombrar'); renombrar.type = 'button';
+    renombrar.addEventListener('click', async () => {
+      const nuevo = await pedirTexto(`Nuevo nombre para la sección “${g}”:`, { si: 'Guardar', valor: g });
+      if (nuevo && nuevo.trim() && nuevo.trim() !== g) accionExtra({ accion: 'grupo_renombrar', nombre: g, nuevo: nuevo.trim() }, 'Sección renombrada');
+    });
+    const quitar = el('button', 'btn chico peligro', '🗑'); quitar.type = 'button'; quitar.title = 'Quitar sección'; quitar.setAttribute('aria-label', 'Quitar sección');
+    quitar.addEventListener('click', async () => {
+      const aviso = n ? ` Sus ${n} extra${n === 1 ? '' : 's'} NO se borran: pasan a “Otros”.` : '';
+      if (await confirmar(`¿Quitar la sección “${g}”?${aviso}`, { si: 'Quitar sección', peligro: true })) accionExtra({ accion: 'grupo_eliminar', nombre: g }, 'Sección quitada');
+    });
+    fila.append(sube, baja, nombre, renombrar, quitar);
+    caja.append(fila);
+  });
+}
+
+$('ex-sec-abrir').addEventListener('click', () => { const abrir = $('ex-secciones').hidden; cerrarPanelesExtras(); $('ex-secciones').hidden = !abrir; });
+$('ex-sec-cerrar').addEventListener('click', () => { $('ex-secciones').hidden = true; });
+$('ex-sec-form').addEventListener('submit', async (ev) => {
+  ev.preventDefault();
+  await accionExtra({ accion: 'grupo_crear', nombre: $('ex-sec-nueva').value.trim() }, 'Sección creada');
+  if (!$('x-error').textContent) $('ex-sec-nueva').value = '';
+});
+
+/** Cierra los paneles de arriba (nuevo extra, variantes, secciones) para que solo haya uno abierto a la vez. */
+function cerrarPanelesExtras() {
+  $('form-nuevo-extra').hidden = true; $('ex-nuevo-abrir').hidden = false;
+  $('form-variantes').hidden = true;
+  $('ex-secciones').hidden = true;
+}
+$('ex-nuevo-abrir').addEventListener('click', cerrarPanelesExtras, true);   // fase de captura: cierra los otros antes de abrir este
+
+/* ---- Variantes de un ingrediente: "Sin X", "X aparte", "Solo X"... ---- */
+const VARIANTES_BASE = [
+  { texto: 'Sin {x}', seccion: 'Quitar', activo: true },
+  { texto: '{x} aparte', seccion: 'Aparte', activo: true },
+  { texto: 'Solo {x}', seccion: 'Solo', activo: true },
+  { texto: 'Extra {x}', seccion: 'Extras', activo: false, precio: '' },
+];
+let variantesEstado = null;     // [{texto, seccion, activo, precio}] editable en pantalla
+let varCategorias = new Set();  // categorías elegidas
+
+const mayusInicial = (t) => t.charAt(0).toLocaleUpperCase('es-MX') + t.slice(1);
+
+/** Nombre real de la sección si ya existe con otras mayúsculas ("quitar" → "Quitar"). */
+const seccionExistente = (nombre) => gruposExtras.find((g) => g.toLowerCase() === nombre.trim().toLowerCase()) || nombre.trim();
+
+function ingredientesEscritos() {
+  return [...new Set($('var-ingredientes').value.split(',').map((t) => t.trim()).filter(Boolean))];
+}
+
+/** Lista de extras que se crearían con lo que hay en pantalla (con su estado: nuevo o ya existe). */
+function variantesPorCrear() {
+  const lista = [];
+  for (const ing of ingredientesEscritos()) {
+    for (const v of variantesEstado) {
+      if (!v.activo || !v.texto.trim()) continue;
+      const nombre = mayusInicial(v.texto.replaceAll('{x}', ing.toLocaleLowerCase('es-MX')).trim());
+      const seccion = v.seccion.trim() ? seccionExistente(v.seccion) : '';
+      const existe = extras.some((x) => x.nombre.toLowerCase() === nombre.toLowerCase() && (x.grupo || '').toLowerCase() === seccion.toLowerCase());
+      lista.push({ nombre, seccion, precio: v.precio.trim() || '0', existe });
+    }
+  }
+  return lista;
+}
+
+function pintarVariantesTipos() {
+  if (!variantesEstado) variantesEstado = VARIANTES_BASE.map((v) => ({ ...v, precio: v.precio || '' }));
+  const caja = $('var-tipos');
+  caja.replaceChildren();
+  variantesEstado.forEach((v) => {
+    const fila = el('div', 'var-tipo' + (v.activo ? '' : ' apagado'));
+    const marca = document.createElement('input'); marca.type = 'checkbox'; marca.checked = v.activo; marca.setAttribute('aria-label', 'Crear esta variante');
+    const texto = document.createElement('input'); texto.type = 'text'; texto.maxLength = 50; texto.value = v.texto; texto.setAttribute('aria-label', 'Texto de la variante ({x} es el ingrediente)');
+    const seccion = document.createElement('input'); seccion.type = 'text'; seccion.maxLength = 40; seccion.value = v.seccion; seccion.setAttribute('list', 'lista-grupos'); seccion.setAttribute('aria-label', 'Sección'); seccion.placeholder = 'Sección';
+    const precio = document.createElement('input'); precio.type = 'text'; precio.inputMode = 'decimal'; precio.value = v.precio; precio.placeholder = 'Gratis'; precio.setAttribute('aria-label', 'Costo (vacío = gratis)');
+    const cambio = () => { v.activo = marca.checked; v.texto = texto.value; v.seccion = seccion.value; v.precio = precio.value; fila.classList.toggle('apagado', !v.activo); pintarVistaVariantes(); };
+    for (const c of [marca, texto, seccion, precio]) c.addEventListener('input', cambio);
+    fila.append(marca, texto, seccion, precio);
+    caja.append(fila);
+  });
+  const cats = $('var-cats');
+  cats.replaceChildren();
+  for (const c of categorias) {
+    const chip = el('button', 'ex-cat ' + (varCategorias.has(c.id) ? 'todos' : 'ninguno'), (varCategorias.has(c.id) ? '✓ ' : '') + c.nombre);
+    chip.type = 'button';
+    chip.addEventListener('click', () => { if (varCategorias.has(c.id)) varCategorias.delete(c.id); else varCategorias.add(c.id); pintarVariantesTipos(); });
+    cats.append(chip);
+  }
+  pintarVistaVariantes();
+}
+
+function pintarVistaVariantes() {
+  const lista = variantesPorCrear();
+  const nuevos = lista.filter((x) => !x.existe);
+  const vista = $('var-vista');
+  vista.replaceChildren();
+  if (lista.length === 0) { vista.textContent = 'Escribe un ingrediente para ver qué se va a crear.'; $('var-crear').disabled = true; return; }
+  vista.append(el('strong', '', nuevos.length ? `Se crearán ${nuevos.length} extra${nuevos.length === 1 ? '' : 's'}:` : 'No hay nada nuevo que crear.'));
+  const ul = el('div', 'var-lista');
+  for (const x of lista) ul.append(el('span', 'chip' + (x.existe ? ' sin' : ''), `${x.nombre}${x.seccion ? ' · ' + x.seccion : ''}${Number(x.precio.replace(',', '.')) > 0 ? ' · +$' + x.precio : ''}${x.existe ? ' (ya existe)' : ''}`));
+  vista.append(ul);
+  $('var-crear').disabled = nuevos.length === 0;
+}
+
+$('var-ingredientes').addEventListener('input', pintarVistaVariantes);
+$('ex-var-abrir').addEventListener('click', () => {
+  const abrir = $('form-variantes').hidden;
+  cerrarPanelesExtras();
+  $('form-variantes').hidden = !abrir;
+  if (abrir) { pintarVariantesTipos(); $('var-ingredientes').focus(); }
+});
+$('var-cancelar').addEventListener('click', () => { $('form-variantes').hidden = true; });
+$('form-variantes').addEventListener('submit', async (ev) => {
+  ev.preventDefault();
+  const nuevos = variantesPorCrear().filter((x) => !x.existe);
+  if (nuevos.length === 0) return;
+  $('x-error').textContent = '';
+  try {
+    const r = await enviarJson(API + 'admin/extras.php', { accion: 'crear_varios', extras: nuevos.map((x) => ({ nombre: x.nombre, precio: x.precio, grupo: x.seccion })), categorias: [...varCategorias] });
+    await cargarCatalogo();
+    $('var-ingredientes').value = '';
+    pintarExtras();
+    avisar(`${r.creados.length} extra${r.creados.length === 1 ? '' : 's'} creado${r.creados.length === 1 ? '' : 's'}` + (varCategorias.size ? ' y agregados a las categorías elegidas' : ''));
+  } catch (err) {
+    $('x-error').textContent = err.message;
+  }
+});
+
 
 async function accionExtra(cuerpo, mensajeOk) {
   $('x-error').textContent = '';

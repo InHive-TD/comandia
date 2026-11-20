@@ -75,6 +75,15 @@ async function actualizarV2(): Promise<void> {
     CONSTRAINT fk_ps_producto FOREIGN KEY (producto_id) REFERENCES productos(id) ON DELETE CASCADE,
     CONSTRAINT fk_ps_sucursal FOREIGN KEY (sucursal_id) REFERENCES sucursales(id) ON DELETE CASCADE
   ) ENGINE=InnoDB`);
+  // Secciones (grupos) de extras: "Quitar", "Aparte", "Solo"... El dueño las crea, renombra, ordena y elimina.
+  // extras.grupo guarda el NOMBRE de la sección; esta tabla guarda cuáles existen y en qué orden (incluso vacías).
+  await ejecutar(`CREATE TABLE IF NOT EXISTS extra_grupos (
+    id         INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+    negocio_id INT UNSIGNED NOT NULL,
+    nombre     VARCHAR(40) NOT NULL,
+    orden      INT NOT NULL DEFAULT 0,
+    UNIQUE KEY uq_extra_grupo (negocio_id, nombre)
+  ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci`);
   // Sucursales ADICIONALES de un usuario (además de usuarios.sucursal_id, que es la principal). Sin filas = una sola sucursal.
   await ejecutar(`CREATE TABLE IF NOT EXISTS usuario_sucursales (
     usuario_id  INT UNSIGNED NOT NULL,

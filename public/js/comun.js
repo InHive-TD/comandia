@@ -363,14 +363,14 @@ function confirmar(mensaje, { si = 'Sí', no = 'Cancelar', peligro = false } = {
 }
 
 /* Pedir un texto con ventana propia (reemplaza prompt()). Devuelve el texto o null si cancela. */
-function pedirTexto(mensaje, { si = 'Aceptar', no = 'Cancelar', tipo = 'text', minimo = 0 } = {}) {
+function pedirTexto(mensaje, { si = 'Aceptar', no = 'Cancelar', tipo = 'text', minimo = 0, valor = '' } = {}) {
   return new Promise((resolver) => {
     const d = document.createElement('dialog');
     d.className = 'dlg-confirmar';
     const p = document.createElement('p');
     p.className = 'confirmar-texto'; p.textContent = mensaje;
     const campo = document.createElement('input');
-    campo.type = tipo; campo.autocomplete = 'new-password'; campo.className = 'confirmar-campo';
+    campo.type = tipo; campo.autocomplete = 'new-password'; campo.className = 'confirmar-campo'; campo.value = valor;
     const err = document.createElement('p');
     err.className = 'confirmar-error';
     const fila = document.createElement('div');
