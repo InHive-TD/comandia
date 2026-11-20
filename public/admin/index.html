@@ -7,7 +7,7 @@
   <title>Administración · Comandia</title>
   <link rel="icon" type="image/png" href="../img/favicon.png">
   <link rel="stylesheet" href="../css/estilos.css?v=202611202055">
-  <link rel="stylesheet" href="../css/admin.css?v=202611210150">
+  <link rel="stylesheet" href="../css/admin.css?v=202611210210">
   <link rel="stylesheet" href="../api/tema.php">
 </head>
 <body>
@@ -158,14 +158,15 @@
     <div class="formulario dialogo">
       <h2>Categorías de platillos</h2>
       <p class="ayuda">Agrupan tus platillos en el menú (Tacos, Bebidas…). Agrégalas y acomódalas en el orden en que quieres que aparezcan.</p>
-      <div id="lista-categorias" class="lista-categorias"></div>
-
+      <!-- Agregar categoría: arriba de la lista -->
       <form id="form-nueva-categoria" class="fila-categoria">
         <input id="c-nueva" type="text" maxlength="60" placeholder="Nueva categoría de platillos (ej. Quesadillas)" required>
-        <button class="btn principal" type="submit">Agregar</button>
+        <button class="btn principal" type="submit">＋ Agregar</button>
       </form>
-
       <p id="c-error" class="msg-error" role="alert"></p>
+
+      <div id="lista-categorias" class="lista-categorias"></div>
+
       <div class="acciones-dialogo">
         <button id="c-cerrar" class="btn" type="button">Cerrar</button>
       </div>

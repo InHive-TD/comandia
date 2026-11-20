@@ -557,14 +557,20 @@ function pintarCategorias() {
   caja.replaceChildren();
 
   if (categorias.length === 0) {
-    caja.append(el('p', '', 'Todavía no hay categorías. Agrega la primera abajo (por ejemplo, Tacos).'));
+    caja.append(el('p', '', 'Todavía no hay categorías. Agrega la primera arriba (por ejemplo, Tacos).'));
     return;
   }
 
   categorias.forEach((c, idx) => {
     const fila = el('div', 'fila-categoria');
     const mover = el('div', 'mover');
-    mover.append(botonMover('▲', 'Subir categoría', idx === 0, () => moverCategoria(idx, -1)), botonMover('▼', 'Bajar categoría', idx === categorias.length - 1, () => moverCategoria(idx, 1)));
+    // ⤒ al principio · ▲ subir uno · ▼ bajar uno · ⤓ al final
+    mover.append(
+      botonMover('⤒', 'Mandar hasta arriba', idx === 0, () => moverCategoria(idx, -idx)),
+      botonMover('▲', 'Subir categoría', idx === 0, () => moverCategoria(idx, -1)),
+      botonMover('▼', 'Bajar categoría', idx === categorias.length - 1, () => moverCategoria(idx, 1)),
+      botonMover('⤓', 'Mandar hasta abajo', idx === categorias.length - 1, () => moverCategoria(idx, categorias.length - 1 - idx)),
+    );
 
     const nombre = document.createElement('input');
     nombre.type = 'text';
@@ -602,8 +608,10 @@ function botonMover(texto, etiqueta, desactivado, alClic) {
 async function moverCategoria(idx, delta) {
   const ids = categorias.map((c) => c.id);
   const j = idx + delta;
-  if (j < 0 || j >= ids.length) return;
-  [ids[idx], ids[j]] = [ids[j], ids[idx]];
+  if (j < 0 || j >= ids.length || delta === 0) return;
+  // Se saca la categoría de su lugar y se inserta en el nuevo (sirve igual para un paso que para ir al extremo)
+  const [movida] = ids.splice(idx, 1);
+  ids.splice(j, 0, movida);
   await accionCategoria({ accion: 'ordenar', ids }, 'Orden de categorías guardado');
 }
 
