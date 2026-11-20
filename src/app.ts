@@ -47,6 +47,7 @@ export async function crearApp(): Promise<FastifyInstance> {
     }
     const estado = (err as { statusCode?: number }).statusCode;
     if (estado && estado < 500) {
+      req.log.warn({ err, url: req.url }, 'petición rechazada');
       return reply.code(estado).send({ ok: false, error: 'peticion', mensaje: 'Petición no válida.' });
     }
     req.log.error(err);
@@ -66,6 +67,8 @@ export async function crearApp(): Promise<FastifyInstance> {
     },
     { prefix: '/:slug/api' },
   );
+
+  app.get('/favicon.ico', (_req, reply) => reply.sendFile('img/favicon.png'));
 
   // Pantallas y archivos: /css, /js, /img (raíz) y /<empresa>/ + admin|pedidos|cocina|caja|... (como hacía el router.php)
   app.get('/*', async (req, reply) => {
@@ -89,7 +92,8 @@ export async function crearApp(): Promise<FastifyInstance> {
     if (!archivo.startsWith(RAIZ_PUBLICA + sep) && archivo !== RAIZ_PUBLICA) return reply.code(404).send('No encontrado');
     if (existsSync(archivo) && statSync(archivo).isDirectory()) archivo = join(archivo, 'index.html');
     if (!existsSync(archivo) || !statSync(archivo).isFile()) return reply.code(404).send('No encontrado');
-    return reply.sendFile(archivo.slice(RAIZ_PUBLICA.length + 1));
+    // sendFile espera rutas con "/" aunque en Windows las rutas del sistema usen "\".
+    return reply.sendFile(archivo.slice(RAIZ_PUBLICA.length + 1).split(sep).join('/'));
   });
 
   return app;
