@@ -159,3 +159,8 @@ body.nav-oculta .cliente-nav { transform: translateY(-110%); box-shadow: none; }
 /* Barra de pestañas: se ajusta al número de pestañas visibles y puede ocultarse por completo (el atributo hidden pierde contra display) */
 .cliente-nav { grid-template-columns: none; grid-auto-flow: column; grid-auto-columns: 1fr; }
 .cliente-nav[hidden], .nav-tab[hidden] { display: none; }
+
+/* Menú: la separación entre la barra de pestañas y las categorías es la MISMA que hay debajo de las categorías (8 px).
+   Antes sumaba el margen de la página (20 px) + el de las categorías (8 px). */
+main.contenedor:has(#vista-pedido:not([hidden])) { padding-top: 0; }
+#vista-pedido .cats { padding: 8px 0; }
