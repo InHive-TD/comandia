@@ -1,0 +1,33 @@
+/* Menú compacto del encabezado (pedidos y caja): ☰ en celular, una sola fila en tablet.
+   Se activa con la clase .con-menu en <header class="encabezado barra con-menu">. */
+.solo-celu { display: none; }
+.barra.con-menu .barra-botones { display: flex; gap: 8px; justify-content: flex-end; align-items: center; }
+.barra.con-menu .barra-botones a.btn { text-decoration: none; display: inline-flex; align-items: center; }
+
+@media (min-width: 641px) and (max-width: 899px) {
+  .encabezado.barra.con-menu { flex-wrap: nowrap; gap: 10px; padding-left: 14px; padding-right: 14px; }
+  .con-menu .marca { flex: none; }
+  .encabezado.barra.con-menu h1 { font-size: 1.2rem; white-space: nowrap; }
+  .con-menu .logo { width: 44px; height: 44px; }
+  .con-menu .barra-botones { flex-wrap: nowrap; gap: 6px; }
+  .con-menu .barra-botones .btn { padding: 8px 10px; min-height: 44px; font-size: .9rem; white-space: nowrap; }
+}
+
+@media (max-width: 640px) {
+  .encabezado.barra.con-menu { position: relative; flex-wrap: nowrap; }
+  .con-menu .solo-celu { display: inline-flex; align-items: center; justify-content: center; min-width: 48px; min-height: 48px; font-size: 1.4rem; padding: 0 12px; }
+  .barra.con-menu .barra-botones {
+    display: none; position: absolute; right: 12px; top: calc(100% + 6px); z-index: 30;
+    flex-direction: column; flex-wrap: nowrap; align-items: stretch; gap: 6px; min-width: 210px; padding: 10px;
+    background: var(--color-vino); border: 1px solid rgba(255,255,255,.25); border-radius: 14px; box-shadow: 0 8px 24px rgba(0,0,0,.35);
+  }
+  .barra.con-menu .barra-botones.abierto { display: flex; }
+  .barra.con-menu .barra-botones[hidden] { display: none; }
+  .con-menu .barra-botones .btn { width: 100%; justify-content: flex-start; min-height: 48px; text-align: left; }
+}
+
+/* Celular: encabezado que se esconde al bajar y reaparece al subir (lo controla comun.js) */
+@media (max-width: 640px) {
+  .encabezado.barra.con-menu { position: sticky; top: 0; z-index: 7; transition: transform .22s ease; }
+  body.encab-oculto .encabezado.barra.con-menu { transform: translateY(-100%); }
+}

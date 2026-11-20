@@ -1,0 +1,98 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="robots" content="noindex">
+  <title>Cocina · Comandia</title>
+  <link rel="icon" type="image/png" href="../img/favicon.png">
+  <link rel="stylesheet" href="../css/estilos.css?v=202611201300">
+  <link rel="stylesheet" href="../css/admin.css?v=202611192050">
+  <link rel="stylesheet" href="../css/cocina.css?v=202611192050">
+  <link rel="stylesheet" href="../api/tema.php">
+</head>
+<body>
+
+  <header class="encabezado barra">
+    <div class="marca">
+      <img class="logo" src="../api/logo.php" alt="Comandia" width="52" height="52">
+      <div>
+        <h1>Cocina</h1>
+        <p id="quien"></p>
+      </div>
+    </div>
+    <div class="barra-botones" id="barra-cocina" hidden>
+      <button id="btn-sonido" class="btn claro" type="button">🔔 Sonido</button>
+      <button id="btn-nombres" class="btn claro" type="button" aria-pressed="false">Nombres completos</button>
+      <button id="btn-salir" class="btn claro" type="button">Salir</button>
+    </div>
+  </header>
+
+  <main class="contenedor ancho">
+
+    <section id="vista-login" class="tarjeta angosta" hidden>
+      <h2>Iniciar sesión</h2>
+      <form id="form-login" class="formulario">
+        <label>Usuario
+          <input id="login-usuario" type="text" autocomplete="username" autocapitalize="none" required>
+        </label>
+        <label>Contraseña
+          <input id="login-password" type="password" autocomplete="current-password" required>
+        </label>
+        <p id="login-msg" class="msg-error" role="alert"></p>
+        <button class="btn principal" type="submit">Entrar</button>
+      </form>
+    </section>
+
+    <section id="vista-aviso" class="tarjeta angosta" hidden>
+      <h2 id="aviso-titulo"></h2>
+      <p id="aviso-texto"></p>
+    </section>
+
+    <!-- Tablero -->
+    <section id="vista-tablero" hidden>
+      <div class="resumen">
+        <h2 id="titulo-parrilla"></h2>
+        <span id="resumen-texto" class="ayuda"></span>
+      </div>
+      <div id="hamb" class="hamb" hidden></div>
+      <div id="tablero" class="tablero" aria-live="off"></div>
+
+      <div id="bloque-prog" class="listas" hidden>
+        <h3>📅 Agendados <span id="cuenta-prog"></span></h3>
+        <div id="prog" class="listas-chips"></div>
+      </div>
+
+      <div id="bloque-listas" class="listas" hidden>
+        <h3>Listas para entregar <span id="cuenta-listas"></span></h3>
+        <div id="listas" class="listas-chips"></div>
+      </div>
+    </section>
+
+  </main>
+
+  <dialog id="dlg-pedido">
+    <div class="formulario dialogo">
+      <h2 id="dp-titulo"></h2>
+      <p class="ayuda">Aquí puedes regresar un renglón a pendiente o quitarlo si se acabó el producto.</p>
+      <div id="dp-items" class="dp-items"></div>
+      <p id="dp-error" class="msg-error" role="alert"></p>
+      <div class="acciones-dialogo">
+        <a id="dp-agregar" class="btn principal" href="#">＋ Agregar platillos</a>
+        <button id="dp-reabrir" class="btn" type="button">Regresar todo a pendiente</button>
+        <button id="dp-cerrar" class="btn principal" type="button">Cerrar</button>
+      </div>
+    </div>
+  </dialog>
+
+  <button id="sonido-flotante" class="sonido-flotante" type="button" hidden>🔇 Sonido apagado · toca para activar</button>
+
+  <div id="toast" class="toast con-accion" role="status" hidden>
+    <span id="toast-texto"></span>
+    <button id="toast-deshacer" class="btn" type="button" hidden>Deshacer</button>
+  </div>
+
+  <script src="../js/comun.js?v=202611201400"></script>
+  <script src="../js/cocina.js?v=202611201400"></script>
+</body>
+</html>

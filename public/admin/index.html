@@ -1,0 +1,338 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="robots" content="noindex">
+  <title>Administración · Comandia</title>
+  <link rel="icon" type="image/png" href="../img/favicon.png">
+  <link rel="stylesheet" href="../css/estilos.css?v=202611201300">
+  <link rel="stylesheet" href="../css/admin.css?v=202611201500">
+  <link rel="stylesheet" href="../api/tema.php">
+</head>
+<body>
+
+  <header class="encabezado barra">
+    <div class="marca">
+      <img class="logo" src="../api/logo.php" alt="Comandia" width="52" height="52">
+      <div>
+        <h1>Administración</h1>
+        <p id="quien"></p>
+      </div>
+    </div>
+    <button id="btn-salir" class="btn claro" type="button" hidden>Salir</button>
+  </header>
+
+  <main class="contenedor ancho">
+
+    <!-- Pantalla de entrada -->
+    <section id="vista-login" class="tarjeta angosta" hidden>
+      <h2>Iniciar sesión</h2>
+      <form id="form-login" class="formulario">
+        <label>Usuario
+          <input id="login-usuario" type="text" autocomplete="username" autocapitalize="none" required>
+        </label>
+        <label>Contraseña
+          <input id="login-password" type="password" autocomplete="current-password" required>
+        </label>
+        <p id="login-msg" class="msg-error" role="alert"></p>
+        <button class="btn principal" type="submit">Entrar</button>
+      </form>
+    </section>
+
+    <!-- Avisos (sin permiso, errores graves) -->
+    <section id="vista-aviso" class="tarjeta angosta" hidden>
+      <h2 id="aviso-titulo"></h2>
+      <p id="aviso-texto"></p>
+    </section>
+
+    <!-- Panel de catálogo -->
+    <section id="vista-panel" hidden>
+      <div class="barra-acciones">
+        <button id="btn-nuevo" class="btn principal" type="button">＋ Nuevo producto</button>
+        <button id="btn-categorias" class="btn" type="button">Categorías</button>
+        <button id="btn-extras" class="btn" type="button">Extras</button>
+        <button id="btn-prioridades" class="btn" type="button">Ajustes</button>
+        <button id="btn-usuarios" class="btn" type="button">Usuarios</button>
+        <button id="btn-sucursales" class="btn" type="button">Sucursales y mesas</button>
+        <button id="btn-reportes" class="btn" type="button">Reportes</button>
+        <button id="btn-apariencia" class="btn" type="button">Apariencia</button>
+        <a class="btn" href="../pedidos/">Tomar pedidos</a>
+        <a class="btn" href="../cocina/">Cocina</a>
+        <a class="btn" href="../caja/">Caja y propinas</a>
+      </div>
+      <div id="lista" class="rejilla" aria-live="polite"></div>
+    </section>
+
+  </main>
+
+  <!-- Formulario de producto -->
+  <dialog id="dlg-producto">
+    <form id="form-producto" class="formulario dialogo">
+      <h2 id="dlg-titulo">Nuevo producto</h2>
+      <input type="hidden" id="f-id">
+
+      <label>Nombre
+        <input id="f-nombre" type="text" maxlength="100" required>
+      </label>
+
+      <div class="fila-doble">
+        <label>Código
+          <input id="f-codigo" type="text" maxlength="20" autocapitalize="characters" autocomplete="off" placeholder="Ej. P1">
+        </label>
+        <label>Porción
+          <input id="f-porcion" type="text" maxlength="40" placeholder="Ej. 3 tacos">
+        </label>
+      </div>
+
+      <label>Categoría
+        <select id="f-categoria" required></select>
+      </label>
+
+      <label>Precio (MXN)
+        <input id="f-precio" type="text" inputmode="decimal" placeholder="25.00" required>
+      </label>
+
+      <label>Descripción (opcional)
+        <input id="f-descripcion" type="text" maxlength="255">
+      </label>
+
+      <fieldset class="extras-campo">
+        <legend>Extras que se pueden elegir</legend>
+        <div id="f-extras" class="lista-extras-prod"></div>
+      </fieldset>
+
+      <div class="campo-foto">
+        <span class="etiqueta">Foto</span>
+        <img id="f-vista" class="vista-previa" alt="" hidden>
+        <input id="f-foto" type="file" accept="image/jpeg,image/png,image/webp,image/*">
+        <small class="ayuda">Medida recomendada: 1200 × 900 px (horizontal 4:3). JPG, PNG o WebP, hasta 8 MB. Se reduce y se recorta al centro para el menú.</small>
+        <label id="f-quitar-fila" class="casilla" hidden>
+          <input id="f-quitar" type="checkbox"> Quitar la foto actual
+        </label>
+      </div>
+
+      <label class="switch">
+        <input id="f-disponible" type="checkbox" checked>
+        <span class="slider"></span>
+        <span>Disponible para vender</span>
+      </label>
+
+      <label class="switch">
+        <input id="f-pedir" type="checkbox">
+        <span class="slider"></span>
+        <span>Pedir las opciones aunque toquen la foto <small>(si no, la foto lo agrega directo)</small></span>
+      </label>
+
+      <p id="f-error" class="msg-error" role="alert"></p>
+
+      <div class="acciones-dialogo">
+        <button id="f-guardar" class="btn principal" type="submit">Guardar</button>
+        <button id="f-cancelar" class="btn" type="button">Cancelar</button>
+        <button id="f-eliminar" class="btn peligro" type="button" hidden>Eliminar</button>
+      </div>
+    </form>
+  </dialog>
+
+  <!-- Categorías -->
+  <dialog id="dlg-categorias">
+    <div class="formulario dialogo">
+      <h2>Categorías</h2>
+      <div id="lista-categorias" class="lista-categorias"></div>
+
+      <form id="form-nueva-categoria" class="fila-categoria">
+        <input id="c-nueva" type="text" maxlength="60" placeholder="Nueva categoría (ej. Quesadillas)" required>
+        <button class="btn principal" type="submit">Agregar</button>
+      </form>
+
+      <p id="c-error" class="msg-error" role="alert"></p>
+      <div class="acciones-dialogo">
+        <button id="c-cerrar" class="btn" type="button">Cerrar</button>
+      </div>
+    </div>
+  </dialog>
+
+  <!-- Extras -->
+  <dialog id="dlg-extras">
+    <div class="formulario dialogo">
+      <h2>Extras</h2>
+      <p class="ayuda">Variantes que se pueden pedir: “sin cebolla”, “con queso” (con costo), “orden doble”…
+        Marca “Con costo” solo en los extras que se cobran aparte. El código (ej. XQ) es lo que verá la cocina en la comanda; el grupo (Ensaladas, Salsas…) los ordena al elegirlos. Se activan por producto (en cada producto) o por categoría completa aquí.</p>
+      <div id="lista-extras" class="lista-categorias"></div>
+
+      <form id="form-nuevo-extra" class="fila-extra nuevo">
+        <input id="x-nombre" type="text" maxlength="60" placeholder="Nuevo extra (ej. Con queso)" required>
+        <input id="x-codigo" type="text" maxlength="20" autocapitalize="characters" autocomplete="off" placeholder="Código" aria-label="Código (ej. XQ)">
+        <input id="x-grupo" type="text" maxlength="40" list="lista-grupos" autocomplete="off" placeholder="Grupo (ej. Salsas)" aria-label="Grupo">
+        <div id="x-costo-caja" class="costo"></div>
+        <button class="btn principal" type="submit">Agregar</button>
+      </form>
+      <datalist id="lista-grupos"></datalist>
+
+      <p id="x-error" class="msg-error" role="alert"></p>
+      <div class="acciones-dialogo">
+        <button id="x-cerrar" class="btn" type="button">Cerrar</button>
+      </div>
+    </div>
+  </dialog>
+
+  <!-- Usuarios del equipo -->
+  <dialog id="dlg-usuarios">
+    <div class="formulario dialogo">
+      <h2>Usuarios del equipo</h2>
+      <p class="ayuda">
+        <strong>Cocina</strong>: usa el tablero de cocina (prepara y marca listo).
+        <strong>Mesero</strong>: levanta y edita pedidos y elige la mesa.
+        <strong>Caja</strong>: levanta pedidos, los entrega y cobra.
+        Cada persona trabaja en una sucursal. El administrador de la empresa puede todo y ve todas.
+      </p>
+      <div id="lista-usuarios" class="lista-usuarios"></div>
+
+      <form id="form-nuevo-usuario" class="formulario nuevo-usuario" autocomplete="off">
+        <h3>Agregar persona</h3>
+        <label>Nombre
+          <input id="us-nombre" type="text" maxlength="80" placeholder="Ej. María López" required>
+        </label>
+        <label>Usuario para entrar
+          <input id="us-usuario" type="text" maxlength="40" autocapitalize="none" placeholder="Ej. maria" required>
+        </label>
+        <label>Contraseña (mínimo 10 caracteres)
+          <input id="us-password" type="text" minlength="10" maxlength="200" autocomplete="off" required>
+        </label>
+        <label>Rol
+          <select id="us-rol">
+            <option value="mesero">Mesero (órdenes y mesas)</option>
+            <option value="caja">Caja (levanta, entrega y cobra)</option>
+            <option value="taquero">Cocina</option>
+          </select>
+        </label>
+        <label>Sucursal
+          <select id="us-sucursal" required></select>
+        </label>
+        <button class="btn principal" type="submit">Crear usuario</button>
+      </form>
+
+      <p id="us-error" class="msg-error" role="alert"></p>
+      <div class="acciones-dialogo">
+        <button id="us-cerrar" class="btn" type="button">Cerrar</button>
+      </div>
+    </div>
+  </dialog>
+
+  <!-- Apariencia: logo y colores de la empresa -->
+  <dialog id="dlg-apariencia">
+    <div class="formulario dialogo">
+      <h2>Apariencia</h2>
+      <p class="ayuda">Personaliza cómo se ve tu negocio para tu equipo y tus clientes: logo y colores. Los cambios se ven al instante; pulsa <strong>Guardar</strong> para dejarlos.</p>
+
+      <section class="ap-logo">
+        <img id="ap-logo-img" class="ap-logo-img" src="../api/logo.php" alt="Logo actual" width="96" height="96">
+        <div class="ap-logo-acc">
+          <strong>Logo principal</strong>
+          <span class="ayuda">
+            <strong>Medida recomendada: 512 × 512 px</strong> (cuadrado; mínimo 200 × 200).<br>
+            PNG con fondo transparente, hasta 5 MB (también JPG o WebP).<br>
+            Se ve pequeño (unos 52 px) en la barra, así que usa un diseño simple y centrado, sin letras chicas.
+            Si no es cuadrado, se muestra completo, sin recortar.
+          </span>
+          <div class="fila-mesas">
+            <label class="btn" for="ap-logo-archivo">Subir logo</label>
+            <input id="ap-logo-archivo" type="file" accept="image/png,image/jpeg,image/webp" hidden>
+            <button id="ap-logo-quitar" class="btn" type="button">Quitar logo</button>
+          </div>
+        </div>
+      </section>
+
+      <h3>Estilos rápidos</h3>
+      <div id="ap-presets" class="ap-presets"></div>
+
+      <h3>Colores</h3>
+      <div id="ap-colores" class="ap-colores"></div>
+
+      <p id="ap-aviso" class="ayuda"></p>
+      <p id="ap-error" class="msg-error" role="alert"></p>
+      <div class="acciones-dialogo">
+        <button id="ap-restablecer" class="btn" type="button">Restablecer</button>
+        <button id="ap-cerrar" class="btn" type="button">Cerrar</button>
+        <button id="ap-guardar" class="btn principal" type="button">Guardar</button>
+      </div>
+    </div>
+  </dialog>
+
+  <!-- Reportes -->
+  <dialog id="dlg-reportes" class="dlg-ancho">
+    <div class="formulario dialogo">
+      <h2>Reportes</h2>
+      <div class="rep-filtros">
+        <label>Desde <input id="rp-desde" type="date"></label>
+        <label>Hasta <input id="rp-hasta" type="date"></label>
+        <label>Sucursal <select id="rp-sucursal"></select></label>
+      </div>
+      <div class="rep-rapidos" role="group" aria-label="Periodos">
+        <button class="btn chico" type="button" data-rango="hoy">Hoy</button>
+        <button class="btn chico" type="button" data-rango="ayer">Ayer</button>
+        <button class="btn chico" type="button" data-rango="7">Últimos 7 días</button>
+        <button class="btn chico" type="button" data-rango="mes">Este mes</button>
+      </div>
+      <p id="rp-error" class="msg-error" role="alert"></p>
+      <div id="rp-contenido" class="rep-contenido"></div>
+      <div class="acciones-dialogo">
+        <button id="rp-cerrar" class="btn" type="button">Cerrar</button>
+      </div>
+    </div>
+  </dialog>
+
+  <!-- Sucursales y mesas -->
+  <dialog id="dlg-sucursales">
+    <div class="formulario dialogo">
+      <h2>Sucursales y mesas</h2>
+      <p class="ayuda">
+        Cada sucursal lleva sus propios pedidos, caja y personal; en reportes las ves juntas o por separado.
+        Las mesas son las que el mesero elige al levantar un pedido para comer aquí.
+      </p>
+      <div id="lista-sucursales" class="lista-usuarios"></div>
+
+      <form id="form-nueva-sucursal" class="formulario nuevo-usuario" autocomplete="off">
+        <h3>Agregar sucursal</h3>
+        <label>Nombre
+          <input id="su-nombre" type="text" maxlength="80" placeholder="Ej. Centro" required>
+        </label>
+        <label>Dirección (opcional)
+          <input id="su-direccion" type="text" maxlength="160" placeholder="Calle y colonia">
+        </label>
+        <button class="btn principal" type="submit">Crear sucursal</button>
+      </form>
+
+      <p id="su-error" class="msg-error" role="alert"></p>
+      <div class="acciones-dialogo">
+        <button id="su-cerrar" class="btn" type="button">Cerrar</button>
+      </div>
+    </div>
+  </dialog>
+
+  <!-- Ajustes de cocina -->
+  <dialog id="dlg-prioridades">
+    <div class="formulario dialogo">
+      <h2>Ajustes de cocina</h2>
+      <p class="ayuda">En cocina los pedidos <strong>para comer aquí</strong> se preparan primero, por orden de llegada; los <strong>para llevar</strong> y los de <strong>recoger</strong> van después, también por orden de llegada.</p>
+      <label>📅 Pedidos agendados: pasan a la comanda de cocina (min) antes de la hora
+        <input id="pm-prep" type="number" min="0" max="120" step="1" inputmode="numeric">
+      </label>
+      <fieldset class="lote-caja">
+        <legend>🍳 Preparar en lote</legend>
+        <p class="ayuda">En cocina, arriba del tablero, se juntan los platillos de estas categorías de todos los pedidos (por ejemplo 5 hamburguesas iguales) para marcarlos de un solo toque. Elige cuáles quieres ver ahí:</p>
+        <div id="lote-lista" class="lote-lista"></div>
+      </fieldset>
+      <p id="pr-error" class="msg-error" role="alert"></p>
+      <div class="acciones-dialogo">
+        <button id="pr-cerrar" class="btn" type="button">Cerrar</button>
+      </div>
+    </div>
+  </dialog>
+
+  <div id="toast" class="toast" role="status" hidden></div>
+
+  <script src="../js/comun.js?v=202611201400"></script>
+  <script src="../js/admin.js?v=202611201500"></script>
+</body>
+</html>

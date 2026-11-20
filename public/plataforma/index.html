@@ -1,0 +1,115 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="robots" content="noindex">
+  <title>Plataforma · Comandia</title>
+  <link rel="icon" type="image/png" href="../img/favicon.png">
+  <link rel="stylesheet" href="../css/estilos.css?v=202611201100">
+  <link rel="stylesheet" href="../css/admin.css?v=202611201100">
+  <link rel="stylesheet" href="../css/plataforma.css?v=202611201100">
+</head>
+<body>
+
+  <header class="encabezado barra">
+    <div class="marca">
+      <div>
+        <h1>Comandia · Plataforma</h1>
+        <p id="quien"></p>
+      </div>
+    </div>
+    <button id="btn-salir" class="btn claro" type="button" hidden>Salir</button>
+  </header>
+
+  <main class="contenedor ancho">
+
+    <section id="vista-login" class="tarjeta angosta" hidden>
+      <h2>Iniciar sesión</h2>
+      <form id="form-login" class="formulario">
+        <label>Usuario
+          <input id="login-usuario" type="text" autocomplete="username" autocapitalize="none" required>
+        </label>
+        <label>Contraseña
+          <input id="login-password" type="password" autocomplete="current-password" required>
+        </label>
+        <p id="login-msg" class="msg-error" role="alert"></p>
+        <button class="btn principal" type="submit">Entrar</button>
+      </form>
+    </section>
+
+    <section id="vista-aviso" class="tarjeta angosta" hidden>
+      <h2 id="aviso-titulo"></h2>
+      <p id="aviso-texto"></p>
+    </section>
+
+    <section id="vista-panel" hidden>
+      <div class="barra-acciones">
+        <button id="btn-nueva" class="btn principal" type="button">＋ Nueva empresa</button>
+      </div>
+      <div id="resumen" class="resumen-plat"></div>
+      <div id="lista" class="lista-empresas" aria-live="polite"></div>
+    </section>
+  </main>
+
+  <!-- Alta / edición de empresa -->
+  <dialog id="dlg-empresa">
+    <form id="form-empresa" class="formulario dialogo">
+      <h2 id="e-titulo">Nueva empresa</h2>
+      <input type="hidden" id="e-id">
+
+      <label>Nombre de la empresa
+        <input id="e-nombre" type="text" maxlength="100" required placeholder="Ej. Taquería De La Vale">
+      </label>
+
+      <label id="e-slug-caja">Dirección (lo que va después del dominio)
+        <input id="e-slug" type="text" maxlength="39" required autocapitalize="none" autocomplete="off" placeholder="lavale">
+        <small id="e-slug-vista" class="ayuda"></small>
+      </label>
+
+      <div id="e-admin-caja">
+        <h3 class="sub-dlg">Administrador de la empresa</h3>
+        <label>Su nombre
+          <input id="e-admin-nombre" type="text" maxlength="80" autocomplete="off">
+        </label>
+        <div class="fila-doble">
+          <label>Usuario
+            <input id="e-admin-usuario" type="text" maxlength="40" autocapitalize="none" autocomplete="off">
+          </label>
+          <label>Contraseña inicial
+            <input id="e-admin-password" type="text" minlength="10" autocomplete="off" placeholder="Mínimo 10 caracteres">
+          </label>
+        </div>
+        <p class="ayuda">Se la entregas tal cual; él puede cambiarla desde su panel.</p>
+      </div>
+
+      <h3 class="sub-dlg">Suscripción</h3>
+      <div class="fila-doble">
+        <label>Plan
+          <input id="e-plan" type="text" maxlength="30" value="basico" autocapitalize="none">
+        </label>
+        <label>Vence el
+          <input id="e-vence" type="date">
+        </label>
+      </div>
+      <label>Contacto (nombre, teléfono, correo)
+        <input id="e-contacto" type="text" maxlength="150">
+      </label>
+      <label>Notas
+        <input id="e-notas" type="text" maxlength="255">
+      </label>
+
+      <p id="e-error" class="msg-error" role="alert"></p>
+      <div class="acciones-dialogo">
+        <button id="e-cancelar" class="btn" type="button">Cancelar</button>
+        <button class="btn principal" type="submit" id="e-guardar">Guardar</button>
+      </div>
+    </form>
+  </dialog>
+
+  <div id="toast" class="toast" role="status" hidden></div>
+
+  <script src="../js/comun.js?v=202611201100"></script>
+  <script src="../js/plataforma.js?v=202611201100"></script>
+</body>
+</html>

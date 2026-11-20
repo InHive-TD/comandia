@@ -1,0 +1,1175 @@
+/**
+ * Panel de administración: login, productos (con foto, código, porción,
+ * parrilla y extras), categorías, extras y parrillas.
+ * Usa las funciones de js/comun.js (el, pedir, enviarJson, dinero, fijarCsrf).
+ */
+
+const API = '../api/';
+const RUTA_FOTOS = '../uploads/';
+
+let productos = [];
+let categorias = [];
+let estaciones = [];
+let extras = [];
+
+const $ = (id) => document.getElementById(id);
+
+/* ------------------------------------------------------------------ */
+/*  Utilidades de pantalla                                             */
+/* ------------------------------------------------------------------ */
+
+function mostrar(vista) {
+  for (const id of ['vista-login', 'vista-aviso', 'vista-panel']) {
+    $(id).hidden = id !== vista;
+  }
+  $('btn-salir').hidden = vista === 'vista-login';
+}
+
+let temporizadorAviso;
+function avisar(texto, esError = false) {
+  const toast = $('toast');
+  toast.textContent = texto;
+  toast.className = 'toast' + (esError ? ' error' : '');
+  toast.hidden = false;
+  clearTimeout(temporizadorAviso);
+  temporizadorAviso = setTimeout(() => { toast.hidden = true; }, 3500);
+}
+
+function mostrarAviso(titulo, texto) {
+  $('aviso-titulo').textContent = titulo;
+  $('aviso-texto').textContent = texto;
+  mostrar('vista-aviso');
+}
+
+/* ------------------------------------------------------------------ */
+/*  Sesión                                                             */
+/* ------------------------------------------------------------------ */
+
+async function iniciar() {
+  try {
+    const s = await pedir(API + 'sesion.php');
+    fijarCsrf(s.csrf);
+    if (s.autenticado) {
+      await entrar(s.usuario);
+    } else {
+      mostrar('vista-login');
+    }
+  } catch (err) {
+    mostrarAviso('No se pudo iniciar', err.message);
+  }
+}
+
+let esGerente = false;   // el gerente ve solo su sucursal y no toca lo de toda la empresa
+
+async function entrar(usuario) {
+  $('quien').textContent = usuario.nombre;
+  if (usuario.rol !== 'admin' && usuario.rol !== 'gerente') {
+    mostrarAviso('Sin permiso', 'Tu usuario no puede administrar el catálogo. Entra con una cuenta de administrador o de gerente.');
+    return;
+  }
+  esGerente = usuario.rol === 'gerente';
+  for (const id of ['btn-categorias', 'btn-extras', 'btn-apariencia']) { const b = $(id); if (b) b.hidden = esGerente; }
+  $('btn-sucursales').textContent = esGerente ? 'Mi sucursal y mesas' : 'Sucursales y mesas';
+  mostrar('vista-panel');
+  await cargarCatalogo();
+}
+
+$('form-login').addEventListener('submit', async (ev) => {
+  ev.preventDefault();
+  const msg = $('login-msg');
+  const boton = ev.target.querySelector('button[type="submit"]');
+  msg.textContent = '';
+  boton.disabled = true;
+  try {
+    const r = await enviarJson(API + 'login.php', {
+      usuario: $('login-usuario').value.trim(),
+      password: $('login-password').value,
+    });
+    $('login-password').value = '';
+    fijarCsrf(r.csrf);
+    await entrar(r.usuario);
+  } catch (err) {
+    msg.textContent = err.message;
+  } finally {
+    boton.disabled = false;
+  }
+});
+
+$('btn-salir').addEventListener('click', async () => {
+  try {
+    await pedir(API + 'logout.php', { method: 'POST' });
+  } catch { /* si falla, igual se vuelve a pedir la sesión */ }
+  productos = [];
+  categorias = [];
+  estaciones = [];
+  extras = [];
+  await iniciar();
+});
+
+/* ------------------------------------------------------------------ */
+/*  Catálogo                                                           */
+/* ------------------------------------------------------------------ */
+
+async function cargarCatalogo() {
+  try {
+    const r = await pedir(API + 'admin/productos.php');
+    productos = r.productos;
+    categorias = r.categorias;
+    estaciones = r.estaciones;
+    extras = r.extras;
+    pintarLista();
+  } catch (err) {
+    if (err.estado === 401) { await iniciar(); return; }
+    avisar(err.message, true);
+  }
+}
+
+function pintarLista() {
+  const lista = $('lista');
+  lista.replaceChildren();
+
+  if (productos.length === 0) {
+    lista.append(el('p', 'vacio',
+      categorias.length === 0
+        ? 'Empieza creando una categoría (botón “Categorías”) y luego agrega tu primer producto.'
+        : 'Aún no hay productos. Toca “Nuevo producto” para agregar el primero.'));
+    return;
+  }
+  for (const p of productos) lista.append(tarjeta(p));
+}
+
+function tarjeta(p) {
+  const card = el('article', 'prod' + (p.disponible ? '' : ' agotado'));
+
+  const foto = el('div', 'prod-foto');
+  if (p.foto) {
+    const img = document.createElement('img');
+    img.src = RUTA_FOTOS + encodeURIComponent(p.foto);
+    img.alt = p.nombre;
+    img.loading = 'lazy';
+    foto.append(img);
+  } else {
+    foto.classList.add('vacia');
+    foto.append(el('span', 'sin-foto', '🌮'));
+  }
+
+  const info = el('div', 'prod-info');
+  const general = esGerente && !p.propio;     // producto de la carta general: el gerente solo lo oculta o le cambia el precio
+  const precioVisible = general && p.precio_sucursal != null ? p.precio_sucursal : p.precio;
+  info.append(el('h3', '', p.nombre), el('p', 'prod-cat', p.categoria), el('p', 'prod-precio', dinero.format(precioVisible)));
+
+  const etiquetas = el('div', 'etiquetas');
+  if (p.codigo) etiquetas.append(el('span', 'chip codigo-chip', p.codigo));
+  if (esGerente) etiquetas.append(el('span', 'chip', p.propio ? '⭐ Propio de mi sucursal' : '🌐 Carta general'));
+  else if (p.sucursal) etiquetas.append(el('span', 'chip', '📍 Solo ' + p.sucursal));
+  if (general && p.oculto) etiquetas.append(el('span', 'chip sin', 'Oculto en mi sucursal'));
+  if (general && p.precio_sucursal != null) etiquetas.append(el('span', 'chip', 'Precio general: ' + dinero.format(p.precio)));
+  if (p.porcion) etiquetas.append(el('span', 'chip', p.porcion));
+  if (p.extras.length) etiquetas.append(el('span', 'chip', p.extras.length === 1 ? '1 extra' : `${p.extras.length} extras`));
+  info.append(etiquetas);
+
+  const acciones = el('div', 'prod-acciones');
+  if (general) {
+    acciones.append(controlesSucursal(p));
+    card.append(foto, info, acciones);
+    return card;
+  }
+  const editar = el('button', 'btn', 'Editar');
+  editar.type = 'button';
+  editar.addEventListener('click', () => abrirFormulario(p));
+  const mismos = productos.filter((x) => x.categoria_id === p.categoria_id);
+  const idx = mismos.findIndex((x) => x.id === p.id);
+  const mover = el('div', 'mover');
+  mover.append(botonMover('▲', 'Subir producto', idx <= 0, () => moverProducto(p, -1)), botonMover('▼', 'Bajar producto', idx === mismos.length - 1, () => moverProducto(p, 1)));
+  acciones.append(interruptor(p), editar, mover);
+
+  card.append(foto, info, acciones);
+  return card;
+}
+
+/** Carta general, vista del gerente: ocultar el producto o ponerle otro precio solo en su sucursal. */
+function controlesSucursal(p) {
+  const caja = el('div', 'ajuste-sucursal');
+  const etiquetaOculto = el('label', 'casilla');
+  const oculto = document.createElement('input');
+  oculto.type = 'checkbox';
+  oculto.checked = !!p.oculto;
+  etiquetaOculto.append(oculto, el('span', '', 'Ocultar en mi sucursal'));
+  const precio = document.createElement('input');
+  precio.type = 'text'; precio.inputMode = 'decimal';
+  precio.placeholder = 'Precio general ' + dinero.format(p.precio);
+  precio.setAttribute('aria-label', 'Precio en mi sucursal');
+  precio.value = p.precio_sucursal != null ? Number(p.precio_sucursal).toFixed(2) : '';
+  const guardar = el('button', 'btn', 'Guardar');
+  guardar.type = 'button';
+  guardar.addEventListener('click', async () => {
+    const datos = new FormData();
+    datos.append('accion', 'ajuste_sucursal');
+    datos.append('id', String(p.id));
+    datos.append('oculto', oculto.checked ? '1' : '0');
+    datos.append('precio', precio.value.trim());
+    guardar.disabled = true;
+    try {
+      const r = await pedir(API + 'admin/productos.php', { method: 'POST', body: datos });
+      p.oculto = r.oculto;
+      p.precio_sucursal = r.precio_sucursal;
+      avisar('Guardado para tu sucursal');
+      pintarLista();
+    } catch (err) {
+      guardar.disabled = false;
+      avisar(err.message, true);
+    }
+  });
+  caja.append(etiquetaOculto, precio, guardar);
+  return caja;
+}
+
+function interruptor(p) {
+  const etiqueta = el('label', 'switch');
+  const casilla = document.createElement('input');
+  casilla.type = 'checkbox';
+  casilla.checked = p.disponible;
+  const deslizador = el('span', 'slider');
+  const texto = el('span', '', p.disponible ? 'Disponible' : 'Agotado');
+
+  casilla.addEventListener('change', async () => {
+    casilla.disabled = true;
+    const datos = new FormData();
+    datos.append('accion', 'disponibilidad');
+    datos.append('id', String(p.id));
+    datos.append('disponible', casilla.checked ? '1' : '0');
+    try {
+      await pedir(API + 'admin/productos.php', { method: 'POST', body: datos });
+      p.disponible = casilla.checked;
+      pintarLista();
+    } catch (err) {
+      casilla.checked = !casilla.checked;
+      casilla.disabled = false;
+      avisar(err.message, true);
+    }
+  });
+
+  etiqueta.append(casilla, deslizador, texto);
+  return etiqueta;
+}
+
+/* ------------------------------------------------------------------ */
+/*  Formulario de producto                                             */
+/* ------------------------------------------------------------------ */
+
+/** Casillas con los extras (los desactivados se muestran solo si el producto los tiene). */
+function pintarExtrasProducto(marcados) {
+  const caja = $('f-extras');
+  caja.replaceChildren();
+  const visibles = extras.filter((x) => x.activo || marcados.includes(x.id));
+  if (visibles.length === 0) {
+    caja.append(el('p', 'vacio ayuda', 'Aún no hay extras. Créalos con el botón “Extras”.'));
+    return;
+  }
+  const grupos = new Map();                      // grupo → extras (en orden de aparición)
+  for (const x of visibles) {
+    const g = x.grupo || 'Otros';
+    if (!grupos.has(g)) grupos.set(g, []);
+    grupos.get(g).push(x);
+  }
+  for (const [g, lista] of grupos) {
+    if (grupos.size > 1) caja.append(el('p', 'grupo-titulo', g));
+    for (const x of lista) {
+      const fila = el('label', 'casilla');
+      const caja_ = document.createElement('input');
+      caja_.type = 'checkbox';
+      caja_.value = String(x.id);
+      caja_.checked = marcados.includes(x.id);
+      const texto = el('span', '', (x.codigo ? `${x.codigo} · ` : '') + x.nombre + ' ');
+      texto.append(el('small', '', x.precio > 0 ? `+${dinero.format(x.precio)}` : 'sin costo'));
+      fila.append(caja_, texto);
+      caja.append(fila);
+    }
+  }
+}
+
+const dlgProducto = $('dlg-producto');
+const formProducto = $('form-producto');
+let urlVistaPrevia = null;
+
+function limpiarVistaPrevia() {
+  if (urlVistaPrevia) URL.revokeObjectURL(urlVistaPrevia);
+  urlVistaPrevia = null;
+}
+
+function ponerVistaPrevia(url) {
+  const img = $('f-vista');
+  if (url) { img.src = url; img.hidden = false; } else { img.removeAttribute('src'); img.hidden = true; }
+}
+
+function abrirFormulario(p = null) {
+  formProducto.reset();
+  limpiarVistaPrevia();
+  $('f-error').textContent = '';
+  $('f-id').value = p ? String(p.id) : '';
+  $('dlg-titulo').textContent = p ? 'Editar producto' : 'Nuevo producto';
+
+  const select = $('f-categoria');
+  select.replaceChildren(...categorias.map((c) => new Option(c.nombre, String(c.id))));
+  if (categorias.length === 0) {
+    $('f-error').textContent = 'Primero crea una categoría (botón “Categorías”).';
+  }
+
+  pintarExtrasProducto(p ? p.extras : []);
+
+  if (p) {
+    $('f-codigo').value = p.codigo || '';
+    $('f-porcion').value = p.porcion || '';
+    $('f-nombre').value = p.nombre;
+    select.value = String(p.categoria_id);
+    $('f-precio').value = p.precio.toFixed(2);
+    $('f-descripcion').value = p.descripcion || '';
+    $('f-disponible').checked = p.disponible;
+    $('f-pedir').checked = !!p.pedir_opciones;
+    ponerVistaPrevia(p.foto ? RUTA_FOTOS + encodeURIComponent(p.foto) : null);
+  } else {
+    $('f-disponible').checked = true;
+    $('f-pedir').checked = false;
+    ponerVistaPrevia(null);
+  }
+
+  $('f-quitar-fila').hidden = !(p && p.foto);
+  $('f-eliminar').hidden = !p;
+  $('f-eliminar').dataset.nombre = p ? p.nombre : '';
+  dlgProducto.showModal();
+}
+
+$('btn-nuevo').addEventListener('click', () => abrirFormulario());
+$('f-cancelar').addEventListener('click', () => dlgProducto.close());
+dlgProducto.addEventListener('close', limpiarVistaPrevia);
+
+$('f-foto').addEventListener('change', () => {
+  limpiarVistaPrevia();
+  const archivo = $('f-foto').files[0];
+  if (archivo) {
+    urlVistaPrevia = URL.createObjectURL(archivo);
+    ponerVistaPrevia(urlVistaPrevia);
+    $('f-quitar').checked = false;
+  }
+});
+
+/**
+ * Reduce la foto en el propio celular/tablet antes de enviarla:
+ * sube más rápido, gasta menos datos y el servidor trabaja menos.
+ * (El servidor la vuelve a revisar y procesar de todos modos.)
+ */
+async function reducirImagen(archivo, ladoMax = 1200, calidad = 0.85) {
+  if (!archivo.type.startsWith('image/')) return archivo;
+  try {
+    const bmp = await createImageBitmap(archivo, { imageOrientation: 'from-image' });
+    const escala = Math.min(1, ladoMax / Math.max(bmp.width, bmp.height));
+    const ancho = Math.max(1, Math.round(bmp.width * escala));
+    const alto = Math.max(1, Math.round(bmp.height * escala));
+
+    const lienzo = document.createElement('canvas');
+    lienzo.width = ancho;
+    lienzo.height = alto;
+    const ctx = lienzo.getContext('2d');
+    ctx.fillStyle = '#ffffff';
+    ctx.fillRect(0, 0, ancho, alto);
+    ctx.drawImage(bmp, 0, 0, ancho, alto);
+    if (bmp.close) bmp.close();
+
+    const blob = await new Promise((resolver) => lienzo.toBlob(resolver, 'image/jpeg', calidad));
+    return blob || archivo;
+  } catch {
+    return archivo;   // si el navegador no puede, se manda tal cual y el servidor decide
+  }
+}
+
+formProducto.addEventListener('submit', async (ev) => {
+  ev.preventDefault();
+  const error = $('f-error');
+  const guardar = $('f-guardar');
+  error.textContent = '';
+  guardar.disabled = true;
+  guardar.textContent = 'Guardando…';
+
+  try {
+    const id = $('f-id').value;
+    const datos = new FormData();
+    datos.append('accion', id ? 'actualizar' : 'crear');
+    if (id) datos.append('id', id);
+    datos.append('nombre', $('f-nombre').value.trim());
+    datos.append('categoria_id', $('f-categoria').value);
+    datos.append('precio', $('f-precio').value.trim());
+    datos.append('descripcion', $('f-descripcion').value.trim());
+    datos.append('disponible', $('f-disponible').checked ? '1' : '0');
+    datos.append('pedir_opciones', $('f-pedir').checked ? '1' : '0');
+    datos.append('codigo', $('f-codigo').value.trim());
+    datos.append('porcion', $('f-porcion').value.trim());
+    datos.append('extras', [...$('f-extras').querySelectorAll('input:checked')].map((c) => c.value).join(','));
+    if ($('f-quitar').checked) datos.append('quitar_foto', '1');
+
+    const archivo = $('f-foto').files[0];
+    if (archivo) {
+      datos.append('foto', await reducirImagen(archivo), 'foto.jpg');
+    }
+
+    await pedir(API + 'admin/productos.php', { method: 'POST', body: datos });
+    dlgProducto.close();
+    await cargarCatalogo();
+    avisar('Producto guardado');
+  } catch (err) {
+    error.textContent = err.message;
+  } finally {
+    guardar.disabled = false;
+    guardar.textContent = 'Guardar';
+  }
+});
+
+$('f-eliminar').addEventListener('click', async () => {
+  const id = $('f-id').value;
+  const nombre = $('f-eliminar').dataset.nombre;
+  if (!id || !(await confirmar(`¿Eliminar “${nombre}”? Esta acción no se puede deshacer.\n\nLas ventas anteriores no se alteran. Si solo se acabó por hoy, mejor márcalo como Agotado.`, { si: 'Eliminar', peligro: true }))) return;
+
+  const datos = new FormData();
+  datos.append('accion', 'eliminar');
+  datos.append('id', id);
+  try {
+    await pedir(API + 'admin/productos.php', { method: 'POST', body: datos });
+    dlgProducto.close();
+    await cargarCatalogo();
+    avisar('Producto eliminado');
+  } catch (err) {
+    $('f-error').textContent = err.message;
+  }
+});
+
+/* ------------------------------------------------------------------ */
+/*  Categorías                                                         */
+/* ------------------------------------------------------------------ */
+
+const dlgCategorias = $('dlg-categorias');
+
+function pintarCategorias() {
+  const caja = $('lista-categorias');
+  caja.replaceChildren();
+
+  if (categorias.length === 0) {
+    caja.append(el('p', '', 'Todavía no hay categorías. Agrega la primera abajo (por ejemplo, Tacos).'));
+    return;
+  }
+
+  categorias.forEach((c, idx) => {
+    const fila = el('div', 'fila-categoria');
+    const mover = el('div', 'mover');
+    mover.append(botonMover('▲', 'Subir categoría', idx === 0, () => moverCategoria(idx, -1)), botonMover('▼', 'Bajar categoría', idx === categorias.length - 1, () => moverCategoria(idx, 1)));
+
+    const nombre = document.createElement('input');
+    nombre.type = 'text';
+    nombre.maxLength = 60;
+    nombre.value = c.nombre;
+    nombre.setAttribute('aria-label', 'Nombre de la categoría');
+
+    const guardar = el('button', 'btn', 'Guardar');
+    guardar.type = 'button';
+    guardar.addEventListener('click', () => accionCategoria({ accion: 'renombrar', id: c.id, nombre: nombre.value.trim() }, 'Categoría actualizada'));
+
+    const borrar = el('button', 'btn peligro', 'Eliminar');
+    borrar.type = 'button';
+    borrar.addEventListener('click', async () => {
+      if (await confirmar(`¿Eliminar la categoría “${c.nombre}”?`, { si: 'Eliminar', peligro: true })) {
+        accionCategoria({ accion: 'eliminar', id: c.id }, 'Categoría eliminada');
+      }
+    });
+
+    fila.append(mover, nombre, guardar, borrar, el('span', 'cuenta', c.productos === 1 ? '1 producto' : `${c.productos} productos`));
+    caja.append(fila);
+  });
+}
+
+function botonMover(texto, etiqueta, desactivado, alClic) {
+  const b = el('button', 'btn mover-btn', texto);
+  b.type = 'button';
+  b.title = etiqueta;
+  b.setAttribute('aria-label', etiqueta);
+  b.disabled = desactivado;
+  b.addEventListener('click', alClic);
+  return b;
+}
+
+async function moverCategoria(idx, delta) {
+  const ids = categorias.map((c) => c.id);
+  const j = idx + delta;
+  if (j < 0 || j >= ids.length) return;
+  [ids[idx], ids[j]] = [ids[j], ids[idx]];
+  await accionCategoria({ accion: 'ordenar', ids }, 'Orden de categorías guardado');
+}
+
+async function moverProducto(p, delta) {
+  const mismos = productos.filter((x) => x.categoria_id === p.categoria_id);
+  const idx = mismos.findIndex((x) => x.id === p.id);
+  const j = idx + delta;
+  if (idx < 0 || j < 0 || j >= mismos.length) return;
+  const ids = mismos.map((x) => x.id);
+  [ids[idx], ids[j]] = [ids[j], ids[idx]];
+  const datos = new FormData();
+  datos.append('accion', 'ordenar');
+  ids.forEach((id) => datos.append('ids[]', String(id)));
+  try {
+    await pedir(API + 'admin/productos.php', { method: 'POST', body: datos });
+    await cargarCatalogo();
+  } catch (err) { avisar(err.message, true); }
+}
+
+async function accionCategoria(cuerpo, mensajeOk) {
+  $('c-error').textContent = '';
+  try {
+    await enviarJson(API + 'admin/categorias.php', cuerpo);
+    await cargarCatalogo();
+    pintarCategorias();
+    avisar(mensajeOk);
+  } catch (err) {
+    $('c-error').textContent = err.message;
+  }
+}
+
+$('btn-categorias').addEventListener('click', () => {
+  $('c-error').textContent = '';
+  pintarCategorias();
+  dlgCategorias.showModal();
+});
+$('c-cerrar').addEventListener('click', () => dlgCategorias.close());
+
+$('form-nueva-categoria').addEventListener('submit', async (ev) => {
+  ev.preventDefault();
+  const campo = $('c-nueva');
+  await accionCategoria({ accion: 'crear', nombre: campo.value.trim() }, 'Categoría creada');
+  if (!$('c-error').textContent) campo.value = '';
+});
+
+/* ------------------------------------------------------------------ */
+/*  Usuarios del equipo                                                */
+/* ------------------------------------------------------------------ */
+
+const dlgUsuarios = $('dlg-usuarios');
+const ROL_TEXTO = { admin: 'Administrador', gerente: 'Gerente', caja: 'Caja', mesero: 'Mesero', taquero: 'Cocina' };
+const ROLES_ORDEN = ['mesero', 'caja', 'taquero', 'gerente'];
+
+async function cargarUsuarios() {
+  const r = await pedir(API + 'admin/usuarios.php');
+  const ROLES_PERSONAL = ROLES_ORDEN.filter((v) => r.roles.includes(v)).map((v) => [v, ROL_TEXTO[v]]);
+  const selRol = $('us-rol');
+  const rolPrevio = selRol.value;
+  selRol.replaceChildren();
+  for (const [v, t] of ROLES_PERSONAL) { const o = document.createElement('option'); o.value = v; o.textContent = v === 'gerente' ? 'Gerente (administra su sucursal)' : t; selRol.append(o); }
+  if (rolPrevio && r.roles.includes(rolPrevio)) selRol.value = rolPrevio;
+  const sel = $('us-sucursal');
+  const previa = sel.value;
+  sel.replaceChildren();
+  for (const s of r.sucursales) { const o = document.createElement('option'); o.value = String(s.id); o.textContent = s.nombre; sel.append(o); }
+  if (previa) sel.value = previa;
+  const caja = $('lista-usuarios');
+  caja.replaceChildren();
+  for (const u of r.usuarios) {
+    const fila = el('div', 'fila-usuario' + (u.activo ? '' : ' inactivo'));
+    const cab = el('div', 'us-cab');
+    cab.append(el('strong', '', u.nombre), el('span', 'chip', '@' + u.usuario), el('span', 'chip', ROL_TEXTO[u.rol]));
+    cab.append(el('span', 'chip', u.sucursal ? '📍 ' + u.sucursal : 'Todas las sucursales'));
+    if (!u.activo) cab.append(el('span', 'chip sin', 'Desactivado'));
+    if (u.id === r.yo) cab.append(el('span', 'chip', 'Tú'));
+    fila.append(cab);
+
+    const ctl = el('div', 'us-ctl');
+    const nombre = document.createElement('input');
+    nombre.type = 'text'; nombre.maxLength = 80; nombre.value = u.nombre; nombre.setAttribute('aria-label', 'Nombre');
+    ctl.append(nombre);
+    let rol = null, suc = null;
+    if (u.rol !== 'admin') {
+      rol = document.createElement('select');
+      rol.setAttribute('aria-label', 'Rol');
+      for (const [v, t] of ROLES_PERSONAL) { const o = document.createElement('option'); o.value = v; o.textContent = t; rol.append(o); }
+      rol.value = u.rol;
+      ctl.append(rol);
+      suc = document.createElement('select');
+      suc.setAttribute('aria-label', 'Sucursal');
+      for (const s of r.sucursales) { const o = document.createElement('option'); o.value = String(s.id); o.textContent = s.nombre; suc.append(o); }
+      suc.value = String(u.sucursal_id || (r.sucursales[0] && r.sucursales[0].id) || '');
+      ctl.append(suc);
+    }
+    const guardar = el('button', 'btn', 'Guardar');
+    guardar.type = 'button';
+    guardar.addEventListener('click', () => accionUsuario({ accion: 'editar', id: u.id, nombre: nombre.value.trim(), rol: rol ? rol.value : u.rol, sucursal_id: suc ? Number(suc.value) : null, activo: u.activo }, 'Usuario actualizado'));
+    ctl.append(guardar);
+
+    const clave = el('button', 'btn', 'Nueva contraseña');
+    clave.type = 'button';
+    clave.addEventListener('click', async () => {
+      const p = await pedirTexto(`Nueva contraseña para ${u.nombre} (mínimo 10 caracteres):`, { si: 'Cambiar', tipo: 'password', minimo: 10 });
+      if (p) accionUsuario({ accion: 'clave', id: u.id, password: p }, 'Contraseña cambiada');
+    });
+    ctl.append(clave);
+
+    if (u.rol !== 'admin') {
+      const act = el('button', 'btn ' + (u.activo ? 'peligro' : ''), u.activo ? 'Desactivar' : 'Reactivar');
+      act.type = 'button';
+      act.addEventListener('click', async () => {
+        if (u.activo && !(await confirmar(`¿Desactivar a ${u.nombre}? Perderá el acceso de inmediato.`, { si: 'Desactivar', peligro: true }))) return;
+        accionUsuario({ accion: 'editar', id: u.id, nombre: nombre.value.trim(), rol: rol.value, sucursal_id: Number(suc.value), activo: !u.activo }, u.activo ? 'Usuario desactivado' : 'Usuario reactivado');
+      });
+      ctl.append(act);
+    }
+    fila.append(ctl);
+    caja.append(fila);
+  }
+}
+
+async function accionUsuario(cuerpo, mensajeOk) {
+  $('us-error').textContent = '';
+  try {
+    await enviarJson(API + 'admin/usuarios.php', cuerpo);
+    await cargarUsuarios();
+    avisar(mensajeOk);
+    return true;
+  } catch (err) {
+    $('us-error').textContent = err.message;
+    return false;
+  }
+}
+
+$('btn-usuarios').addEventListener('click', async () => {
+  $('us-error').textContent = '';
+  try { await cargarUsuarios(); } catch (err) { $('us-error').textContent = err.message; }
+  dlgUsuarios.showModal();
+});
+$('us-cerrar').addEventListener('click', () => dlgUsuarios.close());
+$('form-nuevo-usuario').addEventListener('submit', async (ev) => {
+  ev.preventDefault();
+  const ok = await accionUsuario({
+    accion: 'crear', nombre: $('us-nombre').value.trim(), usuario: $('us-usuario').value.trim(),
+    password: $('us-password').value, rol: $('us-rol').value, sucursal_id: Number($('us-sucursal').value),
+  }, 'Usuario creado');
+  if (ok) { $('us-nombre').value = ''; $('us-usuario').value = ''; $('us-password').value = ''; }
+});
+
+/* ------------------------------------------------------------------ */
+/*  Sucursales y mesas                                                 */
+/* ------------------------------------------------------------------ */
+
+const dlgSucursales = $('dlg-sucursales');
+const sucAbierta = new Set();   // sucursales con las mesas desplegadas
+
+async function accionSucursal(url, cuerpo, mensaje) {
+  $('su-error').textContent = '';
+  try {
+    await enviarJson(API + url, cuerpo);
+    if (mensaje) avisar(mensaje);
+    await cargarSucursales();
+    return true;
+  } catch (err) {
+    $('su-error').textContent = err.message;
+    return false;
+  }
+}
+
+async function pintarMesas(caja, s) {
+  caja.replaceChildren();
+  const r = await pedir(API + 'admin/mesas.php?sucursal=' + s.id);
+  const rejilla = el('div', 'mesas-rejilla');
+  for (const m of r.mesas) {
+    const chip = el('span', 'mesa-chip' + (m.activa ? '' : ' inactiva'));
+    const nombre = document.createElement('input');
+    nombre.type = 'text'; nombre.value = m.nombre; nombre.maxLength = 30; nombre.setAttribute('aria-label', 'Nombre de la mesa');
+    nombre.addEventListener('change', () => accionSucursal('admin/mesas.php', { accion: 'renombrar', id: m.id, nombre: nombre.value.trim() }));
+    const act = el('button', 'btn chico', m.activa ? 'Ocultar' : 'Mostrar');
+    act.type = 'button';
+    act.addEventListener('click', () => accionSucursal('admin/mesas.php', { accion: 'activar', id: m.id, activa: !m.activa }));
+    const del = el('button', 'btn chico peligro', '✕');
+    del.type = 'button'; del.title = 'Eliminar mesa';
+    del.addEventListener('click', async () => {
+      if (await confirmar(`¿Eliminar la ${m.nombre}? Los pedidos anteriores conservan el nombre.`, { si: 'Eliminar', no: 'Volver', peligro: true })) {
+        accionSucursal('admin/mesas.php', { accion: 'eliminar', id: m.id });
+      }
+    });
+    chip.append(nombre, act, del);
+    rejilla.append(chip);
+  }
+  if (!r.mesas.length) rejilla.append(el('p', 'ayuda', 'Esta sucursal aún no tiene mesas.'));
+  caja.append(rejilla);
+
+  const uno = el('form', 'fila-mesas');
+  const nuevo = document.createElement('input');
+  nuevo.type = 'text'; nuevo.maxLength = 30; nuevo.placeholder = 'Nombre de la mesa (ej. Mesa 7, Terraza)'; nuevo.required = true;
+  const b1 = el('button', 'btn', 'Agregar mesa'); b1.type = 'submit';
+  uno.append(nuevo, b1);
+  uno.addEventListener('submit', (ev) => { ev.preventDefault(); accionSucursal('admin/mesas.php', { accion: 'crear', sucursal_id: s.id, nombre: nuevo.value.trim() }, 'Mesa agregada'); });
+
+  const lote = el('form', 'fila-mesas');
+  const pref = document.createElement('input'); pref.type = 'text'; pref.maxLength = 20; pref.value = 'Mesa '; pref.setAttribute('aria-label', 'Prefijo');
+  const d = document.createElement('input'); d.type = 'number'; d.min = '1'; d.max = '500'; d.value = '1'; d.setAttribute('aria-label', 'Desde');
+  const h = document.createElement('input'); h.type = 'number'; h.min = '1'; h.max = '500'; h.placeholder = 'hasta'; h.required = true; h.setAttribute('aria-label', 'Hasta');
+  const b2 = el('button', 'btn', 'Crear varias'); b2.type = 'submit';
+  lote.append(el('span', 'ayuda', 'Varias de golpe:'), pref, d, el('span', '', 'a'), h, b2);
+  lote.addEventListener('submit', (ev) => { ev.preventDefault(); accionSucursal('admin/mesas.php', { accion: 'lote', sucursal_id: s.id, prefijo: pref.value, desde: Number(d.value), hasta: Number(h.value) }, 'Mesas creadas'); });
+  caja.append(uno, lote);
+}
+
+async function cargarSucursales() {
+  const r = await pedir(API + 'admin/sucursales.php');
+  const lista = $('lista-sucursales');
+  lista.replaceChildren();
+  $('form-nueva-sucursal').hidden = esGerente;
+  for (const s of r.sucursales) {
+    if (esGerente) sucAbierta.add(s.id);
+    const tarj = el('div', 'usuario-fila' + (s.activa ? '' : ' inactivo'));
+    const cab = el('div', 'usuario-cab');
+    cab.append(el('strong', '', s.nombre), el('span', 'chip', `${s.mesas} mesas`), el('span', 'chip', `${s.usuarios} personas`), el('span', 'chip', s.activa ? 'Activa' : 'Pausada'));
+    const ctl = el('div', 'usuario-ctl');
+    const nombre = document.createElement('input'); nombre.type = 'text'; nombre.value = s.nombre; nombre.maxLength = 80; nombre.setAttribute('aria-label', 'Nombre');
+    const dir = document.createElement('input'); dir.type = 'text'; dir.value = s.direccion || ''; dir.maxLength = 160; dir.placeholder = 'Dirección'; dir.setAttribute('aria-label', 'Dirección');
+    const guardar = el('button', 'btn', 'Guardar'); guardar.type = 'button';
+    guardar.addEventListener('click', () => accionSucursal('admin/sucursales.php', { accion: 'editar', id: s.id, nombre: nombre.value.trim(), direccion: dir.value.trim(), activa: s.activa }, 'Sucursal actualizada'));
+    const pausa = el('button', 'btn', s.activa ? 'Pausar' : 'Reactivar'); pausa.type = 'button';
+    pausa.addEventListener('click', () => accionSucursal('admin/sucursales.php', { accion: 'editar', id: s.id, nombre: nombre.value.trim(), direccion: dir.value.trim(), activa: !s.activa }, s.activa ? 'Sucursal pausada' : 'Sucursal reactivada'));
+    const mesasBtn = el('button', 'btn', sucAbierta.has(s.id) ? 'Ocultar mesas' : 'Mesas'); mesasBtn.type = 'button';
+    mesasBtn.addEventListener('click', () => { if (sucAbierta.has(s.id)) sucAbierta.delete(s.id); else sucAbierta.add(s.id); cargarSucursales(); });
+    if (esGerente) { tarj.append(cab); } else { ctl.append(nombre, dir, guardar, pausa, mesasBtn); tarj.append(cab, ctl); }
+    // Enlace para el QR de esta sucursal (el cliente abre el menú y sus pedidos van a esta sucursal)
+    const enlace = location.origin + location.pathname.replace(/admin\/(index\.html)?$/, '') + '?s=' + s.id;
+    const fila = el('div', 'fila-mesas');
+    const campoEnlace = document.createElement('input');
+    campoEnlace.type = 'text'; campoEnlace.readOnly = true; campoEnlace.value = enlace; campoEnlace.setAttribute('aria-label', 'Enlace para el QR');
+    campoEnlace.addEventListener('focus', () => campoEnlace.select());
+    const copiar = el('button', 'btn chico', 'Copiar enlace del QR'); copiar.type = 'button';
+    copiar.addEventListener('click', async () => { try { await navigator.clipboard.writeText(enlace); avisar('Enlace copiado'); } catch { campoEnlace.select(); } });
+    fila.append(campoEnlace, copiar);
+    tarj.append(fila);
+    if (sucAbierta.has(s.id)) {
+      const caja = el('div', 'mesas-caja');
+      tarj.append(caja);
+      pintarMesas(caja, s).catch((err) => { $('su-error').textContent = err.message; });
+    }
+    lista.append(tarj);
+  }
+}
+
+$('btn-sucursales').addEventListener('click', async () => {
+  $('su-error').textContent = '';
+  try { await cargarSucursales(); } catch (err) { $('su-error').textContent = err.message; }
+  dlgSucursales.showModal();
+});
+$('su-cerrar').addEventListener('click', () => dlgSucursales.close());
+$('form-nueva-sucursal').addEventListener('submit', async (ev) => {
+  ev.preventDefault();
+  const ok = await accionSucursal('admin/sucursales.php', { accion: 'crear', nombre: $('su-nombre').value.trim(), direccion: $('su-direccion').value.trim() }, 'Sucursal creada');
+  if (ok) { $('su-nombre').value = ''; $('su-direccion').value = ''; }
+});
+
+/* ------------------------------------------------------------------ */
+/*  Reportes                                                           */
+/* ------------------------------------------------------------------ */
+
+const dlgReportes = $('dlg-reportes');
+const NOMBRE_METODO = { efectivo: 'Efectivo', tarjeta: 'Tarjeta', transferencia: 'Transferencia' };
+const NOMBRE_MODALIDAD = { aqui: 'Comer aquí', llevar: 'Para llevar', recoger: 'Recoger' };
+const isoLocal = (d) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+
+function fijarRango(r) {
+  const hoy = new Date();
+  let a = new Date(hoy), b = new Date(hoy);
+  if (r === 'ayer') { a.setDate(a.getDate() - 1); b = new Date(a); }
+  else if (r === '7') { a.setDate(a.getDate() - 6); }
+  else if (r === 'mes') { a = new Date(hoy.getFullYear(), hoy.getMonth(), 1); }
+  $('rp-desde').value = isoLocal(a);
+  $('rp-hasta').value = isoLocal(b);
+}
+
+function tablaRep(titulo, columnas, filas, vacio = 'Sin datos en este periodo.') {
+  const sec = el('section', 'rep-bloque');
+  sec.append(el('h3', '', titulo));
+  if (!filas.length) { sec.append(el('p', 'ayuda', vacio)); return sec; }
+  const t = document.createElement('table');
+  t.className = 'rep-tabla';
+  const cab = document.createElement('tr');
+  columnas.forEach((c, i) => { const th = document.createElement('th'); th.textContent = c; if (i) th.className = 'num'; cab.append(th); });
+  t.append(cab);
+  for (const f of filas) {
+    const tr = document.createElement('tr');
+    f.forEach((v, i) => { const td = document.createElement('td'); td.textContent = v; if (i) td.className = 'num'; tr.append(td); });
+    t.append(tr);
+  }
+  sec.append(t);
+  return sec;
+}
+
+async function cargarReporte() {
+  $('rp-error').textContent = '';
+  const q = new URLSearchParams({ desde: $('rp-desde').value, hasta: $('rp-hasta').value });
+  if ($('rp-sucursal').value) q.set('sucursal', $('rp-sucursal').value);
+  let r;
+  try { r = await pedir(API + 'admin/reportes.php?' + q); } catch (err) { $('rp-error').textContent = err.message; return; }
+
+  const sel = $('rp-sucursal');
+  if (sel.options.length !== r.sucursales.length + 1) {
+    const actual = sel.value;
+    sel.replaceChildren();
+    const todas = document.createElement('option'); todas.value = ''; todas.textContent = 'Todas (en conjunto)'; sel.append(todas);
+    for (const s of r.sucursales) { const o = document.createElement('option'); o.value = String(s.id); o.textContent = s.nombre; sel.append(o); }
+    sel.value = actual;
+  }
+
+  const caja = $('rp-contenido');
+  caja.replaceChildren();
+  const m = r.resumen;
+  const tarjetas = el('div', 'rep-tarjetas');
+  for (const [t, v] of [['Pedidos', String(m.pedidos)], ['Vendido', dinero.format(m.vendido)], ['Ticket promedio', dinero.format(m.ticket)], ['Cobrado en caja', dinero.format(m.cobrado)], ['Propinas', dinero.format(m.propinas)], ['Comisión de terminal', dinero.format(m.comisiones)], ['Cancelados', String(m.cancelados)]]) {
+    const c = el('div', 'rep-tarjeta');
+    c.append(el('span', '', t), el('strong', '', v));
+    tarjetas.append(c);
+  }
+  caja.append(tarjetas);
+  caja.append(el('p', 'ayuda', '“Vendido” es el total de los pedidos (sin cancelados). “Cobrado” es lo que se registró en Caja.'));
+
+  if (!$('rp-sucursal').value && r.sucursales.length > 1) {
+    caja.append(tablaRep('Por sucursal', ['Sucursal', 'Pedidos', 'Vendido', 'Cobrado', 'Propinas'],
+      r.por_sucursal.map((s) => [s.nombre, s.pedidos, dinero.format(s.vendido), dinero.format(s.cobrado), dinero.format(s.propinas)])));
+  }
+  caja.append(tablaRep('Por día', ['Día', 'Pedidos', 'Vendido'], r.por_dia.map((d) => [d.fecha, d.pedidos, dinero.format(d.vendido)])));
+  caja.append(tablaRep('Formas de pago', ['Método', 'Pagos', 'Monto', 'Propinas'], r.por_metodo.map((x) => [NOMBRE_METODO[x.metodo] || x.metodo, x.pagos, dinero.format(x.monto), dinero.format(x.propinas)])));
+  caja.append(tablaRep('Comer aquí / llevar / recoger', ['Tipo', 'Pedidos', 'Vendido'], r.por_modalidad.map((x) => [NOMBRE_MODALIDAD[x.modalidad] || x.modalidad, x.pedidos, dinero.format(x.vendido)])));
+  caja.append(tablaRep('Por mesa', ['Mesa', 'Pedidos', 'Vendido'], r.por_mesa.map((x) => [x.mesa, x.pedidos, dinero.format(x.vendido)]), 'Aún no hay pedidos con mesa en este periodo.'));
+  caja.append(tablaRep('Lo que más se vende', ['Producto', 'Unidades', 'Importe'], r.productos.map((p) => [p.nombre, p.unidades, dinero.format(p.importe)])));
+}
+
+$('btn-reportes').addEventListener('click', () => {
+  if (!$('rp-desde').value) fijarRango('hoy');
+  dlgReportes.showModal();
+  cargarReporte();
+});
+$('rp-cerrar').addEventListener('click', () => dlgReportes.close());
+document.querySelectorAll('.rep-rapidos [data-rango]').forEach((b) => b.addEventListener('click', () => { fijarRango(b.dataset.rango); cargarReporte(); }));
+['rp-desde', 'rp-hasta', 'rp-sucursal'].forEach((id) => $(id).addEventListener('change', cargarReporte));
+
+/* ------------------------------------------------------------------ */
+/*  Apariencia: logo y colores                                         */
+/* ------------------------------------------------------------------ */
+
+const dlgApariencia = $('dlg-apariencia');
+let apDatos = null;           // { colores, defecto, nombres }
+let apColores = {};
+const AP_PRESETS = [
+  { nombre: 'Clásico', colores: { encabezado: '#601020', acento: '#f8c000', boton: '#c8261a', fondo: '#fff7e0', texto: '#2a1015' } },
+  { nombre: 'Verde fresco', colores: { encabezado: '#1f5e3b', acento: '#f2c94c', boton: '#2f7d3a', fondo: '#f4faf1', texto: '#14231a' } },
+  { nombre: 'Azul moderno', colores: { encabezado: '#12355b', acento: '#ffb703', boton: '#1d6fd1', fondo: '#f3f7fc', texto: '#101c2b' } },
+  { nombre: 'Morado y rosa', colores: { encabezado: '#4a1d6b', acento: '#ff8fb1', boton: '#8e44ad', fondo: '#faf5fd', texto: '#24102f' } },
+  { nombre: 'Carbón y naranja', colores: { encabezado: '#222222', acento: '#ff7a00', boton: '#d9480f', fondo: '#f6f4f1', texto: '#1c1c1c' } },
+];
+
+/* Mismas cuentas que el servidor (api/lib_marca.php) para ver la vista previa al instante */
+const apRgb = (h) => [1, 3, 5].map((i) => parseInt(h.slice(i, i + 2), 16));
+const apLum = (h) => { const [r, g, b] = apRgb(h).map((v) => { const s = v / 255; return s <= 0.03928 ? s / 12.92 : ((s + 0.055) / 1.055) ** 2.4; }); return 0.2126 * r + 0.7152 * g + 0.0722 * b; };
+const apContraste = (a, b) => { const x = apLum(a), y = apLum(b); return (Math.max(x, y) + 0.05) / (Math.min(x, y) + 0.05); };
+const apTextoSobre = (h) => (apContraste(h, '#ffffff') >= apContraste(h, '#1a1a1a') ? '#ffffff' : '#1a1a1a');
+const apMezcla = (a, b, t) => { const x = apRgb(a), y = apRgb(b); return '#' + [0, 1, 2].map((i) => Math.round(x[i] + (y[i] - x[i]) * t).toString(16).padStart(2, '0')).join(''); };
+
+function apAplicar(c) {
+  const s = document.documentElement.style;
+  s.setProperty('--color-vino', c.encabezado);
+  s.setProperty('--color-amarillo', c.acento);
+  s.setProperty('--color-principal', c.boton);
+  s.setProperty('--color-fondo', c.fondo);
+  s.setProperty('--color-oscuro', c.texto);
+  s.setProperty('--color-tarjeta', apLum(c.fondo) < 0.2 ? apMezcla(c.fondo, '#ffffff', 0.08) : '#ffffff');
+  s.setProperty('--color-suave', apMezcla(c.fondo, c.acento, 0.22));
+  s.setProperty('--color-borde', apMezcla(c.fondo, c.texto, 0.12));
+  s.setProperty('--texto-encabezado', apTextoSobre(c.encabezado));
+  s.setProperty('--texto-boton', apTextoSobre(c.boton));
+  const malo = apContraste(c.texto, c.fondo) < 4.5;
+  $('ap-aviso').textContent = malo ? '⚠ El texto casi no se lee sobre ese fondo; elige colores con más contraste.' : '';
+  $('ap-guardar').disabled = malo;
+}
+
+function apQuitarVistaPrevia() {
+  const s = document.documentElement.style;
+  ['--color-vino', '--color-amarillo', '--color-principal', '--color-fondo', '--color-oscuro', '--color-tarjeta', '--color-suave', '--color-borde', '--texto-encabezado', '--texto-boton'].forEach((p) => s.removeProperty(p));
+}
+
+function apRecargarTema() {
+  apQuitarVistaPrevia();
+  const link = document.querySelector('link[href*="api/tema.php"]');
+  if (link) link.href = '../api/tema.php?t=' + Date.now();
+}
+
+function apRecargarLogo() {
+  const url = '../api/logo.php?t=' + Date.now();
+  document.querySelectorAll('img.logo, #ap-logo-img').forEach((i) => { i.src = url; });
+}
+
+function apPintar() {
+  const caja = $('ap-colores');
+  caja.replaceChildren();
+  for (const k of Object.keys(apDatos.nombres)) {
+    const fila = el('label', 'ap-color');
+    const sel = document.createElement('input');
+    sel.type = 'color'; sel.value = apColores[k]; sel.id = 'ap-' + k;
+    sel.addEventListener('input', () => { apColores[k] = sel.value; apAplicar(apColores); });
+    fila.append(sel, el('span', '', apDatos.nombres[k]));
+    caja.append(fila);
+  }
+  const pre = $('ap-presets');
+  pre.replaceChildren();
+  for (const p of AP_PRESETS) {
+    const b = el('button', 'ap-preset');
+    b.type = 'button';
+    b.title = p.nombre;
+    for (const k of ['encabezado', 'acento', 'boton', 'fondo']) { const m = el('i', ''); m.style.background = p.colores[k]; b.append(m); }
+    b.append(el('span', '', p.nombre));
+    b.addEventListener('click', () => { apColores = { ...p.colores }; apPintar(); apAplicar(apColores); });
+    pre.append(b);
+  }
+}
+
+async function apCargar() {
+  apDatos = await pedir(API + 'admin/marca.php');
+  apColores = { ...apDatos.colores };
+  apPintar();
+  apAplicar(apColores);
+  $('ap-logo-quitar').hidden = !apDatos.logo;
+}
+
+$('btn-apariencia').addEventListener('click', async () => {
+  $('ap-error').textContent = '';
+  try { await apCargar(); } catch (err) { $('ap-error').textContent = err.message; }
+  dlgApariencia.showModal();
+});
+dlgApariencia.addEventListener('close', apQuitarVistaPrevia);
+$('ap-cerrar').addEventListener('click', () => dlgApariencia.close());
+$('ap-guardar').addEventListener('click', async () => {
+  $('ap-error').textContent = '';
+  try {
+    const r = await enviarJson(API + 'admin/marca.php', { accion: 'colores', colores: apColores });
+    apRecargarTema();
+    avisar(r.avisos && r.avisos.length ? r.avisos[0] : 'Apariencia guardada', !!(r.avisos && r.avisos.length));
+    dlgApariencia.close();
+  } catch (err) { $('ap-error').textContent = err.message; }
+});
+$('ap-restablecer').addEventListener('click', async () => {
+  if (!(await confirmar('¿Volver a los colores originales de Comandia?', { si: 'Restablecer', no: 'Volver' }))) return;
+  try { await enviarJson(API + 'admin/marca.php', { accion: 'restablecer' }); apRecargarTema(); await apCargar(); avisar('Colores restablecidos'); }
+  catch (err) { $('ap-error').textContent = err.message; }
+});
+$('ap-logo-archivo').addEventListener('change', async (ev) => {
+  const archivo = ev.target.files[0];
+  ev.target.value = '';
+  if (!archivo) return;
+  $('ap-error').textContent = '';
+  const datos = new FormData();
+  datos.append('accion', 'logo');
+  datos.append('logo', archivo);
+  try { await pedir(API + 'admin/marca.php', { method: 'POST', body: datos }); apRecargarLogo(); $('ap-logo-quitar').hidden = false; avisar('Logo actualizado'); }
+  catch (err) { $('ap-error').textContent = err.message; }
+});
+$('ap-logo-quitar').addEventListener('click', async () => {
+  try { await enviarJson(API + 'admin/marca.php', { accion: 'quitar_logo' }); apRecargarLogo(); $('ap-logo-quitar').hidden = true; avisar('Logo quitado'); }
+  catch (err) { $('ap-error').textContent = err.message; }
+});
+
+/* ------------------------------------------------------------------ */
+/*  Ajustes de cocina                                                  */
+/* ------------------------------------------------------------------ */
+
+const dlgAjustes = $('dlg-prioridades');
+let datosPrio = null;
+
+async function cargarAjustes() {
+  datosPrio = await pedir(API + 'admin/prioridades.php');
+  $('pm-prep').value = datosPrio.min_preparacion;
+  const lista = $('lote-lista');
+  lista.replaceChildren();
+  for (const c of datosPrio.lote) {
+    const f = el('label', 'lote-op');
+    const x = document.createElement('input');
+    x.type = 'checkbox'; x.value = String(c.id); x.checked = c.activa;
+    x.addEventListener('change', guardarLote);
+    f.append(x, el('span', '', c.nombre));
+    lista.append(f);
+  }
+}
+
+async function guardarLote() {
+  $('pr-error').textContent = '';
+  const ids = [...document.querySelectorAll('#lote-lista input:checked')].map((x) => Number(x.value));
+  try {
+    await enviarJson(API + 'admin/prioridades.php', { accion: 'lote', categorias: ids });
+    avisar('Guardado: cocina verá esas categorías en “Preparar en lote”');
+  } catch (err) { $('pr-error').textContent = err.message; }
+}
+
+async function guardarAjustes() {
+  $('pr-error').textContent = '';
+  try {
+    await enviarJson(API + 'admin/prioridades.php', { accion: 'modalidad', aqui: datosPrio.modalidad.aqui, llevar: datosPrio.modalidad.llevar, prep: Number($('pm-prep').value) || 0 });
+    await cargarAjustes();
+    avisar('Ajuste guardado');
+  } catch (err) {
+    $('pr-error').textContent = err.message;
+  }
+}
+
+$('btn-prioridades').addEventListener('click', async () => {
+  $('pr-error').textContent = '';
+  try { await cargarAjustes(); } catch (err) { avisar(err.message, true); return; }
+  dlgAjustes.showModal();
+});
+$('pm-prep').addEventListener('change', guardarAjustes);
+$('pr-cerrar').addEventListener('click', () => dlgAjustes.close());
+
+/* ------------------------------------------------------------------ */
+/*  Extras                                                             */
+/* ------------------------------------------------------------------ */
+
+const dlgExtras = $('dlg-extras');
+
+/**
+ * "Con costo": una casilla que, al marcarla, muestra el campo del precio.
+ * Sin marcar el extra es gratis (precio 0).
+ */
+function campoCosto(precioInicial = 0) {
+  const caja = el('div', 'costo');
+  const etiqueta = el('label', 'casilla');
+  const marca = document.createElement('input');
+  marca.type = 'checkbox';
+  marca.checked = precioInicial > 0;
+  etiqueta.append(marca, el('span', '', 'Con costo'));
+
+  const campo = document.createElement('input');
+  campo.type = 'text';
+  campo.inputMode = 'decimal';
+  campo.placeholder = '$ precio';
+  campo.setAttribute('aria-label', 'Precio del extra');
+  campo.value = precioInicial > 0 ? precioInicial.toFixed(2) : '';
+  campo.hidden = !marca.checked;
+
+  marca.addEventListener('change', () => {
+    campo.hidden = !marca.checked;
+    if (marca.checked) campo.focus(); else campo.value = '';
+  });
+  caja.append(etiqueta, campo);
+  return {
+    caja,
+    valor: () => (marca.checked ? (campo.value.trim() || '0') : '0'),
+    reiniciar: () => { marca.checked = false; campo.value = ''; campo.hidden = true; },
+  };
+}
+
+const costoNuevo = campoCosto(0);
+$('x-costo-caja').append(...costoNuevo.caja.children);
+
+function pintarExtras() {
+  // Sugerencias de grupo (los que ya existen)
+  $('lista-grupos').replaceChildren(...[...new Set(extras.map((x) => x.grupo).filter(Boolean))].map((g) => new Option(g)));
+
+  const caja = $('lista-extras');
+  caja.replaceChildren();
+  if (extras.length === 0) {
+    caja.append(el('p', '', 'Todavía no hay extras. Agrega el primero abajo (por ejemplo, Sin cebolla).'));
+    return;
+  }
+  for (const x of extras) {
+    const fila = el('div', 'fila-extra' + (x.activo ? '' : ' inactivo'));
+
+    const nombre = document.createElement('input');
+    nombre.type = 'text';
+    nombre.maxLength = 60;
+    nombre.value = x.nombre;
+    nombre.setAttribute('aria-label', 'Nombre del extra');
+
+    const codigo = document.createElement('input');
+    codigo.type = 'text';
+    codigo.className = 'cod';
+    codigo.maxLength = 20;
+    codigo.value = x.codigo || '';
+    codigo.placeholder = 'Código';
+    codigo.setAttribute('aria-label', 'Código del extra (ej. XQ)');
+
+    const grupo = document.createElement('input');
+    grupo.type = 'text';
+    grupo.maxLength = 40;
+    grupo.setAttribute('list', 'lista-grupos');
+    grupo.autocomplete = 'off';
+    grupo.value = x.grupo || '';
+    grupo.placeholder = 'Grupo';
+    grupo.setAttribute('aria-label', 'Grupo del extra (ej. Salsas)');
+
+    const costo = campoCosto(x.precio);
+
+    const botones = el('div', 'botones');
+    const activo = el('label', 'switch');
+    const casilla = document.createElement('input');
+    casilla.type = 'checkbox';
+    casilla.checked = x.activo;
+    activo.append(casilla, el('span', 'slider'), el('span', '', 'Activo'));
+
+    const guardar = el('button', 'btn', 'Guardar');
+    guardar.type = 'button';
+    guardar.addEventListener('click', () => accionExtra(
+      { accion: 'actualizar', id: x.id, nombre: nombre.value.trim(), codigo: codigo.value.trim(), grupo: grupo.value.trim(), precio: costo.valor(), activo: casilla.checked },
+      'Extra actualizado'));
+
+    const borrar = el('button', 'btn peligro', 'Eliminar');
+    borrar.type = 'button';
+    borrar.addEventListener('click', async () => {
+      if (await confirmar(`¿Eliminar el extra “${x.nombre}”? Se quita de todos los productos.`, { si: 'Eliminar', peligro: true })) {
+        accionExtra({ accion: 'eliminar', id: x.id }, 'Extra eliminado');
+      }
+    });
+    botones.append(activo, guardar, borrar);
+
+    // Asignar a toda una categoría de un golpe
+    const asignar = el('div', 'asignar');
+    const cat = document.createElement('select');
+    cat.setAttribute('aria-label', 'Categoría');
+    cat.append(...categorias.map((c) => new Option(`Categoría: ${c.nombre}`, String(c.id))));
+    const poner = el('button', 'btn', 'Poner a todos');
+    poner.type = 'button';
+    poner.addEventListener('click', () => accionExtra({ accion: 'asignar', id: x.id, categoria_id: Number(cat.value), asignar: true }, 'Extra agregado a la categoría'));
+    const quitar = el('button', 'btn', 'Quitar a todos');
+    quitar.type = 'button';
+    quitar.addEventListener('click', () => accionExtra({ accion: 'asignar', id: x.id, categoria_id: Number(cat.value), asignar: false }, 'Extra quitado de la categoría'));
+    if (categorias.length) asignar.append(cat, poner, quitar);
+
+    const usado = productos.filter((p) => p.extras.includes(x.id)).length;
+    fila.append(nombre, codigo, grupo, costo.caja, botones);
+    if (categorias.length) fila.append(asignar);
+    fila.append(el('span', 'cuenta', `En ${usado} producto(s)`));
+    caja.append(fila);
+  }
+}
+
+async function accionExtra(cuerpo, mensajeOk) {
+  $('x-error').textContent = '';
+  try {
+    await enviarJson(API + 'admin/extras.php', cuerpo);
+    await cargarCatalogo();
+    pintarExtras();
+    avisar(mensajeOk);
+  } catch (err) {
+    $('x-error').textContent = err.message;
+  }
+}
+
+$('btn-extras').addEventListener('click', () => {
+  $('x-error').textContent = '';
+  pintarExtras();
+  dlgExtras.showModal();
+});
+$('x-cerrar').addEventListener('click', () => dlgExtras.close());
+$('form-nuevo-extra').addEventListener('submit', async (ev) => {
+  ev.preventDefault();
+  await accionExtra({
+    accion: 'crear', nombre: $('x-nombre').value.trim(), codigo: $('x-codigo').value.trim(),
+    grupo: $('x-grupo').value.trim(), precio: costoNuevo.valor(),
+  }, 'Extra creado');
+  if (!$('x-error').textContent) {
+    $('x-nombre').value = ''; $('x-codigo').value = '';
+    costoNuevo.reiniciar();        // el grupo se conserva: se suelen agregar varios seguidos
+  }
+});
+
+iniciar();

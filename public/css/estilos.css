@@ -1,0 +1,93 @@
+/* Estilos base. Paleta tomada del logo y del menú de "Los Tacos D'La Vale".
+   Los colores viven en variables: cambiándolos aquí cambian en toda la app. */
+
+:root {
+  --color-principal: #c8261a;   /* rojo del logo (botones; texto blanco encima: contraste 5.6) */
+  --color-vino:      #601020;   /* vino del logo (encabezados, selección) */
+  --color-amarillo:  #f8c000;   /* amarillo del logo (acentos, borde del encabezado) */
+  --color-oscuro:    #2a1015;   /* texto */
+  --color-fondo:     #fff7e0;   /* crema */
+  --color-tarjeta:   #ffffff;
+  --color-borde:     #ecdcb4;
+  --color-suave:     #f7ebc3;   /* fondos suaves (sin foto, etiquetas) */
+  --color-ok:        #2f7d3a;
+  --color-error:     #b3261e;
+  --radio:           14px;
+}
+
+* { box-sizing: border-box; }
+
+/* Que el atributo "hidden" siempre oculte, aunque otra regla defina display */
+[hidden] { display: none !important; }
+
+body {
+  margin: 0;
+  font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  background: var(--color-fondo);
+  color: var(--color-oscuro);
+  line-height: 1.5;
+}
+
+.encabezado {
+  background: var(--color-vino);
+  border-bottom: 5px solid var(--color-amarillo);
+  color: var(--texto-encabezado, #fff);
+  padding: 28px 20px;
+  text-align: center;
+}
+.marca { display: flex; align-items: center; gap: 12px; min-width: 0; }
+.encabezado:not(.barra) .marca { justify-content: center; }
+.logo { width: 52px; height: 52px; border-radius: 12px; flex: none; background: #f1f7fa; object-fit: contain; }
+.encabezado h1 { margin: 0; font-size: 2rem; letter-spacing: .5px; }
+.encabezado p  { margin: 4px 0 0; opacity: .85; }
+
+.contenedor {
+  max-width: 720px;
+  margin: 0 auto;
+  padding: 20px 16px 48px;
+  display: grid;
+  gap: 16px;
+}
+
+.tarjeta {
+  background: var(--color-tarjeta);
+  border: 1px solid var(--color-borde);
+  border-radius: var(--radio);
+  padding: 18px 20px;
+}
+.tarjeta h2 { margin: 0 0 12px; font-size: 1.15rem; }
+
+.estado { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; }
+.estado li::before { content: "✔ "; color: var(--color-ok); font-weight: 700; }
+.estado li.error::before { content: "✖ "; color: var(--color-error); }
+.estado li.error { color: var(--color-error); }
+.estado li.cargando::before { content: ""; }
+.cargando { color: #8a7a6c; }
+
+.categoria { margin: 14px 0 6px; font-size: 1rem; color: var(--color-principal); }
+
+.producto {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 10px 0;
+  border-top: 1px dashed var(--color-borde);
+}
+.producto { align-items: center; }
+.producto-datos { flex: 1; min-width: 0; }
+.foto-mini {
+  width: 64px;
+  height: 64px;
+  object-fit: cover;
+  border-radius: 10px;
+  flex: none;
+  background: var(--color-suave);
+}
+.encabezado a { color: var(--texto-encabezado, #fff); text-decoration: underline; }
+.producto .nombre { font-weight: 600; }
+.producto .desc   { font-size: .88rem; color: #6f5f52; }
+.producto .precio { font-weight: 700; white-space: nowrap; }
+
+/* Mesa del pedido (mesero) */
+.chip-mesa { padding: 1px 8px; border-radius: 10px; font-size: .78rem; font-weight: 800; background: #fff3c4; color: #5a4636; border: 1px solid #e3c25a; }
+.sel-sucursal { margin-top: 4px; max-width: 100%; padding: 4px 8px; border-radius: 10px; font-weight: 700; }

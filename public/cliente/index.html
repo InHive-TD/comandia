@@ -1,0 +1,208 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="robots" content="noindex">
+  <title>Pide aquí · Comandia</title>
+  <link rel="icon" type="image/png" href="img/favicon.png">
+  <link rel="stylesheet" href="css/estilos.css?v=202611201300">
+  <link rel="stylesheet" href="css/admin.css?v=202611192050">
+  <link rel="stylesheet" href="css/pedidos.css?v=202611192050">
+  <link rel="stylesheet" href="css/cliente.css?v=202611192050">
+  <link rel="stylesheet" href="api/tema.php">
+</head>
+<body>
+
+  <header class="encabezado barra">
+    <div class="marca">
+      <img class="logo" src="api/logo.php" alt="Comandia" width="52" height="52">
+      <div>
+        <h1 class="nombre-negocio">Comandia</h1>
+        <p id="subtitulo">Haz tu pedido</p>
+        <select id="sel-sucursal-cliente" class="sel-sucursal" aria-label="Sucursal" hidden></select>
+      </div>
+    </div>
+  </header>
+
+  <nav class="cliente-nav" aria-label="Secciones">
+    <button id="nav-menu" class="nav-tab" type="button"><span class="nav-ico" aria-hidden="true">🌮</span><span>Menú</span></button>
+    <button id="nav-pedido" class="nav-tab" type="button"><span class="nav-ico" aria-hidden="true">🧾</span><span>Mi pedido</span></button>
+    <button id="nav-pagar" class="nav-tab" type="button"><span class="nav-ico" aria-hidden="true">💳</span><span>Pagar</span></button>
+  </nav>
+
+  <main class="contenedor ancho">
+
+    
+
+    <section id="vista-cargando" class="tarjeta angosta"><p>Cargando…</p></section>
+
+    <section id="vista-aviso" class="tarjeta angosta" hidden>
+      <h2 id="aviso-titulo"></h2>
+      <p id="aviso-texto"></p>
+      <button id="aviso-reintentar" class="btn principal" type="button">Reintentar</button>
+    </section>
+
+    <!-- ===== Menú y carrito ===== -->
+    <section id="vista-pedido" class="pedido" hidden>
+      <div class="menu-col">
+        <div id="agregando" class="destino" hidden>
+          <span id="agregando-texto"></span>
+          <button id="agregando-volver" class="btn" type="button">Volver a mis pedidos</button>
+        </div>
+        <button id="ver-mis" class="btn ver-mis" type="button" hidden>Mis pedidos (<span id="ver-mis-n">0</span>)</button>
+        <div id="cats" class="cats"></div>
+        <p class="tip-toque solo-movil"><span aria-hidden="true">👆</span> <span><strong>Toca la foto del platillo una vez por cada pieza que quieras.</strong> Ej.: toca 3 veces «Taco de alambre» para agregar 3 tacos. Si quieres elegir carne u opciones, toca «con opciones» (la parte de abajo). Para quitar, abre <em>Ver tu pedido</em> y baja la cantidad o quítalo.</span></p>
+        <div id="productos" class="productos" aria-live="polite"></div>
+      </div>
+
+      <aside id="carrito" class="carrito" aria-label="Tu pedido">
+        <div class="carrito-cab">
+          <h2>Tu pedido</h2>
+          <button id="btn-cerrar-carrito" class="btn btn-seguir solo-movil" type="button">← Seguir pidiendo</button>
+        </div>
+        <div id="platos" class="platos" aria-label="Plato al que se agrega"></div>
+        <div id="lineas" class="lineas"></div>
+
+        <div id="campos-cliente" class="formulario carrito-form">
+        <div class="modalidad" role="group" aria-label="Tipo de pedido">
+          <button type="button" class="btn mod-btn" data-mod="aqui" aria-pressed="true">🍽 Comer aquí</button>
+          <button type="button" class="btn mod-btn" data-mod="llevar" aria-pressed="false">🥡 Para llevar</button>
+          <button type="button" class="btn mod-btn" data-mod="recoger" aria-pressed="false">🛍 Recoger</button>
+        </div>
+          <label>Tu nombre (para entregarte tu pedido)
+            <input id="cliente" type="text" maxlength="80" autocomplete="given-name" placeholder="Obligatorio">
+          </label>
+          <label><span>Tu teléfono <span id="tel-nota">(opcional)</span></span>
+            <input id="telefono" type="tel" inputmode="tel" maxlength="16" autocomplete="tel-national" placeholder="10 dígitos, ej. 322 123 4567">
+          </label>
+          <label id="promos-fila" class="casilla" hidden>
+            <input id="acepta-promos" type="checkbox">
+            <span>Acepto recibir promociones y avisos de <span class="nombre-negocio">este negocio</span> por mensaje. <a href="#" id="ver-aviso">Aviso de privacidad</a></span>
+          </label>
+          <div class="cuando-caja">
+            <div id="cuando"></div>
+          </div>
+          <label>Notas (opcional)
+            <input id="notas-orden" type="text" maxlength="255" autocomplete="off">
+          </label>
+          <input id="web" type="text" name="web" tabindex="-1" autocomplete="off" aria-hidden="true" class="trampa">
+        </div>
+
+        <div class="total-fila"><span>Total</span><strong id="total">$0.00</strong></div>
+        <p id="espera-previa" class="espera-previa" role="status" hidden></p>
+        <p class="ayuda">El pago se hace en caja al recoger tu pedido. Aceptamos <strong>efectivo, transferencia y tarjeta</strong>.</p>
+        <p id="pedido-error" class="msg-error" role="alert"></p>
+        <div class="acciones-dialogo">
+          <button id="btn-levantar" class="btn principal grande" type="button">Enviar pedido</button>
+          <button id="btn-vaciar" class="btn" type="button">Vaciar</button>
+        </div>
+      </aside>
+
+      <button id="barra-carrito" class="barra-carrito solo-movil" type="button">
+        <span id="barra-texto">Ver pedido</span><strong id="barra-total"></strong>
+      </button>
+    </section>
+
+    <!-- ===== Mis pedidos (seguimiento en vivo) ===== -->
+    <section id="vista-mis" class="seguimiento" hidden>
+      <div class="mis-barra">
+        <h2>Mis pedidos</h2>
+        <button id="mis-nuevo" class="btn principal" type="button">＋ Hacer un pedido nuevo</button>
+      </div>
+      <p class="ayuda">Tus pedidos se quedan guardados en este celular: aunque cierres o recargues la página, aquí los sigues viendo.</p>
+      <p id="mis-error" class="msg-error" role="alert"></p>
+      <p id="mis-vacio" class="ayuda" hidden>Todavía no tienes pedidos en este celular.</p>
+      <h3 id="mis-activos-t" class="seg-sub" hidden>En curso</h3>
+      <div id="mis-activos" class="mis-lista"></div>
+      <h3 id="mis-fin-t" class="seg-sub" hidden>Terminados</h3>
+      <div id="mis-fin" class="mis-lista"></div>
+
+      <form id="buscar-form" class="buscar-pedido tarjeta" autocomplete="off">
+        <h3>¿Pediste en mostrador o desde otro celular?</h3>
+        <p class="ayuda">Escribe tu <b>número de pedido</b> o el <b>nombre</b> con el que lo pediste para ver qué llevas y cómo va.</p>
+        <div class="buscar-campos">
+          <input id="buscar-texto" type="text" maxlength="80" placeholder="Número o nombre" aria-label="Número de pedido o nombre">
+          <button class="btn principal" type="submit">Buscar</button>
+        </div>
+        <p id="buscar-error" class="msg-error" role="alert"></p>
+      </form>
+    </section>
+
+    <!-- ===== Pagar por transferencia (página propia; la CLABE se cambia en js/cliente.js: CLABE_TRANSFERENCIA) ===== -->
+    <section id="vista-pagar" class="vista-pagar" hidden>
+    <section id="transferencias" class="transferencia" aria-label="Pago por transferencia">
+      <strong class="transf-titulo">📲 Pagar por transferencia</strong>
+      <div class="transf-fila">
+        <div class="transf-texto">
+          <span class="transf-etq">Clave interbancaria (CLABE)</span>
+          <code id="clabe" class="clabe"></code>
+        </div>
+        <button id="clabe-copiar" class="btn" type="button">Copiar</button>
+      </div>
+      <span class="transf-dato"><b>Beneficiario:</b> Valentín Cacho</span>
+      <span class="transf-dato"><b>Institución:</b> Mercado Pago W</span>
+      <form id="concepto-form" class="transf-buscar" autocomplete="off">
+        <label for="concepto-numero" class="transf-etq">Concepto: escribe tu número de pedido</label>
+        <div class="transf-fila">
+          <input id="concepto-numero" type="text" inputmode="numeric" maxlength="4" placeholder="Ej. 42">
+          <button class="btn principal" type="submit">Buscar</button>
+        </div>
+      </form>
+      <p id="concepto-error" class="msg-error" role="alert"></p>
+      <div id="concepto-res" class="transf-fila" hidden>
+        <div class="transf-texto">
+          <span class="transf-etq">Concepto</span>
+          <code id="transf-concepto" class="clabe"></code>
+        </div>
+        <button id="concepto-copiar" class="btn" type="button">Copiar</button>
+      </div>
+    </section>
+    </section>
+
+  </main>
+
+  <!-- Elegir extras y cantidad -->
+  <dialog id="dlg-opciones">
+    <form id="form-opciones" class="formulario dialogo">
+      <h2 id="op-titulo"></h2>
+      <p id="op-desc" class="ayuda" hidden></p>
+      <p id="op-precio" class="ayuda"></p>
+
+      <div class="cantidad" role="group" aria-label="Cantidad">
+        <button id="op-menos" class="btn paso" type="button" aria-label="Menos">−</button>
+        <output id="op-cantidad">1</output>
+        <button id="op-mas" class="btn paso" type="button" aria-label="Más">＋</button>
+      </div>
+
+      <fieldset class="extras-campo" id="op-extras-caja">
+        <legend>Opciones</legend>
+        <div id="op-extras" class="opciones-extras"></div>
+      </fieldset>
+
+      <label>Nota para este producto (opcional)
+        <input id="op-notas" type="text" maxlength="255" autocomplete="off">
+      </label>
+
+      <div class="acciones-dialogo">
+        <button id="op-agregar" class="btn principal grande" type="submit">Agregar</button>
+        <button id="op-cancelar" class="btn" type="button">Cancelar</button>
+      </div>
+    </form>
+  </dialog>
+
+  <dialog id="dlg-aviso">
+    <div class="formulario dialogo">
+      <h2>Aviso de privacidad</h2>
+      <p><span class="nombre-negocio">Este negocio</span> usará tu nombre y teléfono para entregarte tu pedido y, solo si lo aceptas, para enviarte promociones y novedades.</p>
+      <p>No vendemos ni compartimos tus datos. Puedes pedir que dejemos de enviarte mensajes o que borremos tu teléfono en cualquier momento acercándote a caja.</p>
+      <div class="acciones-dialogo"><button id="aviso-cerrar" class="btn principal" type="button">Entendido</button></div>
+    </div>
+  </dialog>
+
+  <div id="toast" class="toast" role="status" hidden></div>
+
+  <script src="js/comun.js?v=202611201400"></script>
+  <script src="js/cliente.js?v=202611201400"></script>
+</body>
+</html>

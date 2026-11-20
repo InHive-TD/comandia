@@ -1,0 +1,90 @@
+/* Caja: tablet o computadora; botones grandes. */
+.barra-botones { display: flex; gap: 8px; flex-wrap: wrap; justify-content: flex-end; align-items: center; }
+.barra-botones a.btn { text-decoration: none; display: inline-flex; align-items: center; }
+
+.caja-fecha { display: flex; gap: 10px; align-items: end; margin-bottom: 12px; flex-wrap: wrap; }
+.caja-fecha label { display: grid; gap: 4px; font-weight: 600; }
+.caja-fecha input { min-height: 48px; font: inherit; padding: 6px 10px; border: 1px solid var(--color-borde); border-radius: 10px; }
+
+.tiles { display: grid; gap: 10px; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); margin-bottom: 14px; }
+.tile { background: var(--color-tarjeta); border: 1px solid var(--color-borde); border-radius: var(--radio); padding: 12px 14px; }
+.tile small { display: block; color: #5a4636; font-weight: 600; }
+.tile strong { display: block; font-size: 1.5rem; font-variant-numeric: tabular-nums; }
+.tile.alerta { background: #fde7d9; border-color: #e9b08c; }
+.tile.alerta strong { color: #8a3b17; }
+.tile.ok strong { color: var(--color-ok); }
+
+.pestanas { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 12px; }
+.pestana { min-height: 52px; font-weight: 700; }
+.pestana[aria-pressed="true"] { background: var(--color-vino); color: #fff; border-color: var(--color-vino); }
+
+.panel-caja { display: grid; gap: 12px; grid-template-columns: repeat(auto-fill, minmax(min(100%, 340px), 1fr)); align-items: start; }
+.panel-caja .ancho-total { grid-column: 1 / -1; }
+.vacio { color: #5a4636; padding: 16px 4px; }
+
+.cobro-tarjeta { background: var(--color-tarjeta); border: 1px solid var(--color-borde); border-left: 10px solid var(--color-amarillo); border-radius: var(--radio); padding: 12px 14px; display: grid; gap: 8px; }
+.cobro-tarjeta.urgente { border-left-color: var(--color-principal); background: #fff5f2; }
+.cobro-tarjeta.pagada { border-left-color: var(--color-ok); }
+.cobro-tarjeta.devolver { border-left-color: var(--color-error); background: #fff5f2; }
+.cobro-cab { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 10px; }
+.cobro-cab .nombre { font-size: 1.35rem; font-weight: 800; }
+.cobro-cab .num { color: var(--color-vino); font-weight: 800; }
+.cobro-chips { display: flex; flex-wrap: wrap; gap: 6px; }
+.cobro-items { margin: 0; padding-left: 18px; color: #5a4636; font-size: .95rem; }
+.cobro-monto { display: flex; justify-content: space-between; align-items: baseline; gap: 10px; }
+.cobro-monto strong { font-size: 1.8rem; font-variant-numeric: tabular-nums; }
+.cobro-aviso { font-weight: 700; color: #8a3b17; }
+.cobro-tarjeta .btn { min-height: 56px; font-size: 1.1rem; }
+.pago-fila { display: flex; flex-wrap: wrap; gap: 6px 10px; align-items: center; font-size: .95rem; }
+.pago-fila.anulado { text-decoration: line-through; opacity: .55; }
+.pago-fila .btn { min-height: 40px; padding: 2px 12px; font-size: .9rem; }
+
+.estado-chip.entregada-chip { background: #dff2e1; color: #1f5a2a; }
+.estado-chip.alerta-chip { background: #f8d7d3; color: #8c1c12; }
+.chip-mod { padding: 1px 8px; border-radius: 10px; font-size: .78rem; font-weight: 800; background: var(--color-suave); color: #5a4636; }
+.chip-mod.llevar { background: #3f8fcb; color: #fff; }
+.chip-mod.recoger { background: #7b4fb8; color: #fff; }
+.chip-mod.aqui { background: #5aa878; color: #10361d; }
+
+/* Corte / propinas */
+.corte { background: var(--color-tarjeta); border: 1px solid var(--color-borde); border-radius: var(--radio); padding: 14px; overflow-x: auto; }
+.corte h3 { margin: 0 0 8px; }
+.corte table { width: 100%; border-collapse: collapse; font-variant-numeric: tabular-nums; }
+.corte th, .corte td { text-align: left; padding: 8px 6px; border-bottom: 1px solid var(--color-borde); }
+.corte th.n, .corte td.n { text-align: right; }
+.corte tfoot td { font-weight: 800; border-bottom: 0; }
+
+/* Diálogo de cobro */
+#dlg-cobro { width: min(520px, 96vw); }
+.cb-saldo, .cb-total { display: flex; justify-content: space-between; align-items: baseline; gap: 10px; }
+.cb-saldo strong { font-size: 1.6rem; font-variant-numeric: tabular-nums; }
+.cb-total { border-top: 2px solid var(--color-borde); padding-top: 10px; }
+.cb-total strong { font-size: 2.2rem; color: var(--color-vino); font-variant-numeric: tabular-nums; }
+.cb-grupo { border: 0; padding: 0; margin: 0; display: grid; gap: 8px; }
+.cb-grupo legend { font-weight: 700; padding: 0; margin-bottom: 6px; }
+.cb-opciones { display: flex; flex-wrap: wrap; gap: 8px; }
+.cb-opciones .btn { flex: 1 1 90px; min-height: 56px; font-weight: 700; }
+.cb-opciones .btn[aria-pressed="true"] { background: var(--color-vino); color: #fff; border-color: var(--color-vino); }
+.cb-parte summary { cursor: pointer; font-weight: 600; min-height: 44px; display: flex; align-items: center; }
+.cb-efectivo { display: grid; gap: 6px; }
+.cb-cambio { font-size: 1.3rem; font-weight: 800; font-variant-numeric: tabular-nums; }
+.cb-cambio.falta { color: var(--color-error); }
+#dlg-cobro input[type="number"], .caja-fecha input { min-height: 52px; font-size: 1.2rem; }
+
+.cobro-tarjeta a.btn { text-decoration: none; display: inline-flex; align-items: center; justify-content: center; }
+
+.barra-botones .btn.activo { background: var(--color-amarillo); color: #3b0d12; border-color: var(--color-amarillo); }
+
+/* Nota de pedido modificado (al cobrar) */
+.cobro-modificado { margin-top: 6px; padding: 6px 10px; border-radius: 8px; background: #efe1fb; color: #3d1466; font-size: .88rem; }
+.cobro-modificado ul { margin: 2px 0 0; padding-left: 16px; }
+
+
+/* Platillos plegados ("Ver platillos") */
+.cobro-plegable { display: grid; gap: 6px; }
+.cobro-tarjeta .btn.cobro-ver { min-height: 38px; padding: 4px 10px; font-size: .9rem; font-weight: 600; background: transparent; border-style: dashed; justify-content: flex-start; text-align: left; }
+.cobro-detalle[hidden] { display: none; }
+
+.cb-comision { display: flex; justify-content: space-between; align-items: baseline; gap: 10px; color: #5a4636; }
+.cb-comision strong { font-variant-numeric: tabular-nums; }
+.cb-comision small { font-weight: 400; }

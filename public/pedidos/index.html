@@ -1,0 +1,232 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="robots" content="noindex">
+  <title>Tomar pedidos · Comandia</title>
+  <link rel="icon" type="image/png" href="../img/favicon.png">
+  <link rel="stylesheet" href="../css/estilos.css?v=202611201300">
+  <link rel="stylesheet" href="../css/admin.css?v=202611192050">
+  <link rel="stylesheet" href="../css/menu-barra.css?v=202611192050">
+  <link rel="stylesheet" href="../css/pedidos.css?v=202611201130">
+  <link rel="stylesheet" href="../api/tema.php">
+</head>
+<body>
+
+  <header class="encabezado barra con-menu">
+    <div class="marca">
+      <img class="logo" src="../api/logo.php" alt="Comandia" width="52" height="52">
+      <div>
+        <h1>Tomar pedidos</h1>
+        <p id="quien"></p>
+      </div>
+    </div>
+    <button id="btn-menu" class="btn claro solo-celu" type="button" aria-label="Menú" aria-expanded="false" aria-controls="barra-botones">☰</button>
+    <div class="barra-botones" id="barra-botones">
+      <button id="btn-tomar" class="btn claro" type="button" hidden>➕ Tomar pedido</button>
+      <button id="btn-seguimiento" class="btn claro" type="button" hidden>🍳 Preparando</button>
+      <a id="btn-caja" class="btn claro" href="../caja/">💵 Caja</a>
+      <button id="btn-salir" class="btn claro" type="button" hidden>🚪 Salir</button>
+    </div>
+  </header>
+
+  <main class="contenedor ancho">
+
+    <section id="vista-login" class="tarjeta angosta" hidden>
+      <h2>Iniciar sesión</h2>
+      <form id="form-login" class="formulario">
+        <label>Usuario
+          <input id="login-usuario" type="text" autocomplete="username" autocapitalize="none" required>
+        </label>
+        <label>Contraseña
+          <input id="login-password" type="password" autocomplete="current-password" required>
+        </label>
+        <p id="login-msg" class="msg-error" role="alert"></p>
+        <button class="btn principal" type="submit">Entrar</button>
+      </form>
+    </section>
+
+    <section id="vista-aviso" class="tarjeta angosta" hidden>
+      <h2 id="aviso-titulo"></h2>
+      <p id="aviso-texto"></p>
+    </section>
+
+    <section id="vista-pedido" class="pedido" hidden>
+
+      <div class="menu-col">
+        <div class="menu-fijo" id="menu-fijo">
+        <form id="form-codigo" class="codigo-rapido" autocomplete="off">
+          <input id="codigo-rapido" type="text" autocapitalize="characters" spellcheck="false"
+                 placeholder="Código rápido: 2 AH XQ  /  3 TB (la / separa platos)" aria-label="Código rápido">
+          <button class="btn" type="submit">Agregar</button>
+        </form>
+        <p id="codigo-msg" class="msg-error" role="alert"></p>
+
+        <div id="cats" class="cats"></div>
+        </div>
+        <div id="productos" class="productos" aria-live="polite"></div>
+      </div>
+
+      <aside id="carrito" class="carrito" aria-label="Pedido en curso">
+        <div class="carrito-cab">
+          <h2>Pedido</h2>
+          <button id="btn-cerrar-carrito" class="btn btn-seguir solo-movil" type="button">← Seguir pidiendo</button>
+        </div>
+        <div id="destino" class="destino" hidden>
+          <span id="destino-texto"></span>
+          <button id="destino-quitar" class="btn" type="button">Cancelar</button>
+        </div>
+        <div id="platos" class="platos" aria-label="Plato al que se agrega"></div>
+        <div id="lineas" class="lineas"></div>
+
+        <div id="campos-cliente" class="formulario carrito-form">
+        <div class="modalidad" role="group" aria-label="Tipo de pedido">
+          <button type="button" class="btn mod-btn" data-mod="aqui" aria-pressed="true">🍽 Aquí</button>
+          <button type="button" class="btn mod-btn" data-mod="llevar" aria-pressed="false">🥡 Llevar</button>
+          <button type="button" class="btn mod-btn" data-mod="recoger" aria-pressed="false">🛍 Recoger</button>
+        </div>
+          <label id="mesa-fila" hidden>Mesa
+            <select id="mesa"></select>
+          </label>
+          <label>Nombre del cliente
+            <input id="cliente" type="text" maxlength="80" autocomplete="off" placeholder="Obligatorio">
+          </label>
+          <label id="tel-fila" hidden>Teléfono (opcional)
+            <input id="telefono" type="tel" inputmode="tel" maxlength="16" autocomplete="off" placeholder="10 dígitos, ej. 322 123 4567">
+          </label>
+          <div class="cuando-caja">
+            <div id="cuando"></div>
+          </div>
+          <div class="pago-previsto">
+            <span class="pp-et">¿Cómo pagará? <small>(opcional)</small></span>
+            <div id="pp-botones" class="pp-botones">
+              <button class="btn" type="button" data-pago="efectivo" aria-pressed="false">💵 Efectivo</button>
+              <button class="btn" type="button" data-pago="tarjeta" aria-pressed="false">💳 Tarjeta</button>
+              <button class="btn" type="button" data-pago="transferencia" aria-pressed="false">📲 Transferencia</button>
+            </div>
+            <div id="pp-detalle" class="pp-detalle" hidden></div>
+          </div>
+          <label>Notas del pedido (opcional)
+            <input id="notas-orden" type="text" maxlength="255" autocomplete="off">
+          </label>
+        </div>
+
+        <div class="total-fila"><span>Total</span><strong id="total">$0.00</strong></div>
+        <p id="espera-previa" class="espera-previa" role="status" hidden></p>
+        <p id="pedido-error" class="msg-error" role="alert"></p>
+        <div class="acciones-dialogo">
+          <button id="btn-levantar" class="btn principal grande" type="button">Levantar pedido</button>
+          <button id="btn-vaciar" class="btn" type="button">Vaciar</button>
+        </div>
+        <button id="btn-levantar-pagar" class="btn verde grande pagar-ahora" type="button">💵 Levantar y pagar ahora</button>
+      </aside>
+
+      <button id="barra-carrito" class="barra-carrito solo-movil" type="button">
+        <span id="barra-texto">Ver pedido</span><strong id="barra-total"></strong>
+      </button>
+    </section>
+
+    <!-- Seguimiento: cómo van los pedidos (solo lectura + editar) -->
+    <section id="vista-seguimiento" hidden>
+      <div class="seg-barra">
+        <h2>Pedidos en preparación</h2>
+        <span id="seg-resumen" class="ayuda"></span>
+      </div>
+      <div id="seg-cobrar-bloque" class="seg-cobrar-bloque" hidden>
+        <h3 class="seg-sub">💵 Entregados sin pagar <span id="seg-cobrar-n"></span></h3>
+        <div id="seg-cobrar" class="seg-cobrar"></div>
+      </div>
+      <div id="seg-listas-bloque" hidden>
+        <h3 class="seg-sub">Listos para entregar <span id="seg-listas-n"></span></h3>
+        <div id="seg-listas" class="seg-rejilla"></div>
+      </div>
+      <div id="seg-prog-bloque" hidden>
+        <h3 class="seg-sub">📅 Agendados <span id="seg-prog-n"></span></h3>
+        <div id="seg-prog" class="seg-rejilla"></div>
+      </div>
+      <h3 id="seg-prep-titulo" class="seg-sub" hidden>En preparación</h3>
+      <div id="seg-tablero" class="seg-rejilla"></div>
+    </section>
+
+  </main>
+
+  <!-- Elegir extras y cantidad -->
+  <dialog id="dlg-opciones">
+    <form id="form-opciones" class="formulario dialogo">
+      <h2 id="op-titulo"></h2>
+      <p id="op-desc" class="ayuda" hidden></p>
+      <p id="op-precio" class="ayuda"></p>
+
+      <div class="cantidad" role="group" aria-label="Cantidad">
+        <button id="op-menos" class="btn paso" type="button" aria-label="Menos">−</button>
+        <output id="op-cantidad">1</output>
+        <button id="op-mas" class="btn paso" type="button" aria-label="Más">＋</button>
+      </div>
+
+      <fieldset class="extras-campo" id="op-extras-caja">
+        <legend>Extras</legend>
+        <div id="op-extras" class="opciones-extras"></div>
+      </fieldset>
+
+      <label>Nota para este producto (opcional)
+        <input id="op-notas" type="text" maxlength="255" autocomplete="off">
+      </label>
+
+      <div class="acciones-dialogo">
+        <button id="op-agregar" class="btn principal grande" type="submit">Agregar</button>
+        <button id="op-cancelar" class="btn" type="button">Cancelar</button>
+      </div>
+    </form>
+  </dialog>
+
+  <!-- Pedido levantado -->
+  <dialog id="dlg-listo">
+    <div class="formulario dialogo centro">
+      <p id="listo-titulo" class="ayuda">Pedido levantado</p>
+      <p id="listo-turno" class="turno-grande"></p>
+      <p id="listo-cliente" class="listo-cliente"></p>
+      <p id="listo-total" class="listo-total"></p>
+      <p id="listo-espera" class="listo-espera" hidden></p>
+      <div class="acciones-dialogo">
+        <button id="listo-nuevo" class="btn principal grande" type="button">Nuevo pedido</button>
+        <a id="listo-volver" class="btn grande" href="../cocina/" hidden>Volver a cocina</a>
+      </div>
+    </div>
+  </dialog>
+
+  <!-- Editar un pedido ya levantado -->
+  <dialog id="dlg-editar">
+    <div class="formulario dialogo">
+      <h2 id="ed-titulo"></h2>
+      <div id="ed-modalidad" class="modalidad" role="group" aria-label="Tipo de pedido">
+        <button type="button" class="btn mod-btn" data-mod="aqui">🍽 Aquí</button>
+        <button type="button" class="btn mod-btn" data-mod="llevar">🥡 Llevar</button>
+        <button type="button" class="btn mod-btn" data-mod="recoger">🛍 Recoger</button>
+      </div>
+      <label id="ed-mesa-fila" hidden>Mesa
+        <select id="ed-mesa"></select>
+      </label>
+      <p id="ed-total" class="ayuda"></p>
+      <div class="cuando-caja">
+        <div id="ed-cuando"></div>
+        <button id="ed-cuando-guardar" class="btn" type="button">Guardar agenda</button>
+      </div>
+      <button id="ed-agregar-menu" class="btn principal grande" type="button">＋ Agregar otro platillo del menú</button>
+      <div id="ed-platos" class="ed-platos"></div>
+      <p id="ed-error" class="msg-error" role="alert"></p>
+      <div id="ed-acciones" class="ed-acciones"></div>
+      <div class="acciones-dialogo">
+        <button id="ed-nuevo-plato" class="btn principal" type="button">＋ Nuevo plato</button>
+        <button id="ed-cerrar" class="btn" type="button">Cerrar</button>
+      </div>
+    </div>
+  </dialog>
+
+  <div id="toast" class="toast" role="status" hidden></div>
+
+  <script src="../js/comun.js?v=202611201400"></script>
+  <script src="../js/codigos.js?v=202611192050"></script>
+  <script src="../js/pedidos.js?v=202611201400"></script>
+</body>
+</html>

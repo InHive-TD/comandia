@@ -1,0 +1,19 @@
+/* Panel de plataforma (dueño de Comandia) */
+.resumen-plat { display: flex; flex-wrap: wrap; gap: .75rem; margin: 0 0 1rem; }
+.resumen-plat .dato { background: var(--color-tarjeta); border: 1px solid var(--color-borde, #e5e0d8); border-radius: 12px; padding: .6rem 1rem; min-width: 8rem; }
+.resumen-plat .dato b { display: block; font-size: 1.5rem; line-height: 1.1; }
+.resumen-plat .dato span { font-size: .85rem; opacity: .75; }
+
+.lista-empresas { display: grid; gap: .75rem; }
+.empresa { background: var(--color-tarjeta); border: 1px solid var(--color-borde, #e5e0d8); border-radius: 14px; padding: .9rem 1rem; display: grid; gap: .5rem; }
+.empresa.pausada { opacity: .65; }
+.empresa-cab { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: .5rem; }
+.empresa-cab h3 { margin: 0; font-size: 1.1rem; }
+.empresa .enlace { font-family: ui-monospace, Menlo, Consolas, monospace; font-size: .9rem; word-break: break-all; }
+.empresa .cifras { display: flex; flex-wrap: wrap; gap: .4rem 1.2rem; font-size: .9rem; }
+.empresa .nota { font-size: .85rem; opacity: .8; }
+.empresa .acciones { display: flex; flex-wrap: wrap; gap: .5rem; }
+.etiqueta-estado { font-size: .75rem; font-weight: 700; border-radius: 999px; padding: .15rem .6rem; background: var(--color-ok, #2e7d32); color: #fff; }
+.etiqueta-estado.pausada { background: #8d6e63; }
+.etiqueta-estado.vencida { background: #c62828; }
+.sub-dlg { margin: 1rem 0 .25rem; font-size: 1rem; }

@@ -1,0 +1,434 @@
+/* Tablero de cocina: pensado para tablet, leído de lejos y tocado con las
+   manos engrasadas (objetivos táctiles grandes, letra grande, colores claros). */
+
+.barra-botones { display: flex; gap: 8px; flex-wrap: wrap; justify-content: flex-end; }
+.barra-botones .btn[aria-pressed="true"] { background: var(--color-amarillo); color: var(--color-oscuro); border-color: var(--color-amarillo); }
+.barra-botones .btn.apagado { opacity: .75; }
+
+.elegir { max-width: 640px; margin: 24px auto; }
+.botones-parrilla { display: grid; gap: 12px; margin-top: 12px; }
+.botones-parrilla .btn { min-height: 84px; font-size: 1.6rem; }
+
+.resumen { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 14px; margin: 0 0 12px; }
+.resumen h2 { margin: 0; font-size: 1.5rem; color: var(--color-vino); }
+
+.tablero { display: grid; gap: 14px; grid-template-columns: repeat(auto-fill, minmax(min(100%, 320px), 1fr)); align-items: start; }
+
+/* ---------- Comanda ---------- */
+.comanda {
+  --franja: var(--color-ok);
+  background: var(--color-tarjeta);
+  border: 1px solid var(--color-borde);
+  border-top: 10px solid var(--franja);
+  border-radius: var(--radio);
+  overflow: hidden;
+}
+.comanda.espera-media { --franja: var(--color-amarillo); }
+.comanda.espera-larga { --franja: var(--color-principal); }
+.comanda.sin-trabajo { opacity: .7; }
+.comanda.recien { animation: recien 1.2s ease-out 4; }
+@keyframes recien { 0%, 100% { box-shadow: 0 0 0 0 rgba(248,192,0,0); } 50% { box-shadow: 0 0 0 8px rgba(248,192,0,.7); } }
+
+.com-cab { display: grid; grid-template-columns: auto 1fr auto; gap: 10px; align-items: center; padding: 10px 12px 4px; }
+.com-turno { font-size: 2.4rem; font-weight: 800; line-height: 1; letter-spacing: 1px; }
+.com-fecha { display: block; font-size: .7rem; font-weight: 600; color: #7a6a5c; letter-spacing: 0; }
+.com-cliente { font-size: 1.25rem; font-weight: 700; overflow-wrap: anywhere; }
+.com-espera { font-weight: 800; font-size: 1.15rem; padding: 4px 10px; border-radius: 10px; background: #e3f3e5; color: #1e5a28; font-variant-numeric: tabular-nums; }
+.espera-media .com-espera { background: #fff0b3; color: #6b4e00; }
+.espera-larga .com-espera { background: #fbd9d5; color: #8c1c12; }
+.com-notas { margin: 4px 12px 0; padding: 6px 10px; border-radius: 8px; background: #fff0b3; font-weight: 600; }
+
+.com-items { display: grid; gap: 8px; padding: 10px 12px; }
+.fila-item { display: grid; grid-template-columns: 1fr 52px; gap: 6px; align-items: stretch; }
+.it {
+  display: grid; grid-template-columns: auto 1fr auto; gap: 4px 10px; align-items: center; text-align: left;
+  min-height: 68px; padding: 8px 12px; font: inherit; color: inherit; cursor: pointer;
+  background: #fff; border: 2px solid var(--color-borde); border-radius: 12px;
+}
+.it:active { transform: scale(.985); }
+.it .cant { font-size: 1.7rem; font-weight: 800; }
+.it .cod { font-size: 1.55rem; font-weight: 800; line-height: 1.15; overflow-wrap: anywhere; }
+.it .est { font-size: .8rem; font-weight: 700; padding: 3px 8px; border-radius: 10px; background: var(--color-suave); }
+.it .nivel { grid-column: 2 / -1; font-size: .8rem; font-weight: 800; color: var(--color-principal); letter-spacing: .5px; }
+.it .nota { grid-column: 2 / -1; font-size: .95rem; font-style: italic; font-weight: 600; color: #6b4e00; }
+.it .detalle { grid-column: 2 / -1; font-size: .95rem; color: #5a4636; }
+.it.estado-preparando { background: #fff0b3; border-color: var(--color-amarillo); }
+.it.estado-preparando .est { background: var(--color-amarillo); }
+.it.estado-listo { background: #dff2e1; border-color: #8fcb98; }
+.it.estado-listo .cod, .it.estado-listo .cant { color: #2f6a38; }
+.it.estado-listo .est { background: #b7e2bd; }
+.it.otro { opacity: .5; cursor: default; background: #f6f1e4; border-style: dashed; }
+.it.otro .cod { font-size: 1.15rem; }
+.it.otro .cant { font-size: 1.2rem; }
+.it .parrilla-etiqueta { font-size: .72rem; font-weight: 700; color: #7a6a5c; }
+
+.btn.info { min-height: 68px; min-width: 52px; padding: 0; font-size: 1.1rem; font-weight: 800; }
+.btn.info[aria-pressed="true"] { background: var(--color-vino); color: #fff; border-color: var(--color-vino); }
+
+.com-pie { padding: 0 12px 12px; }
+.com-pie .btn { width: 100%; min-height: 56px; font-size: 1.1rem; }
+
+/* ---------- Listas ---------- */
+.listas { margin-top: 22px; }
+.listas h3 { margin: 0 0 8px; font-size: 1.05rem; color: var(--color-vino); }
+.listas-chips { display: flex; flex-wrap: wrap; gap: 8px; }
+.chip-lista { background: #dff2e1; border: 1px solid #8fcb98; border-radius: 12px; padding: 8px 12px; font-weight: 700; }
+.chip-lista small { font-weight: 600; color: #2f6a38; margin-left: 6px; }
+
+/* Aviso con botón Deshacer */
+.toast.con-accion { display: flex; align-items: center; gap: 14px; bottom: 28px; }
+.toast.con-accion .btn { min-height: 44px; padding: 6px 16px; }
+
+@media (max-width: 520px) {
+  .com-turno { font-size: 2rem; }
+  .it .cod { font-size: 1.35rem; }
+}
+
+.com-hora { display: block; font-size: .85rem; font-weight: 600; color: #7a6a5c; }
+.com-espera { display: grid; justify-items: center; line-height: 1.1; }
+.com-espera .com-min { font-size: 1.6rem; }
+.com-espera .com-lbl { font-size: .7rem; font-weight: 700; }
+.com-fecha { white-space: nowrap; }
+
+/* ---------- Detalle del pedido ---------- */
+.chip-lista { font: inherit; cursor: pointer; min-height: 48px; }
+.dp-items { display: grid; gap: 10px; max-height: 55vh; overflow: auto; }
+.dp-item { padding: 10px; border: 1px solid var(--color-borde); border-radius: 10px; background: #fff; }
+.dp-nombre { font-weight: 700; overflow-wrap: anywhere; }
+.dp-nota { font-style: italic; color: #6b4e00; }
+.dp-botones { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
+.dp-botones .btn { min-height: 48px; padding: 6px 12px; }
+
+/* ---------- Pedidos grandes: platos y total ---------- */
+.com-total { margin: 8px 12px 0; padding: 8px 10px; border-radius: 10px; background: var(--color-oscuro); color: #fff; display: flex; flex-wrap: wrap; gap: 4px 12px; align-items: baseline; }
+.com-total-et { font-size: .8rem; opacity: .85; }
+.com-total-i { font-size: 1.15rem; color: var(--color-amarillo); }
+.plato-cab { margin: 8px 0 0; padding: 4px 8px; font-size: .95rem; color: var(--color-vino); background: var(--color-suave); border-left: 6px solid var(--color-amarillo); border-radius: 6px; }
+.plato-cab.completo { border-left-color: #2f6a38; color: #2f6a38; }
+.com-items .plato-cab:first-child { margin-top: 0; }
+
+.dp-cant { display: flex; align-items: center; gap: 10px; margin-top: 8px; }
+.dp-cant .btn { min-height: 52px; min-width: 60px; font-size: 1.5rem; padding: 0; }
+.dp-num { font-size: 1.6rem; font-weight: 800; min-width: 40px; text-align: center; }
+
+/* ---------- Encabezado de comanda (fijo: el tiempo no mueve nada) ---------- */
+.com-cab { display: grid; grid-template-columns: minmax(0, 1fr) 96px; gap: 10px; align-items: center; padding: 10px 12px 4px; }
+.com-izq { min-width: 0; }
+.com-cliente { font-size: 1.7rem; font-weight: 800; line-height: 1.15; overflow-wrap: anywhere; }
+.com-datos { display: flex; flex-wrap: wrap; gap: 2px 10px; align-items: baseline; margin-top: 2px; }
+.com-turno { font-size: 1rem; font-weight: 800; color: var(--color-vino); letter-spacing: .5px; }
+.com-hora { display: inline; font-size: .85rem; font-weight: 600; color: #7a6a5c; }
+.com-espera { width: 96px; height: 64px; box-sizing: border-box; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 0; line-height: 1; overflow: hidden; }
+.com-espera .com-min { font-size: 1.5rem; font-variant-numeric: tabular-nums; letter-spacing: -.5px; white-space: nowrap; }
+.com-espera .com-lbl { margin-top: 4px; font-size: .68rem; text-transform: uppercase; letter-spacing: .5px; }
+.chip-lista { font-weight: 700; color: inherit; }
+
+.chip-mod { display: inline-block; padding: 2px 8px; border-radius: 10px; font-size: .8rem; font-weight: 800; background: var(--color-suave); color: #5a4636; white-space: nowrap; }
+.chip-mod.llevar { background: #3f8fcb; color: #fff; }
+.chip-mod.recoger { background: #7b4fb8; color: #fff; }
+.chip-mod.aqui { background: #5aa878; color: #10361d; }
+
+
+.chip-para { display: inline-block; padding: 2px 8px; border-radius: 10px; font-size: .8rem; font-weight: 800; background: #fff0b3; color: #6b4e00; white-space: nowrap; }
+.chip-para.tarde { background: #fbd9d5; color: #8c1c12; }
+.chip-prog { background: #fff0b3; border-color: var(--color-amarillo); color: #3b2a00; }
+.chip-prog.otro { opacity: .6; }
+
+/* Pedido modificado / cancelado */
+.comanda.modificado { box-shadow: 0 0 0 4px #7a3db8; }
+.com-modificado { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 10px; padding: 8px 12px; background: #efe1fb; color: #3d1466; border-bottom: 1px solid #cdb0ea; }
+.com-modificado strong { flex: 1 1 auto; }
+.com-modificado .btn { min-height: 44px; padding: 4px 16px; }
+.aviso-cancel { grid-column: 1 / -1; display: flex; flex-wrap: wrap; align-items: center; gap: 6px 14px; padding: 12px 16px; border-radius: var(--radio); background: #b3261e; color: #fff; }
+.aviso-cancel strong { font-size: 1.2rem; }
+.aviso-cancel span { flex: 1 1 200px; }
+.aviso-cancel .btn { min-height: 48px; }
+
+/* Colores por tipo: AZUL = comer aquí, NARANJA-AMARILLO = para llevar (el rojo queda solo para lo atrasado) */
+.comanda.aqui { border-color: #a9d6b8; border-top-color: #5aa878; background: #eef8f1; }
+.comanda.llevar { border-color: #b7d6ee; border-top-color: #3f8fcb; background: #eef6fc; }
+.comanda.recoger { border-color: #cdbbe6; border-top-color: #7b4fb8; background: #f5f0fb; }
+.com-trans { font-variant-numeric: tabular-nums; font-weight: 700; color: #5a4636; white-space: nowrap; }
+
+/* Dos carriles: llevar (izquierda) y aquí (derecha) */
+.tablero.carriles { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; align-items: start; }
+.carril { min-width: 0; }
+.carril-titulo { margin: 0 0 8px; padding: 8px 12px; border-radius: 10px; font-size: 1.05rem; color: #fff; }
+.carril.llevar .carril-titulo { background: #3f8fcb; color: #fff; }
+.carril.aqui .carril-titulo { background: #5aa878; color: #10361d; }
+.carril-cuerpo { display: grid; gap: 14px; grid-template-columns: repeat(auto-fill, minmax(min(100%, 300px), 1fr)); align-items: start; }
+.carril-cuerpo .vacio { color: #5a4636; margin: 4px; }
+@media (max-width: 820px) { .tablero.carriles { grid-template-columns: 1fr; } .carril.aqui { order: -1; } }
+
+/* Hamburguesas por preparar */
+.hamb { background: var(--color-fondo); border: 2px solid var(--color-amarillo); border-radius: var(--radio); padding: 10px 14px 12px; margin-bottom: 14px; }
+.hamb h3 { margin: 0 0 8px; font-size: 1.1rem; color: var(--color-vino); }
+.hamb-fila { display: flex; flex-wrap: wrap; gap: 8px; }
+.hamb-chip { display: grid; grid-template-columns: auto 1fr; align-items: baseline; gap: 0 8px; background: #fff; border: 1px solid var(--color-borde); border-radius: 12px; padding: 6px 12px; }
+.hamb-cant { font-size: 1.6rem; font-weight: 800; color: var(--color-principal); }
+.hamb-nombre { font-size: 1.25rem; font-weight: 800; }
+.hamb-chip small { grid-column: 1 / -1; color: #5a4636; }
+
+/* Pedido reabierto después de entregarse: prioridad sobre todos */
+.carril.prioridad { grid-column: 1 / -1; }
+.carril.prioridad .carril-titulo { background: #8a5a00; color: #fff3c4; }
+.comanda.prioritaria { box-shadow: 0 0 0 4px var(--color-amarillo); }
+
+/* Resumen de hamburguesas: cada pedido es un botón que cambia su estado */
+.hamb-ayuda { margin: -4px 0 8px; font-size: .85rem; color: #5a4636; }
+.hamb-chip { min-width: 190px; }
+.hamb-chip.hecha { opacity: .6; }
+.hamb-lineas { grid-column: 1 / -1; display: flex; flex-wrap: wrap; gap: 6px; margin-top: 6px; }
+.hamb-linea { min-height: 48px; padding: 4px 12px; display: grid; justify-items: center; line-height: 1.15; border-radius: 10px; border: 2px solid var(--color-borde); background: #fff; font: inherit; cursor: pointer; }
+.hamb-linea span { font-size: .75rem; }
+.hamb-linea.estado-preparando { background: #fff0b3; border-color: var(--color-amarillo); }
+.hamb-linea.estado-listo { background: #dff2e1; border-color: #8fcb98; color: #2f6a38; }
+.hamb-acc { grid-column: 1 / -1; display: flex; gap: 6px; margin-top: 8px; flex-wrap: wrap; }
+.hamb-acc .btn { min-height: 48px; }
+
+/* Tiempo que falta: verde → amarillo → naranja → rojo (atrasado) */
+.com-espera.rest-ok, .seg-espera.rest-ok { background: #e3f3e5; color: #1e5a28; }
+.com-espera.rest-pronto, .seg-espera.rest-pronto { background: #fff0b3; color: #6b4e00; }
+.com-espera.rest-ya, .seg-espera.rest-ya { background: #ff6a2b; color: #fff; }
+.com-espera.rest-tarde, .seg-espera.rest-tarde { background: #c8261a; color: #fff; animation: pulso-tarde 1.1s ease-in-out infinite; }
+@keyframes pulso-tarde { 50% { opacity: .7; } }
+.carril.urgentes { grid-column: 1 / -1; }
+.carril.urgentes .carril-titulo { background: #f2a413; color: #3b2a00; }
+.comanda.urgente, .seg-tarjeta.urgente { box-shadow: 0 0 0 4px #c8261a; }
+
+/* =====================================================================
+   COMPACTO (tablets): más comandas a la vez, objetivos táctiles de 44 px+
+   ===================================================================== */
+.contenedor.ancho { padding-left: 10px; padding-right: 10px; }
+.resumen { margin: 0 0 6px; }
+.resumen h2 { font-size: 1.15rem; }
+.tablero.carriles { gap: 10px; }
+.carril-titulo { margin: 0 0 6px; padding: 5px 10px; font-size: .92rem; }
+.carril-cuerpo { gap: 8px; grid-template-columns: repeat(auto-fill, minmax(min(100%, 232px), 1fr)); }
+.comanda { border-top-width: 6px; border-radius: 10px; }
+.com-cab { grid-template-columns: minmax(0, 1fr) 70px; gap: 6px; padding: 6px 8px 2px; }
+.com-cliente { font-size: 1.1rem; font-weight: 800; line-height: 1.1; }
+.com-datos { gap: 0 6px; margin-top: 1px; }
+.com-turno { font-size: .85rem; }
+.com-hora, .com-trans { font-size: .72rem; }
+.chip-mod, .chip-para { padding: 0 6px; font-size: .68rem; border-radius: 8px; }
+.com-espera { width: 70px; height: 46px; border-radius: 8px; }
+.com-espera .com-min { font-size: 1.1rem; }
+.com-espera .com-lbl { margin-top: 2px; font-size: .56rem; }
+.com-notas { margin: 3px 8px 0; padding: 3px 8px; font-size: .85rem; }
+.com-items { gap: 5px; padding: 6px 8px; }
+.fila-item { grid-template-columns: 1fr 44px; gap: 4px; }
+.it { min-height: 46px; padding: 4px 8px; gap: 1px 8px; border-radius: 9px; border-width: 2px; }
+.it .cant { font-size: 1.15rem; }
+.it .cod { font-size: 1.05rem; line-height: 1.1; }
+.it .est { font-size: .66rem; padding: 1px 6px; border-radius: 8px; }
+.it .nivel, .it .nota, .it .detalle { font-size: .75rem; }
+.it.otro .cod { font-size: .9rem; }
+.it.otro .cant { font-size: .95rem; }
+.btn.info { min-height: 46px; min-width: 44px; font-size: .95rem; }
+.com-pie { padding: 0 8px 8px; }
+.com-pie .btn { min-height: 44px; font-size: .95rem; }
+.plato-cab { margin: 5px 0 0; padding: 2px 6px; font-size: .78rem; border-left-width: 4px; }
+.com-total { margin: 5px 8px 0; padding: 4px 8px; }
+.com-total-i { font-size: 1rem; }
+.com-modificado { padding: 5px 8px; font-size: .85rem; }
+.com-modificado .btn { min-height: 44px; padding: 2px 12px; }
+.aviso-cancel { padding: 8px 12px; }
+/* Resumen "Preparar en lote" más bajo */
+.hamb { padding: 6px 10px 8px; margin-bottom: 8px; }
+.hamb h3 { margin: 0 0 4px; font-size: .95rem; }
+.hamb-ayuda { margin: -2px 0 5px; font-size: .72rem; }
+.hamb-fila { gap: 6px; }
+.hamb-chip { min-width: 150px; padding: 4px 8px; border-radius: 10px; }
+.hamb-cant { font-size: 1.2rem; }
+.hamb-nombre { font-size: 1rem; }
+.hamb-lineas { gap: 4px; margin-top: 3px; }
+.hamb-linea { min-height: 44px; padding: 2px 8px; font-size: .85rem; }
+.hamb-linea span { font-size: .65rem; }
+.hamb-acc { margin-top: 5px; gap: 4px; }
+.hamb-acc .btn { min-height: 44px; font-size: .85rem; padding: 2px 10px; }
+.listas { margin-top: 10px; }
+.chip-lista { min-height: 44px; padding: 4px 10px; font-size: .9rem; }
+.hamb-ayuda { display: none; }
+.hamb-chip { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 8px; }
+.hamb-chip .hamb-lineas, .hamb-chip .hamb-acc { margin: 0; flex: 0 1 auto; }
+
+/* Barra superior escondida en el tablero: más espacio; un toque en un lugar vacío la muestra 10 s */
+body.barra-auto .encabezado { position: fixed; top: 0; left: 0; right: 0; z-index: 30; padding: 10px 16px; transform: translateY(-110%); transition: transform .2s ease; box-shadow: none; }
+body.barra-auto.barra-visible .encabezado { transform: translateY(0); box-shadow: 0 6px 18px rgba(0,0,0,.3); }
+body.barra-auto .encabezado h1 { font-size: 1.3rem; }
+body.barra-auto .encabezado .logo { width: 40px; height: 40px; }
+body.barra-auto main.contenedor { padding-top: 8px; min-height: 100vh; }
+.sonido-flotante { position: fixed; right: 10px; bottom: 10px; z-index: 25; min-height: 44px; padding: 6px 14px; border-radius: 22px; border: 2px solid #c8261a; background: #fff; color: #8c1c12; font: inherit; font-weight: 800; box-shadow: 0 3px 10px rgba(0,0,0,.25); }
+
+/* "Nombres completos": nombre completo en letra chica, debajo del código */
+.it .detalle { font-size: .78rem; font-weight: 600; color: #4a3a2c; line-height: 1.15; }
+.hamb-completo { flex: 1 0 100%; font-size: .75rem; font-weight: 600; color: #4a3a2c; line-height: 1.1; }
+
+/* ---- Tablet: siempre dos carriles (llevar | aquí); renglones más chicos para ver más pedidos ---- */
+@media (min-width: 561px) {
+  .tablero.carriles { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .carril.aqui { order: 0; }
+}
+@media (max-width: 560px) { .tablero.carriles { grid-template-columns: 1fr; } .carril.aqui { order: -1; } }
+.carril-cuerpo { grid-template-columns: repeat(auto-fill, minmax(min(100%, 210px), 1fr)); gap: 6px; }
+.it { grid-template-columns: auto minmax(0, 1fr) auto; min-height: 40px; padding: 3px 7px; gap: 0 6px; }
+.it .cant { font-size: .95rem; }
+.it .cod { font-size: .88rem; font-weight: 800; line-height: 1.1; overflow-wrap: break-word; word-break: normal; min-width: 0; }
+.it .est { font-size: .58rem; padding: 1px 5px; white-space: nowrap; }
+.it .nivel, .it .nota, .it .detalle { font-size: .68rem; }
+.fila-item { grid-template-columns: 1fr 40px; gap: 3px; }
+.btn.info { min-height: 40px; min-width: 40px; font-size: .9rem; }
+.com-items { gap: 3px; padding: 4px 6px; }
+.com-pie { padding: 0 6px 6px; }
+.com-pie .btn { min-height: 40px; font-size: .9rem; }
+.com-cliente { font-size: 1rem; }
+.com-cab { padding: 5px 6px 2px; }
+.comanda { border-top-width: 5px; }
+
+/* =====================================================================
+   TABLET: dos carriles siempre (aquí / llevar) y renglones más chicos
+   ===================================================================== */
+@media (max-width: 820px) { .tablero.carriles { grid-template-columns: repeat(2, minmax(0, 1fr)); } .carril.aqui { order: 0; } }
+@media (max-width: 520px) { .tablero.carriles { grid-template-columns: 1fr; } .carril.aqui { order: -1; } }
+.carril-cuerpo { grid-template-columns: repeat(auto-fill, minmax(min(100%, 188px), 1fr)); gap: 6px; }
+.tablero.carriles { gap: 8px; }
+.it { grid-template-columns: auto minmax(0, 1fr) auto; gap: 0 6px; min-height: 42px; padding: 3px 7px; }
+.it .cant { font-size: .95rem; }
+.it .cod { font-size: .9rem; font-weight: 800; line-height: 1.12; overflow-wrap: break-word; word-break: normal; hyphens: auto; }
+.it .est { font-size: .85rem; padding: 0; width: 22px; height: 22px; display: grid; place-items: center; border-radius: 50%; line-height: 1; }
+.it .nivel, .it .nota, .it .detalle { font-size: .7rem; }
+.fila-item { grid-template-columns: 1fr 42px; }
+.btn.info { min-height: 42px; min-width: 42px; }
+.com-items { gap: 4px; padding: 5px 7px; }
+.com-pie .btn { min-height: 44px; }
+.com-cliente { font-size: 1rem; }
+.com-espera { width: 62px; height: 42px; }
+.com-cab { grid-template-columns: minmax(0, 1fr) 62px; }
+.com-espera .com-min { font-size: 1rem; }
+.it { min-height: 44px; }
+.fila-item { grid-template-columns: 1fr 44px; }
+.btn.info { min-height: 44px; min-width: 44px; }
+
+/* Cinta en la esquina: se agregó algo a un pedido que ya estaba servido */
+.cinta-agregado { display: inline-block; margin: 0 0 6px; padding: 3px 10px; border-radius: 999px; background: var(--color-amarillo); color: #4a2f00; font-weight: 800; font-size: .85rem; letter-spacing: .02em; }
+
+/* Renglones listos ocultos para ahorrar espacio */
+.com-toggle { width: 100%; min-height: 44px; margin: 0 0 6px; border: 1px dashed var(--color-borde); border-radius: 10px; background: #fff; color: #5a4636; font: inherit; font-weight: 700; cursor: pointer; }
+
+/* Tablet (521–820 px): 2 pedidos por carril (llevar / aquí) y 4 en las franjas de ancho completo (urgentes, prioridad) */
+@media (min-width: 521px) and (max-width: 820px) {
+  .carril.llevar .carril-cuerpo, .carril.aqui .carril-cuerpo { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 5px; }
+  .carril.urgentes .carril-cuerpo, .carril.prioridad .carril-cuerpo { grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 5px; }
+  .tablero.carriles { gap: 6px; }
+  .comanda .com-cab { grid-template-columns: minmax(0, 1fr) 62px; gap: 4px; padding: 5px 6px 2px; }
+  .com-espera { width: 62px; }
+  .com-espera .com-min { font-size: .92rem; white-space: nowrap; }
+  .com-datos { gap: 3px 5px; font-size: .72rem; }
+  .com-cliente { font-size: .92rem; overflow-wrap: anywhere; }
+  .it { padding: 3px 5px; gap: 0 4px; }
+  .it .cant { font-size: .85rem; }
+  .it .cod { font-size: .8rem; }
+  .fila-item { grid-template-columns: 1fr 38px; gap: 2px; }
+  .btn.info { min-width: 38px; }
+  .com-items { padding: 4px 5px; }
+}
+
+/* Editado + por entregar / prioridad: se ven los dos avisos (aro rojo por fuera, morado por dentro) y la nota es chica */
+.comanda.modificado.urgente { box-shadow: 0 0 0 3px #7a3db8, 0 0 0 7px #c8261a; }
+.comanda.modificado.prioritaria { box-shadow: 0 0 0 3px #7a3db8, 0 0 0 7px var(--color-amarillo); }
+.com-modificado { padding: 3px 6px; gap: 2px 6px; font-size: .74rem; line-height: 1.15; }
+.com-modificado span { display: none; }
+.com-modificado .btn { min-height: 44px; padding: 0 10px; font-size: .78rem; }
+/* Nombres de platillo más chicos para que no salten de renglón */
+.it .cod { font-size: .8rem; line-height: 1.08; }
+.it .cant { font-size: .85rem; }
+@media (min-width: 521px) and (max-width: 820px) { .it .cod { font-size: .72rem; } .it .cant { font-size: .78rem; } }
+
+/* Un solo botón "Editar pedido" por comanda (abajo, separado de "Todo listo") */
+.fila-item { grid-template-columns: 1fr; }
+.com-editar { display: block; width: calc(100% - 16px); margin: 10px 8px 8px; min-height: 44px; padding: 4px 10px; font-size: .85rem; font-weight: 700; background: #fff; color: #5a4636; border: 1px dashed var(--color-borde); border-radius: 10px; cursor: pointer; }
+
+/* Cinta de prioridad: una sola línea chica, arriba a la derecha de la comanda; la estrella en vino (no amarilla) */
+.cinta-agregado { display: block; margin: 0; padding: 2px 8px; border-radius: 0; background: #ffe9b0; color: #6b1d1d; font-weight: 800; font-size: .66rem; letter-spacing: 0; text-align: center; white-space: nowrap; overflow: hidden; text-overflow: clip; }
+.com-toggle { font-size: .78rem; min-height: 40px; padding: 2px 6px; }
+
+/* Banner de prioridad: fondo rojo, letras y estrella blancas, texto que corre hacia la izquierda en bucle */
+.cinta-agregado { display: block; margin: 0; padding: 3px 0; border-radius: 0; background: #c8261a; color: #fff; font-weight: 800; font-size: .66rem; letter-spacing: .02em; text-align: left; white-space: nowrap; overflow: hidden; }
+.cinta-pista { display: inline-flex; width: max-content; animation: cinta-corre 9s linear infinite; }
+.cinta-pista span { padding-right: 28px; flex: none; }
+@keyframes cinta-corre { from { transform: translateX(0); } to { transform: translateX(-25%); } }
+@media (prefers-reduced-motion: reduce) { .cinta-pista { animation: none; } }
+
+/* Fila de acciones: Editar pedido (3/4) + ✓ todo listo (1/4) */
+.com-acciones { display: grid; grid-template-columns: 3fr 1fr; gap: 8px; padding: 8px; align-items: stretch; }
+.com-acciones.solo-editar { grid-template-columns: 1fr; }
+.com-acciones .com-editar { width: auto; margin: 0; min-height: 48px; }
+.com-acciones .com-ok { min-height: 48px; font-size: 1.4rem; padding: 0; }
+.com-acciones { gap: 6px; padding: 6px; }
+.com-acciones .com-editar { font-size: .74rem; white-space: nowrap; padding: 2px 4px; }
+
+/* Pedido modificado (aún sin preparar): mismo banner que prioridad pero morado; no cambia su lugar en la fila */
+.cinta-agregado.cinta-mod { background: #6b2fa8; }
+
+/* Botones de acción más bajos: Editar pedido y ✓ listo */
+.com-acciones { padding: 4px 6px 5px; gap: 5px; }
+.com-acciones .com-editar, .com-acciones .com-ok, .com-acciones .btn { min-height: 38px; height: 38px; padding-top: 0; padding-bottom: 0; line-height: 1; }
+.com-acciones .com-ok { font-size: 1.15rem; }
+
+/* Editar pedido y ✓: tan altos como su texto/icono (casi sin margen arriba ni abajo) */
+.com-acciones { padding: 3px 6px 4px; gap: 5px; align-items: center; }
+.com-acciones .com-editar, .com-acciones .com-ok, .com-acciones .btn { min-height: 0; height: auto; padding: 3px 8px; line-height: 1.1; }
+.com-acciones .com-ok { font-size: .95rem; padding: 3px 0; }
+.com-acciones .com-editar { font-size: .74rem; }
+
+/* Mosaico: filas finas + cada comanda abarca su alto (ver ajustarHuecos en cocina.js); sin huecos bajo las comandas cortas */
+.carril-cuerpo { grid-auto-rows: 2px; row-gap: 0; align-items: start; }
+.carril-cuerpo > .comanda { align-self: start; }
+.carril-cuerpo > .vacio { grid-row: span 40; }
+.carril .carril-cuerpo { row-gap: 0 !important; }
+
+/* ---- Expandir un carril (dos cocineros: uno en "Comer aquí", otro en "Para llevar") ---- */
+.carril-titulo { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.carril-ancho { flex: none; display: grid; place-items: center; width: 28px; height: 24px; padding: 0; border: 2px solid currentColor; border-radius: 7px; background: transparent; color: inherit; cursor: pointer; }
+.carril-ancho:hover { background: rgba(255, 255, 255, .25); }
+.carril-ancho:focus-visible { outline: 3px solid #fff; outline-offset: 2px; }
+.carril.ancho { grid-column: 1 / -1; order: -1; }
+.aviso-cancel { order: -3; }
+.carril.urgentes { order: -2; }
+@media (min-width: 521px) and (max-width: 820px) {
+  .carril.ancho .carril-cuerpo { grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 5px; }
+}
+@media (min-width: 821px) {
+  .carril.ancho .carril-cuerpo { grid-template-columns: repeat(auto-fill, minmax(min(100%, 240px), 1fr)); }
+}
+
+/* Platillos más grandes en la comanda (ej. "2 Arra", "1 HCh xChil") */
+.it .cant { font-size: 1.15rem; }
+.it .cod { font-size: 1.1rem; line-height: 1.12; }
+.it.otro .cod { font-size: .95rem; }
+.it.otro .cant { font-size: 1rem; }
+@media (min-width: 521px) and (max-width: 820px) { .it .cod { font-size: 1rem; } .it .cant { font-size: 1.05rem; } }
+@media (max-width: 520px) { .it .cod { font-size: 1.05rem; } .it .cant { font-size: 1.1rem; } }
+
+/* Comanda con todos los renglones listos: se ve plegada y con el botón de mover a listas para entregar */
+.comanda.completo { opacity: 1; box-shadow: 0 0 0 3px #2f8f4e; }
+.comanda.completo .com-toggle { background: #e6f5ea; border-style: solid; border-color: #2f8f4e; color: #1d5a31; }
+.com-acciones .com-mover { min-height: 48px; font-size: .9rem; font-weight: 800; white-space: normal; line-height: 1.1; }
+.com-acciones .com-mover:disabled { background: #e8e1d6; color: #8a7a68; border-color: transparent; cursor: not-allowed; opacity: .85; }
+
+/* Mismo tamaño de comanda en "por entregar", "comer aquí" y "para llevar" (el compacto de por entregar) */
+@media (min-width: 521px) {
+  .tablero.carriles .carril .carril-cuerpo { grid-template-columns: repeat(auto-fill, minmax(170px, 1fr)); gap: 6px; }
+  .tablero.carriles .carril .carril-cuerpo > .comanda { max-width: 210px; }
+}
+
+/* "Preparar en lote": se puede plegar (solo título y total) */
+.hamb-encab { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 8px; }
+.hamb-encab h3 { margin: 0; }
+.hamb.plegado { padding-top: 6px; padding-bottom: 6px; }
+.hamb.plegado .hamb-encab { margin-bottom: 0; }
+.hamb-toggle { flex: none; min-height: 34px; padding: 2px 12px; border: 1px dashed var(--color-borde); border-radius: 10px; background: #fff; color: #5a4636; font: inherit; font-size: .85rem; font-weight: 700; cursor: pointer; }
+
+/* Plato para llevar dentro de un pedido para comer aquí: bien visible para el taquero */
+.plato-cab.llevar { background: #ffe08a; color: #4a2f00; border-left-color: #c8261a; font-weight: 800; }

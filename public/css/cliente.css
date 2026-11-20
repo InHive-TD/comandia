@@ -1,0 +1,143 @@
+/* Pantalla del cliente (QR): hecha para celular, con letra grande. */
+.trampa { position: absolute; left: -9999px; width: 1px; height: 1px; opacity: 0; }
+.seguimiento { max-width: 640px; margin: 0 auto; display: grid; gap: 14px; }
+
+.estado-banner { --c: var(--color-vino); padding: 16px; border-radius: var(--radio, 14px); background: var(--c); color: #fff; text-align: center; }
+.estado-banner.nueva { --c: #7a5a00; }
+.estado-banner.preparando { --c: #b4540a; }
+.estado-banner.lista { --c: #1e7a30; animation: latido 1.4s ease-in-out infinite; }
+.estado-banner.entregada { --c: #3d3d3d; }
+.estado-banner.cancelada { --c: #8c1c12; }
+@keyframes latido { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.025); } }
+.estado-titulo { margin: 0; font-size: 1.6rem; font-weight: 800; }
+.estado-texto { margin: 4px 0 0; font-size: 1rem; opacity: .95; }
+
+.seg-orden { display: grid; gap: 10px; }
+.seg-ident { display: flex; justify-content: space-between; align-items: center; gap: 10px; }
+.seg-nombre { margin: 0; font-size: 1.6rem; font-weight: 800; overflow-wrap: anywhere; }
+.seg-ident .ayuda { margin: 0; }
+.seg-num { font-size: 1.5rem; font-weight: 800; color: var(--color-vino); padding: 6px 12px; border: 2px solid var(--color-amarillo); border-radius: 12px; background: var(--color-suave); }
+.seg-progreso { height: 12px; border-radius: 8px; background: var(--color-suave); overflow: hidden; }
+.seg-relleno { height: 100%; width: 0; background: #2f8a3c; transition: width .5s; }
+.seg-cuenta { margin: 0; font-weight: 700; font-size: .9rem; color: #5a4636; }
+
+.s-items { display: grid; gap: 8px; }
+.s-item { display: grid; gap: 6px; padding: 10px 12px; border: 1px solid var(--color-borde); border-radius: 12px; background: #fff; }
+.s-item.estado-preparando { background: #fff0b3; }
+.s-item.estado-listo { background: #dff2e1; }
+.s-item-cab { display: flex; justify-content: space-between; gap: 8px; align-items: flex-start; }
+.s-item-nombre { font-weight: 700; overflow-wrap: anywhere; }
+.s-item .linea-detalle { margin: 0; }
+.s-bloqueo { font-size: .8rem; color: #6b4e00; font-weight: 600; margin: 0; }
+.s-item .linea-ctl .btn { min-height: 48px; }
+
+@media (max-width: 520px) {
+  .estado-titulo { font-size: 1.35rem; }
+}
+
+.mis-barra { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px; }
+.mis-barra h2 { margin: 0; color: var(--color-vino); }
+.mis-lista { display: grid; gap: 16px; }
+.ver-mis { margin: 0 0 10px; width: 100%; }
+.seg-orden .estado-banner { margin: -4px -4px 0; }
+.seg-orden .estado-banner.lista { animation: none; }
+
+.estimado { margin: 8px 0 0; font-size: 1.1rem; font-weight: 800; color: var(--color-vino); }
+
+.espera-previa { margin: 8px 0 0; padding: 8px 12px; border-radius: 10px; background: #e8f1fb; color: #14507f; font-weight: 800; }
+
+/* Producto agotado hoy: al final de su categoría, atenuado (texto y foto) */
+.pr.agotado { opacity: .45; filter: grayscale(.85); }
+.pr.agotado .pr-foto img { filter: grayscale(1); }
+.pr-agotado { justify-self: start; margin-top: 2px; background: #6f5f52; color: #fff; border-radius: 12px; font-size: .72rem; font-weight: 700; padding: 1px 8px; }
+.pr { -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; }
+
+/* Categorías fijas al hacer scroll (el encabezado sube normalmente y no reaparece hasta llegar arriba) */
+#vista-pedido .cats {
+  position: sticky; top: var(--alto-nav, 62px); z-index: 6; background: var(--color-fondo);
+  padding: 8px 0 8px; margin-top: 0; box-shadow: 0 6px 8px -6px rgba(80, 40, 10, .35);
+}
+
+
+/* Nota de ayuda sobre las categorías (celular) */
+.tip-toque {
+  display: flex; gap: 10px; align-items: flex-start; margin: 2px 0 10px; padding: 10px 12px;
+  background: #fff7d6; border: 1px dashed #e0b72e; border-radius: 12px; font-size: .86rem; line-height: 1.25; color: #4a3500;
+}
+.tip-toque > span:first-child { font-size: 1.4rem; line-height: 1; }
+
+/* Hoja del pedido: "Seguir pidiendo" bien visible y siempre a la vista */
+
+@media (max-width: 899px) {
+  .carrito-cab { position: sticky; top: -14px; z-index: 3; background: var(--color-tarjeta, #fff); margin: -14px -14px 0; padding: 12px 14px; border-bottom: 1px solid var(--color-borde); }
+}
+
+/* Pedido vacío: invita a ir al menú */
+.carrito-vacio { display: grid; gap: 10px; justify-items: center; text-align: center; padding: 22px 8px; }
+.carrito-vacio .vacio-titulo { margin: 0; font-size: 1.15rem; font-weight: 800; }
+.carrito-vacio .ayuda { margin: 0; }
+.carrito-vacio .btn { width: 100%; }
+
+/* Datos de transferencia, hasta arriba */
+.transferencia { display: grid; gap: 6px; margin: 0 0 12px; padding: 12px; border: 2px solid var(--color-amarillo); border-radius: var(--radio); background: var(--color-fondo); }
+.transf-titulo { font-size: 1.05rem; }
+.transf-fila { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+.transf-texto { display: grid; gap: 2px; min-width: 0; }
+.transf-etq { font-size: .8rem; color: #5a4636; }
+.clabe { font-size: 1rem; font-weight: 800; letter-spacing: .02em; white-space: nowrap; user-select: all; font-variant-numeric: tabular-nums; }
+.transf-dato { font-size: .9rem; }
+.transf-buscar { display: grid; gap: 4px; margin-top: 4px; padding-top: 8px; border-top: 1px dashed var(--color-borde); }
+.transf-buscar input { flex: 1 1 auto; min-width: 0; min-height: 46px; padding: 6px 12px; font-size: 1.1rem; border: 2px solid var(--color-borde); border-radius: var(--radio); background: #fff; }
+.transf-buscar input:focus { outline: none; border-color: var(--color-principal); }
+.transferencia .btn { flex: none; min-height: 46px; }
+.transferencia .msg-error { margin: 0; min-height: 0; }
+.transferencia .msg-error:empty { display: none; }
+
+
+html { scroll-behavior: smooth; }
+@media (prefers-reduced-motion: reduce) { html { scroll-behavior: auto; } }
+.buscar-pedido { margin-top: 16px; }
+.buscar-pedido h3 { margin: 0 0 4px; color: var(--color-vino); }
+.buscar-campos { display: flex; flex-wrap: wrap; gap: 8px; }
+.buscar-campos input { flex: 1 1 160px; min-width: 0; min-height: 46px; padding: 6px 12px; font-size: 1.05rem; border: 2px solid var(--color-borde); border-radius: var(--radio); background: #fff; }
+.buscar-campos input:focus { outline: none; border-color: var(--color-principal); }
+.buscar-campos .btn { flex: 1 1 100px; min-height: 46px; }
+.buscar-pedido .msg-error:empty { display: none; }
+
+/* Celular: la barra "Ver tu pedido" es fija; se deja espacio para que no tape la transferencia */
+@media (max-width: 899px) { main.contenedor:has(#vista-pedido:not([hidden])) { padding-bottom: 104px; } }
+@media (max-width: 440px) {
+  .transferencia { padding: 12px 10px; }
+  .transf-fila { flex-wrap: wrap; }
+  .transf-fila .transf-texto { flex: 1 1 100%; }
+  .transf-fila > .btn { flex: 1 1 100%; }
+  .transf-buscar .transf-fila { flex-wrap: nowrap; }
+  .transf-buscar .transf-fila > .btn { flex: none; }
+  .clabe { font-size: 1.05rem; white-space: normal; word-break: break-word; }
+}
+
+/* Secciones fijas: Menú / Mi pedido / Pagar (3 columnas iguales, sin scroll lateral) */
+.cliente-nav { position: sticky; top: 0; z-index: 20; display: grid; grid-template-columns: repeat(3, 1fr); background: var(--color-tarjeta); border-bottom: 1px solid var(--color-borde); box-shadow: 0 2px 8px rgba(96,16,32,.08); }
+.nav-tab { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 1px; min-width: 0; padding: 7px 4px 6px; border: 0; border-bottom: 3px solid transparent; background: transparent; color: #7a6552; font: inherit; font-size: .82rem; font-weight: 700; cursor: pointer; -webkit-tap-highlight-color: transparent; }
+.nav-tab .nav-ico { font-size: 1.3rem; line-height: 1.2; }
+.nav-tab span:last-child { max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.nav-tab + .nav-tab { border-left: 1px solid var(--color-borde); }
+.nav-tab:active { background: var(--color-suave); }
+.nav-tab.activo { color: var(--color-vino); border-bottom-color: var(--color-principal); background: var(--color-fondo); }
+
+/* Barra de secciones escondida mientras se baja por el menú */
+.cliente-nav { transition: transform .22s ease; }
+body.nav-oculta .cliente-nav { transform: translateY(-110%); box-shadow: none; }
+#vista-pedido .cats { transition: top .22s ease; }
+
+/* Pagar: página propia que ocupa toda la pantalla */
+.vista-pagar { display: grid; min-height: calc(100dvh - 190px); }
+.vista-pagar .transferencia { margin: 0; align-content: start; gap: 14px; padding: 20px 16px; }
+.vista-pagar .transf-titulo { font-size: 1.35rem; color: var(--color-vino); }
+.vista-pagar .transf-dato { font-size: 1.05rem; }
+.vista-pagar .transf-etq { font-size: .9rem; }
+.vista-pagar .clabe { font-size: 1.3rem; }
+.vista-pagar .transf-buscar { margin-top: 8px; padding-top: 16px; }
+.vista-pagar .transferencia .btn { min-height: 52px; font-size: 1.05rem; }
+.vista-pagar .transf-buscar input { min-height: 52px; font-size: 1.15rem; }
+@media (max-width: 440px) { .vista-pagar .clabe { font-size: 1.15rem; } }
