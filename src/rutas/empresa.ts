@@ -11,7 +11,12 @@ import { rutasExtras } from './admin/extras.js';
 import { rutasAdminMesas } from './admin/mesas.js';
 import { rutasSucursales } from './admin/sucursales.js';
 import { rutasUsuarios } from './admin/usuarios.js';
+import { rutasPrioridades } from './admin/prioridades.js';
+import { rutasTiempos } from './admin/tiempos.js';
+import { rutasCaja } from './caja.js';
+import { rutasCocina } from './cocina.js';
 import { rutasMenu } from './menu.js';
+import { rutasOrdenes } from './ordenes.js';
 
 /** Hash falso para tardar lo mismo cuando el usuario no existe (no delatar qué usuarios hay). */
 const HASH_RELLENO = bcrypt.hashSync('relleno-para-igualar-tiempos', 10);
@@ -19,7 +24,7 @@ const esperar = (ms: number): Promise<void> => new Promise((r) => setTimeout(r, 
 
 export async function rutasEmpresa(app: FastifyInstance): Promise<void> {
   // Menú y administración del catálogo (cada archivo documenta sus reglas y permisos)
-  for (const grupo of [rutasMenu, rutasCategorias, rutasEstaciones, rutasExtras, rutasAdminProductos, rutasSucursales, rutasAdminMesas, rutasUsuarios]) {
+  for (const grupo of [rutasMenu, rutasCategorias, rutasEstaciones, rutasExtras, rutasAdminProductos, rutasSucursales, rutasAdminMesas, rutasUsuarios, rutasOrdenes, rutasCocina, rutasCaja, rutasPrioridades, rutasTiempos]) {
     await app.register(grupo);
   }
 

@@ -16,6 +16,7 @@ export async function asegurarEsquema(): Promise<void> {
   }
   await asegurarColumna('orden_items', 'llevar', 'TINYINT(1) NOT NULL DEFAULT 0');
   await asegurarColumna('ordenes', 'pago_previsto', 'VARCHAR(15) NULL');
+  await asegurarColumna('pagos', 'comision', 'DECIMAL(10,2) NOT NULL DEFAULT 0');
   await ejecutar(`CREATE TABLE IF NOT EXISTS sesiones (
     id CHAR(64) NOT NULL PRIMARY KEY,
     contexto VARCHAR(60) NOT NULL,
