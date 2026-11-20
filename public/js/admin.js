@@ -585,7 +585,7 @@ function pintarCategorias() {
     const borrar = el('button', 'btn peligro', 'Eliminar');
     borrar.type = 'button';
     borrar.addEventListener('click', async () => {
-      if (await confirmar(`¿Eliminar la categoría “${c.nombre}”?`, { si: 'Eliminar', peligro: true })) {
+      if (await confirmar(`¿Eliminar la categoría de platillos “${c.nombre}”?` + (c.productos ? ` Tiene ${c.productos} platillo${c.productos === 1 ? '' : 's'}; el servidor no la borrará mientras los tenga.` : ''), { si: 'Eliminar', peligro: true })) {
         accionCategoria({ accion: 'eliminar', id: c.id }, 'Categoría eliminada');
       }
     });
@@ -1118,6 +1118,7 @@ $('ap-logo-archivo').addEventListener('change', async (ev) => {
   catch (err) { $('ap-error').textContent = err.message; }
 });
 $('ap-logo-quitar').addEventListener('click', async () => {
+  if (!(await confirmar('¿Quitar el logo de tu empresa? Se volverá a usar el logo de Comandia.', { si: 'Quitar logo', peligro: true }))) return;
   try { await enviarJson(API + 'admin/marca.php', { accion: 'quitar_logo' }); apRecargarLogo(); $('ap-logo-quitar').hidden = true; avisar('Logo quitado'); }
   catch (err) { $('ap-error').textContent = err.message; }
 });
@@ -1542,6 +1543,7 @@ function pintarVariantesTipos() {
       const quitar = el('button', 'btn chico peligro', '✕');
       quitar.type = 'button'; quitar.title = 'Quitar esta variante de mi lista'; quitar.setAttribute('aria-label', 'Quitar variante propia');
       quitar.addEventListener('click', async () => {
+        if (!(await confirmar(`¿Quitar la variante propia “${v.texto || 'sin texto'}” de tu lista? Los extras que ya creaste con ella no se borran.`, { si: 'Quitar variante', peligro: true }))) return;
         variantesEstado = variantesEstado.filter((o) => o !== v);
         await guardarVariantesPropias();
         pintarVariantesTipos();
