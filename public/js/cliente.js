@@ -68,7 +68,7 @@ function nuevaClave() {
 /*  Pantallas                                                          */
 /* ------------------------------------------------------------------ */
 function mostrar(vista) {
-  for (const id of ['vista-cargando', 'vista-aviso', 'vista-pedido', 'vista-mis', 'vista-pagar']) $(id).hidden = id !== vista;
+  for (const id of ['vista-cargando', 'vista-aviso', 'vista-sucursal', 'vista-pedido', 'vista-mis', 'vista-pagar']) $(id).hidden = id !== vista;
   $('subtitulo').textContent = vista === 'vista-mis' ? 'Sigue tus pedidos' : vista === 'vista-pagar' ? 'Paga por transferencia' : 'Haz tu pedido';
   if (vista === 'vista-mis') iniciarSondeo(); else detenerSondeo();
 }
@@ -90,14 +90,30 @@ function falloGrave(titulo, texto) {
 }
 $('aviso-reintentar').addEventListener('click', iniciar);
 
-/* Sucursal: viene en el QR (?s=ID); si el negocio tiene varias y el QR no la trae, el cliente la elige */
+/* Sucursal: viene en el QR (?s=ID). Si la empresa tiene varias y el enlace NO la trae (o trae una que no existe), no se adivina:
+   se le pregunta al cliente. Antes se usaba la última sucursal recordada o la primera, y por eso podía caer en una equivocada. */
+function preguntarSucursal(sucursales) {
+  return new Promise((resolver) => {
+    const caja = $('lista-sucursal-elegir');
+    caja.replaceChildren();
+    for (const s of sucursales) {
+      const b = el('button', 'btn principal grande', '📍 ' + s.nombre);
+      b.type = 'button';
+      b.addEventListener('click', () => resolver(String(s.id)));
+      caja.append(b);
+    }
+    mostrar('vista-sucursal');
+  });
+}
+
 async function cargarNegocio() {
   const r = await pedir(API + 'negocio.php');
   sucursalesNegocio = r.sucursales;
   const ids = r.sucursales.map((s) => String(s.id));
   let elegida = new URLSearchParams(location.search).get('s');
-  try { if (!ids.includes(String(elegida))) elegida = localStorage.getItem(claveLS('sucursal')); } catch { /* sin almacenamiento */ }
-  if (!ids.includes(String(elegida))) elegida = ids[0];
+  if (!ids.includes(String(elegida))) elegida = r.sucursales.length > 1 ? await preguntarSucursal(r.sucursales) : ids[0];
+  try { localStorage.setItem(claveLS('sucursal'), String(elegida)); } catch { /* sin almacenamiento */ }
+  mostrar('vista-cargando');
   sucursalPublica = Number(elegida);
   aplicarModoPedidos();
   const sel = $('sel-sucursal-cliente');

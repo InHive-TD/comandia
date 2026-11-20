@@ -43,6 +43,13 @@
       <button id="aviso-reintentar" class="btn principal" type="button">Reintentar</button>
     </section>
 
+    <!-- ===== Elegir sucursal (solo si el enlace/QR no trae una y la empresa tiene varias) ===== -->
+    <section id="vista-sucursal" class="tarjeta angosta" hidden>
+      <h2>¿En qué sucursal estás?</h2>
+      <p class="ayuda">Elígela para ver su menú y que tu pedido llegue al lugar correcto.</p>
+      <div id="lista-sucursal-elegir" class="acciones-dialogo"></div>
+    </section>
+
     <!-- ===== Menú y carrito ===== -->
     <section id="vista-pedido" class="pedido" hidden>
       <div class="menu-col">
@@ -204,6 +211,6 @@
   <div id="toast" class="toast" role="status" hidden></div>
 
   <script src="js/comun.js?v=202611201400"></script>
-  <script src="js/cliente.js?v=202611201640"></script>
+  <script src="js/cliente.js?v=202611201710"></script>
 </body>
 </html>

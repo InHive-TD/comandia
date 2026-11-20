@@ -993,9 +993,35 @@ async function cargarAjustes() {
   }
 }
 
-/* Pedidos del cliente por QR: interruptor de toda la empresa (dueño) y de cada sucursal (dueño o gerente) */
+/* Pedidos del cliente por QR: interruptor de toda la empresa (dueño) y de cada sucursal (dueño o gerente).
+   Los cambios NO se guardan al marcar: se acumulan y se aplican al tocar "Guardar configuración". */
+let cpOriginal = null;   // estado guardado en el servidor: { general, puede_general, sucursales: [{id, activo}] }
+
+/** Compara lo marcado en pantalla con lo guardado; habilita el botón solo si hay cambios. */
+function cpActualizarPendiente() {
+  if (!cpOriginal) return;
+  const cambios = cpCambios().length > 0;
+  $('cp-guardar').disabled = !cambios;
+  $('cp-pendiente').hidden = !cambios;
+}
+
+/** Lista de cambios (en el orden en que deben aplicarse): primero el general, luego cada sucursal. */
+function cpCambios() {
+  const cambios = [];
+  if (cpOriginal.puede_general && $('cp-general').checked !== cpOriginal.general) {
+    cambios.push({ accion: 'general', activo: $('cp-general').checked });
+  }
+  document.querySelectorAll('#cp-lista input').forEach((x) => {
+    const id = Number(x.dataset.id);
+    const antes = cpOriginal.sucursales.find((s) => s.id === id);
+    if (antes && x.checked !== antes.activo) cambios.push({ accion: 'sucursal', sucursal_id: id, activo: x.checked });
+  });
+  return cambios;
+}
+
 async function cargarClientePedidos() {
   const r = await pedir(API + 'admin/cliente-pedidos.php');
+  cpOriginal = { general: r.general, puede_general: r.puede_general, sucursales: r.sucursales.map((s) => ({ id: s.id, activo: s.activo })) };
   $('cp-general-fila').hidden = !r.puede_general;
   $('cp-general').checked = r.general;
   const lista = $('cp-lista');
@@ -1003,26 +1029,31 @@ async function cargarClientePedidos() {
   for (const s of r.sucursales) {
     const f = el('label', 'lote-op');
     const x = document.createElement('input');
-    x.type = 'checkbox'; x.checked = s.activo;
+    x.type = 'checkbox'; x.checked = s.activo; x.dataset.id = String(s.id);
     x.disabled = !r.general && !r.puede_general;   // el gerente no puede encenderlo si la empresa lo apagó
-    x.addEventListener('change', () => guardarClientePedidos({ accion: 'sucursal', sucursal_id: s.id, activo: x.checked }));
+    x.addEventListener('change', cpActualizarPendiente);
     f.append(x, el('span', '', s.nombre + (s.activo && !s.efectivo ? ' (apagado por la empresa)' : '')));
     lista.append(f);
   }
   const nota = $('cp-nota');
   nota.hidden = r.general || r.puede_general;
   nota.textContent = 'El dueño desactivó los pedidos por QR en toda la empresa. Solo él puede volver a activarlos.';
+  cpActualizarPendiente();
 }
 
-async function guardarClientePedidos(cuerpo) {
+/** Envía al servidor todos los cambios pendientes y vuelve a leer el estado real. */
+async function guardarClientePedidos() {
   $('pr-error').textContent = '';
+  const boton = $('cp-guardar');
+  boton.disabled = true;
   try {
-    await enviarJson(API + 'admin/cliente-pedidos.php', cuerpo);
-    avisar(cuerpo.activo ? 'Pedidos por QR activados' : 'Pedidos por QR desactivados: el cliente solo verá el menú');
+    for (const cambio of cpCambios()) await enviarJson(API + 'admin/cliente-pedidos.php', cambio);
+    avisar('Configuración guardada');
   } catch (err) { $('pr-error').textContent = err.message; }
   try { await cargarClientePedidos(); } catch { /* se queda como estaba */ }
 }
-$('cp-general').addEventListener('change', () => guardarClientePedidos({ accion: 'general', activo: $('cp-general').checked }));
+$('cp-general').addEventListener('change', cpActualizarPendiente);
+$('cp-guardar').addEventListener('click', guardarClientePedidos);
 
 async function guardarLote() {
   $('pr-error').textContent = '';
