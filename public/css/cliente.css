@@ -155,3 +155,7 @@ body.nav-oculta .cliente-nav { transform: translateY(-110%); box-shadow: none; }
 
 /* Sucursal fija (la manda la dirección del QR): etiqueta, no selector */
 .sucursal-fija { margin: 4px 0 0; display: inline-block; padding: 3px 12px; border-radius: 10px; background: var(--color-amarillo, #f4b400); color: #3b2a00; font-weight: 800; }
+
+/* Barra de pestañas: se ajusta al número de pestañas visibles y puede ocultarse por completo (el atributo hidden pierde contra display) */
+.cliente-nav { grid-template-columns: none; grid-auto-flow: column; grid-auto-columns: 1fr; }
+.cliente-nav[hidden], .nav-tab[hidden] { display: none; }

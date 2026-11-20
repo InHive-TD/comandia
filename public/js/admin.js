@@ -1055,12 +1055,18 @@ function cpCambios() {
     const antes = cpOriginal.sucursales.find((s) => s.id === id);
     if (antes && x.checked !== antes.activo) cambios.push({ accion: 'sucursal', sucursal_id: id, activo: x.checked });
   });
+  // Pestañas "Mi pedido" / "Pagar" de cada sucursal (se mandan juntas si cambió cualquiera de las dos)
+  for (const s of cpOriginal.sucursales) {
+    const vp = document.querySelector(`#cp-pestanas input[data-id="${s.id}"][data-campo="pedido"]`);
+    const vg = document.querySelector(`#cp-pestanas input[data-id="${s.id}"][data-campo="pagar"]`);
+    if (vp && vg && (vp.checked !== s.ver_pedido || vg.checked !== s.ver_pagar)) cambios.push({ accion: 'pestanas', sucursal_id: s.id, ver_pedido: vp.checked, ver_pagar: vg.checked });
+  }
   return cambios;
 }
 
 async function cargarClientePedidos() {
   const r = await pedir(API + 'admin/cliente-pedidos.php');
-  cpOriginal = { general: r.general, puede_general: r.puede_general, sucursales: r.sucursales.map((s) => ({ id: s.id, activo: s.activo })) };
+  cpOriginal = { general: r.general, puede_general: r.puede_general, sucursales: r.sucursales.map((s) => ({ id: s.id, activo: s.activo, ver_pedido: s.ver_pedido, ver_pagar: s.ver_pagar })) };
   $('cp-general-fila').hidden = !r.puede_general;
   $('cp-general').checked = r.general;
   const lista = $('cp-lista');
@@ -1073,6 +1079,24 @@ async function cargarClientePedidos() {
     x.addEventListener('change', cpActualizarPendiente);
     f.append(x, el('span', '', s.nombre + (s.activo && !s.efectivo ? ' (apagado por la empresa)' : '')));
     lista.append(f);
+  }
+  // Pestañas visibles para el cliente, por sucursal
+  const pest = $('cp-pestanas');
+  pest.replaceChildren();
+  for (const s of r.sucursales) {
+    const bloque = el('div', 'cp-pest-suc');
+    if (r.sucursales.length > 1) bloque.append(el('strong', '', s.nombre));
+    const fila = el('div', 'lote-lista');
+    for (const [campo, texto, valor] of [['pedido', 'Mostrar «Mi pedido»', s.ver_pedido], ['pagar', 'Mostrar «Pagar»', s.ver_pagar]]) {
+      const f = el('label', 'lote-op');
+      const x = document.createElement('input');
+      x.type = 'checkbox'; x.checked = valor; x.dataset.id = String(s.id); x.dataset.campo = campo;
+      x.addEventListener('change', cpActualizarPendiente);
+      f.append(x, el('span', '', texto));
+      fila.append(f);
+    }
+    bloque.append(fila);
+    pest.append(bloque);
   }
   const nota = $('cp-nota');
   nota.hidden = r.general || r.puede_general;

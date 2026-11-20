@@ -4,7 +4,7 @@ import { contextoNegocio, csrfToken, cuerpoJson, requerirRol, resolverSucursal, 
 import { ejecutar, fila } from '../db.js';
 import { ErrorHttp } from '../errores.js';
 import { sucursalesActivas } from '../negocio.js';
-import { efectivo, estadoPedidosCliente } from '../pedidosClientes.js';
+import { efectivo, estadoPedidosCliente, pestanasCliente, pestanasDe } from '../pedidosClientes.js';
 import { rutasAdminProductos } from './admin/productos.js';
 import { rutasCategorias } from './admin/categorias.js';
 import { rutasEstaciones } from './admin/estaciones.js';
@@ -37,11 +37,13 @@ export async function rutasEmpresa(app: FastifyInstance): Promise<void> {
   /** Datos públicos para la pantalla del cliente (QR): nombre y sucursales. */
   app.get('/negocio', async (req) => {
     const estado = await estadoPedidosCliente(req.negocio.id);
+    const pest = await pestanasCliente(req.negocio.id);
     return {
       ok: true,
       negocio: { nombre: req.negocio.nombre, slug: req.negocio.slug },
       // `pedidos`: ¿el cliente puede levantar su pedido desde el QR en esa sucursal, o solo ver el menú?
-      sucursales: (await sucursalesActivas(req.negocio.id)).map((s) => ({ id: s.id, slug: s.slug, nombre: s.nombre, pedidos: efectivo(estado, s.id) })),
+      // `ver_pedido` / `ver_pagar`: ¿se muestran las pestañas "Mi pedido" y "Pagar"?
+      sucursales: (await sucursalesActivas(req.negocio.id)).map((s) => ({ id: s.id, slug: s.slug, nombre: s.nombre, pedidos: efectivo(estado, s.id), ver_pedido: pestanasDe(pest, s.id).verPedido, ver_pagar: pestanasDe(pest, s.id).verPagar })),
     };
   });
 

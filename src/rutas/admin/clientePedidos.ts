@@ -1,9 +1,10 @@
 /**
  * Interruptores de "el cliente puede levantar su propio pedido desde el QR" (o solo ver el menú).
  *
- *   GET  /admin/cliente-pedidos → { general, puede_general, sucursales: [{ id, nombre, activo, efectivo }] }
+ *   GET  /admin/cliente-pedidos → { general, puede_general, sucursales: [{ id, nombre, activo, efectivo, ver_pedido, ver_pagar }] }
  *   POST { accion: 'general',  activo: true|false }                  solo el dueño: interruptor de TODA la empresa
  *   POST { accion: 'sucursal', sucursal_id, activo: true|false }     el dueño (cualquier sucursal) o el gerente (solo la suya)
+ *   POST { accion: 'pestanas', sucursal_id, ver_pedido, ver_pagar }  muestra u oculta las pestañas "Mi pedido" y "Pagar" del cliente
  *
  * Reglas: si el dueño lo apaga para toda la empresa, el gerente ya no puede encenderlo en su sucursal.
  * El gerente siempre trabaja sobre su sucursal, aunque mande otro sucursal_id.
@@ -12,7 +13,7 @@ import type { FastifyInstance } from 'fastify';
 import { cuerpoJson, exigirMetodo, requerirGestion } from '../../auth.js';
 import { ejecutar, filas } from '../../db.js';
 import { ErrorHttp, fallo } from '../../errores.js';
-import { efectivo, estadoPedidosCliente } from '../../pedidosClientes.js';
+import { efectivo, estadoPedidosCliente, pestanasCliente, pestanasDe } from '../../pedidosClientes.js';
 import { entero, noVacio } from '../../util.js';
 
 const guardar = (nid: number, clave: string, activo: boolean) =>
@@ -30,12 +31,15 @@ export async function rutasClientePedidos(app: FastifyInstance): Promise<void> {
       /** Estado actual (el gerente solo ve su sucursal). */
       const estado = async () => {
         const e = await estadoPedidosCliente(nid);
+        const pest = await pestanasCliente(nid);
         const sucs = await filas(`SELECT id, nombre FROM sucursales WHERE negocio_id = ? AND activa = 1${alcance !== null ? ` AND id = ${Math.trunc(alcance)}` : ''} ORDER BY orden, id`, [nid]);
         return {
           ok: true,
           general: e.general,
           puede_general: alcance === null,
-          sucursales: sucs.map((s) => ({ id: Number(s['id']), nombre: s['nombre'], activo: e.porSucursal.get(Number(s['id'])) ?? true, efectivo: efectivo(e, Number(s['id'])) })),
+          sucursales: sucs.map((s) => ({ id: Number(s['id']), nombre: s['nombre'], activo: e.porSucursal.get(Number(s['id'])) ?? true, efectivo: efectivo(e, Number(s['id'])),
+            ver_pedido: pestanasDe(pest, Number(s['id'])).verPedido, ver_pagar: pestanasDe(pest, Number(s['id'])).verPagar,
+          })),
         };
       };
 
@@ -57,6 +61,14 @@ export async function rutasClientePedidos(app: FastifyInstance): Promise<void> {
             throw fallo('El dueño desactivó los pedidos de clientes en toda la empresa. Pídele que los active para poder activarlos aquí.', 403);
           }
           await guardar(nid, `cliente_pedidos@${sid}`, activo);
+          return estado();
+        }
+        case 'pestanas': {
+          const sid = alcance ?? entero(d['sucursal_id']);
+          const s = await filas('SELECT id FROM sucursales WHERE id = ? AND negocio_id = ?', [sid, nid]);
+          if (s.length === 0) throw new ErrorHttp(404, 'validacion', 'Esa sucursal no existe.');
+          await guardar(nid, `cliente_ver_pedido@${sid}`, noVacio(d['ver_pedido']));
+          await guardar(nid, `cliente_ver_pagar@${sid}`, noVacio(d['ver_pagar']));
           return estado();
         }
         default:

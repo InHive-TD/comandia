@@ -69,7 +69,7 @@ function nuevaClave() {
 /* ------------------------------------------------------------------ */
 function mostrar(vista) {
   for (const id of ['vista-cargando', 'vista-aviso', 'vista-pedido', 'vista-mis', 'vista-pagar']) $(id).hidden = id !== vista;
-  $('subtitulo').textContent = vista === 'vista-mis' ? 'Sigue tus pedidos' : vista === 'vista-pagar' ? 'Paga por transferencia' : 'Haz tu pedido';
+  $('subtitulo').textContent = vista === 'vista-mis' ? 'Sigue tus pedidos' : vista === 'vista-pagar' ? 'Paga por transferencia' : pedidosActivos ? 'Haz tu pedido' : 'Nuestro menú';
   if (vista === 'vista-mis') iniciarSondeo(); else detenerSondeo();
 }
 
@@ -108,11 +108,23 @@ async function cargarNegocio() {
   const elegida = String(suc.id);
   mostrar('vista-cargando');
   sucursalPublica = Number(elegida);
+  aplicarPestanas(suc);
   aplicarModoPedidos();
   // Con varias sucursales se muestra, fija y bien visible, en cuál está el cliente (no es un selector).
   const fija = $('sucursal-fija');
   fija.hidden = r.sucursales.length < 2;
   fija.textContent = '📍 ' + suc.nombre;
+}
+
+/* Pestañas "Mi pedido" y "Pagar": cada sucursal puede ocultarlas. Si se ocultan las dos, desaparece toda la barra
+   (la de "Menú" sola no sirve de nada) y el menú sube hasta arriba. */
+let verPedido = true, verPagar = true;
+function aplicarPestanas(suc) {
+  verPedido = suc.ver_pedido !== false;
+  verPagar = suc.ver_pagar !== false;
+  $('nav-pedido').hidden = !verPedido;
+  $('nav-pagar').hidden = !verPagar;
+  document.querySelector('.cliente-nav').hidden = !verPedido && !verPagar;
 }
 
 /* Si en esta sucursal el cliente no puede pedir (lo desactivó el dueño o el gerente), la pantalla queda en "solo menú":
@@ -121,7 +133,7 @@ function aplicarModoPedidos() {
   const suc = sucursalesNegocio.find((s) => s.id === sucursalPublica);
   pedidosActivos = !suc || suc.pedidos !== false;
   document.body.classList.toggle('solo-menu', !pedidosActivos);
-  $('aviso-solo-menu').hidden = pedidosActivos;
+  $('subtitulo').textContent = pedidosActivos ? 'Haz tu pedido' : 'Nuestro menú';   // en solo menú no se invita a pedir
 }
 
 async function iniciar() {
@@ -131,7 +143,7 @@ async function iniciar() {
     await cargarMenu();
     claves = leerClaves();
     try { const b = JSON.parse(localStorage.getItem(claveLS('taqueria_buscados')) || '[]'); buscados = Array.isArray(b) ? b.filter((x) => x && typeof x.q === 'string' && x.q).slice(0, 5) : []; } catch { buscados = []; }
-    if (claves.length || buscados.length) {
+    if (verPedido && (claves.length || buscados.length)) {   // sin la pestaña "Mi pedido" no se abre el seguimiento
       await refrescar();
       if (ordenes.length || ordenesBuscadas.length) { mostrar('vista-mis'); pintarMis(); return; }
     }
