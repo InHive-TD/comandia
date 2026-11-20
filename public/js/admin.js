@@ -1018,13 +1018,13 @@ async function cargarSucursales() {
     // Enlace para el QR de esta sucursal (el cliente abre el menú y sus pedidos van a esta sucursal)
     const enlace = location.origin + location.pathname.replace(/admin(\/.*)?$/, '') + (s.slug || '') + '/';
     const campoEnlace = document.createElement('input');
-    campoEnlace.type = 'text'; campoEnlace.readOnly = true; campoEnlace.value = enlace; campoEnlace.setAttribute('aria-label', 'Enlace para el QR');
+    campoEnlace.type = 'text'; campoEnlace.readOnly = true; campoEnlace.value = enlace; campoEnlace.setAttribute('aria-label', 'Enlace QR para menú de sucursal');
     campoEnlace.addEventListener('focus', () => campoEnlace.select());
     const copiar = el('button', 'btn chico', 'Copiar enlace'); copiar.type = 'button';
     copiar.addEventListener('click', async () => { try { await navigator.clipboard.writeText(enlace); avisar('Enlace copiado'); } catch { campoEnlace.select(); } });
     const filaQr = el('div', 'su-qr');
     filaQr.append(campoEnlace, copiar);
-    const lq = el('div', 'su-campo'); lq.append(el('span', 'su-etq', 'Enlace para el QR de esta sucursal'), filaQr);
+    const lq = el('div', 'su-campo'); lq.append(el('span', 'su-etq', 'Enlace QR para menú de sucursal'), el('span', 'ayuda', 'Este enlace es para que el cliente lo escanee con su celular y vea el menú de esta sucursal de una manera amigable.'), filaQr);
     // Código QR del enlace, debajo, con botón para descargarlo como imagen (para imprimirlo)
     const qr = qrcode(0, 'M');
     qr.addData(enlace);
