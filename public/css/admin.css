@@ -505,3 +505,9 @@ fieldset.extras-campo { border: 1px solid #d9c690; border-radius: 10px; padding:
 .var-lista { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 6px; }
 .var-vista { padding: 8px 10px; background: #fff; border: 1px dashed var(--color-borde); border-radius: 10px; }
 @media (max-width: 520px) { .var-tipo.propia { grid-template-columns: 28px 1fr 1fr 34px; } .var-tipo { grid-template-columns: 28px 1fr 1fr; } .var-tipo input:nth-child(4) { grid-column: 2 / -1; } }
+
+/* Botón "Categorías de platillos": mismo tamaño que Expandir/Colapsar todo, pegado a la derecha y en color propio */
+#barra-platillos { align-items: center; flex-wrap: wrap; }
+.btn-categorias-platillos { margin-left: auto; background: var(--color-vino, #6b1020); border-color: var(--color-vino, #6b1020); color: #fff; white-space: nowrap; }
+.btn-categorias-platillos:hover { filter: brightness(1.15); }
+#barra-expandir { margin-bottom: 0; }
