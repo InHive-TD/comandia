@@ -410,7 +410,7 @@ async function montarSucursal() {
     const r = await pedir(API + 'sucursal.php');
     if (!r.sucursales.length) return;
     if (r.sucursales.length === 1) {
-      quien.append(document.createTextNode(' · 📍 ' + r.sucursales[0].nombre));
+      quien.append(document.createTextNode(' · Sucursal ' + r.sucursales[0].nombre));
       return;
     }
     const sel = document.createElement('select');
@@ -419,7 +419,7 @@ async function montarSucursal() {
     sel.setAttribute('aria-label', 'Sucursal');
     for (const s of r.sucursales) {
       const o = document.createElement('option');
-      o.value = String(s.id); o.textContent = '📍 ' + s.nombre;
+      o.value = String(s.id); o.textContent = 'Sucursal ' + s.nombre;
       sel.append(o);
     }
     sel.value = String(r.actual);

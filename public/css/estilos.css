@@ -90,4 +90,4 @@ body {
 
 /* Mesa del pedido (mesero) */
 .chip-mesa { padding: 1px 8px; border-radius: 10px; font-size: .78rem; font-weight: 800; background: #fff3c4; color: #5a4636; border: 1px solid #e3c25a; }
-.sel-sucursal { margin-top: 4px; max-width: 100%; padding: 4px 8px; border-radius: 10px; font-weight: 700; }
+.sel-sucursal { margin-top: 2px; max-width: 100%; padding: 1px 6px; border-radius: 8px; font-weight: 700; font-size: .9rem; line-height: 1.4; }
