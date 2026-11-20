@@ -14,7 +14,7 @@ import { fallo } from './errores.js';
 export const MARCA_DEFECTO = {
   encabezado: '#601020', // barra principal
   acento: '#f8c000', // línea de la barra, detalles
-  boton: '#c8261a', // botones y acciones
+  boton: '#2f7d3a', // botones y acciones (verde amable; el rojo se reserva para alertas y eliminar)
   fondo: '#fff7e0', // fondo de la página
   texto: '#2a1015', // texto
 } as const;

@@ -149,7 +149,7 @@
 .seg-rejilla { display: grid; gap: 14px; grid-template-columns: repeat(auto-fill, minmax(min(100%, 330px), 1fr)); align-items: start; }
 .seg-tarjeta { --franja: #2f8a3c; background: var(--color-tarjeta, #fff); border: 1px solid var(--color-borde); border-top: 10px solid var(--franja); border-radius: var(--radio, 14px); padding: 10px 12px 12px; display: grid; gap: 8px; }
 .seg-tarjeta.espera-media { --franja: var(--color-amarillo); }
-.seg-tarjeta.espera-larga { --franja: var(--color-principal); }
+.seg-tarjeta.espera-larga { --franja: #c8261a; }   /* alerta: sigue en rojo */
 .seg-tarjeta.lista { --franja: #2f8a3c; background: #f2fbf3; }
 .seg-cab { display: grid; grid-template-columns: minmax(0, 1fr) 96px; gap: 10px; align-items: center; }
 .seg-cliente { font-size: 1.7rem; font-weight: 800; line-height: 1.15; overflow-wrap: anywhere; }

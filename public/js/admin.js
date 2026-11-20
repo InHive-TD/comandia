@@ -1096,7 +1096,7 @@ const dlgApariencia = $('dlg-apariencia');
 let apDatos = null;           // { colores, defecto, nombres }
 let apColores = {};
 const AP_PRESETS = [
-  { nombre: 'Clásico', colores: { encabezado: '#601020', acento: '#f8c000', boton: '#c8261a', fondo: '#fff7e0', texto: '#2a1015' } },
+  { nombre: 'Clásico', colores: { encabezado: '#601020', acento: '#f8c000', boton: '#2f7d3a', fondo: '#fff7e0', texto: '#2a1015' } },
   { nombre: 'Verde fresco', colores: { encabezado: '#1f5e3b', acento: '#f2c94c', boton: '#2f7d3a', fondo: '#f4faf1', texto: '#14231a' } },
   { nombre: 'Azul moderno', colores: { encabezado: '#12355b', acento: '#ffb703', boton: '#1d6fd1', fondo: '#f3f7fc', texto: '#101c2b' } },
   { nombre: 'Morado y rosa', colores: { encabezado: '#4a1d6b', acento: '#ff8fb1', boton: '#8e44ad', fondo: '#faf5fd', texto: '#24102f' } },

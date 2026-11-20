@@ -24,7 +24,7 @@
   overflow: hidden;
 }
 .comanda.espera-media { --franja: var(--color-amarillo); }
-.comanda.espera-larga { --franja: var(--color-principal); }
+.comanda.espera-larga { --franja: #c8261a; }   /* alerta: sigue en rojo */
 .comanda.sin-trabajo { opacity: .7; }
 .comanda.recien { animation: recien 1.2s ease-out 4; }
 @keyframes recien { 0%, 100% { box-shadow: 0 0 0 0 rgba(248,192,0,0); } 50% { box-shadow: 0 0 0 8px rgba(248,192,0,.7); } }

@@ -23,7 +23,7 @@
 .vacio { color: #5a4636; padding: 16px 4px; }
 
 .cobro-tarjeta { background: var(--color-tarjeta); border: 1px solid var(--color-borde); border-left: 10px solid var(--color-amarillo); border-radius: var(--radio); padding: 12px 14px; display: grid; gap: 8px; }
-.cobro-tarjeta.urgente { border-left-color: var(--color-principal); background: #fff5f2; }
+.cobro-tarjeta.urgente { border-left-color: #c8261a; background: #fff5f2; }
 .cobro-tarjeta.pagada { border-left-color: var(--color-ok); }
 .cobro-tarjeta.devolver { border-left-color: var(--color-error); background: #fff5f2; }
 .cobro-cab { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 10px; }

@@ -2,7 +2,7 @@
    Los colores viven en variables: cambiándolos aquí cambian en toda la app. */
 
 :root {
-  --color-principal: #c8261a;   /* rojo del logo (botones; texto blanco encima: contraste 5.6) */
+  --color-principal: #2f7d3a;   /* verde amable de los botones (texto blanco encima: contraste 5.3); el rojo queda solo para alertas y eliminar */
   --color-vino:      #601020;   /* vino del logo (encabezados, selección) */
   --color-amarillo:  #f8c000;   /* amarillo del logo (acentos, borde del encabezado) */
   --color-oscuro:    #2a1015;   /* texto */
