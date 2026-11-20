@@ -535,3 +535,8 @@ fieldset.extras-campo { border: 1px solid #d9c690; border-radius: 10px; padding:
 .us-nuevo-det > summary::-webkit-details-marker { display: none; }
 .ue-activo { display: flex; align-items: center; gap: 8px; }
 @media (max-width: 640px) { .us-renglon { grid-template-columns: 1fr auto; } .us-chips { grid-column: 1 / -1; order: 3; } }
+
+/* Las secciones son páginas: no hay botón de cerrar. Las acciones (Guardar, Cancelar…) quedan en una barra pegada abajo. */
+dialog.pagina .acciones-dialogo [id$="-cerrar"] { display: none; }
+dialog.pagina .acciones-dialogo:not(:has(.btn:not([id$="-cerrar"]))) { display: none; }
+dialog.pagina .acciones-dialogo { position: sticky; bottom: 0; z-index: 5; background: var(--color-tarjeta); padding: 12px 0; margin-top: 8px; border-top: 1px solid var(--color-borde); }

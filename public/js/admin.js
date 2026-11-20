@@ -74,7 +74,9 @@ async function entrar(usuario) {
   $('btn-sucursales').textContent = esGerente ? 'Mi sucursal y mesas' : 'Sucursales y mesas';
   mostrar('vista-panel');
   await cargarCatalogo();
-  $('btn-reportes').click();   // la página de inicio es el reporte
+  // Entra a la sección de la dirección (#usuarios…) si es válida y permitida; si no, al Inicio (reportes)
+  const pedida = RUTAS[location.hash.slice(1)] && $(RUTAS[location.hash.slice(1)]);
+  (pedida && !pedida.hidden ? pedida : $('btn-reportes')).click();
 }
 
 $('form-login').addEventListener('submit', async (ev) => {
@@ -371,12 +373,28 @@ function marcarMenu(idBoton) {
 }
 
 /** Muestra una sección como página: cierra la que estuviera abierta y oculta la lista de productos. */
+/* Cada sección tiene su propia dirección (#usuarios, #extras…): se puede recargar, guardar en favoritos y usar "atrás". */
+const RUTAS = { inicio: 'btn-reportes', platillos: 'btn-productos', categorias: 'btn-categorias', extras: 'btn-extras', sucursales: 'btn-sucursales', usuarios: 'btn-usuarios', ajustes: 'btn-prioridades', apariencia: 'btn-apariencia' };
+let rutaActual = '';
+function fijarRuta(idBoton) {
+  const nombre = Object.keys(RUTAS).find((k) => RUTAS[k] === idBoton);
+  if (!nombre || nombre === rutaActual) return;
+  rutaActual = nombre;
+  if (location.hash !== '#' + nombre) location.hash = nombre;
+}
+window.addEventListener('hashchange', () => {
+  const nombre = location.hash.slice(1);
+  const b = RUTAS[nombre] && $(RUTAS[nombre]);
+  if (!b || b.hidden || nombre === rutaActual) return;
+  b.click();
+});
 let volverA = 'inicio';   // a dónde regresa al cerrar una página: 'platillos' (formulario y categorías) o 'inicio' (reportes)
 function abrirPagina(dlg, idBoton) {
   volverA = (dlg === dlgProducto || dlg === dlgCategorias) ? 'platillos' : 'inicio';
   for (const o of paginasPortal) if (o !== dlg && o.open) o.close();
   $('vista-platillos').hidden = true;
   if (!dlg.open) dlg.show();          // show() = no modal
+  fijarRuta(dlg === dlgProducto ? 'btn-productos' : idBoton);
   marcarMenu(idBoton === 'btn-categorias' ? 'btn-productos' : idBoton);   // Categorías de platillos cuelga de Platillos
   window.scrollTo({ top: 0 });
 }
@@ -384,7 +402,7 @@ function abrirPagina(dlg, idBoton) {
 // Al cerrarse una página, si ya no queda ninguna abierta se regresa a Productos
 for (const d of paginasPortal) d.addEventListener('close', () => {
   if (paginasPortal.some((o) => o.open)) return;
-  if (volverA === 'platillos') { $('vista-platillos').hidden = false; marcarMenu('btn-productos'); }
+  if (volverA === 'platillos') { $('vista-platillos').hidden = false; marcarMenu('btn-productos'); fijarRuta('btn-productos'); }
   else $('btn-reportes').click();   // sin nada abierto se vuelve a Inicio (reportes)
 });
 // "Platillos" del menú: cierra la página abierta y muestra la lista de platillos
@@ -393,6 +411,7 @@ $('btn-productos').addEventListener('click', () => {
   const abiertas = paginasPortal.filter((o) => o.open);
   if (abiertas.length) abiertas.forEach((o) => o.close());
   else { $('vista-platillos').hidden = false; marcarMenu('btn-productos'); }
+  fijarRuta('btn-productos');
   window.scrollTo({ top: 0 });
 });
 

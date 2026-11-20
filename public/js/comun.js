@@ -313,6 +313,7 @@ function limitarCarnes(caja, p, extras) {
    derecha, en una barra fija: el contenido se desplaza debajo y no hay que bajar para cerrar o confirmar. */
 document.addEventListener('DOMContentLoaded', () => {
   for (const d of document.querySelectorAll('dialog')) {
+    if (d.classList.contains('pagina')) continue;   // las secciones del portal son páginas: sin barra ni ✕ (se navega con el menú lateral)
     const acc = d.querySelector('.acciones-dialogo');
     const cerrar = acc && acc.querySelector('button[id$="-cancelar"], button[id$="-cerrar"]');
     if (!cerrar) continue;                       // ventanas de aviso (solo "Entendido", "Nuevo pedido"…) se quedan como están
