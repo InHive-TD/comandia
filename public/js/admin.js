@@ -139,8 +139,47 @@ function pintarLista() {
         : 'Aún no hay productos. Toca “Nuevo producto” para agregar el primero.'));
     return;
   }
-  for (const p of productos) lista.append(tarjeta(p));
+
+  // Productos agrupados por categoría, cada grupo expandible/colapsable. Los que no pertenecen a ninguna
+  // categoría conocida van al final en "Otros".
+  const grupos = categorias.map((c) => ({ clave: String(c.id), nombre: c.nombre, items: productos.filter((p) => p.categoria_id === c.id) }));
+  const conocidas = new Set(categorias.map((c) => c.id));
+  const otros = productos.filter((p) => !conocidas.has(p.categoria_id));
+  if (otros.length) grupos.push({ clave: 'otros', nombre: 'Otros', items: otros });
+  const visibles = grupos.filter((g) => g.items.length);
+  // Primera vez en este navegador: se abre solo la primera categoría para no mostrar todo cerrado
+  if (!yaGuardoAbiertas() && visibles.length) { categoriasAbiertas.add(visibles[0].clave); guardarAbiertas(); }
+
+  // Barra con "Expandir todo / Colapsar todo"
+  const barra = el('div', 'cat-barra');
+  const todo = el('button', 'btn chico', 'Expandir todo');
+  todo.type = 'button';
+  todo.addEventListener('click', () => { for (const g of visibles) categoriasAbiertas.add(g.clave); guardarAbiertas(); pintarLista(); });
+  const nada = el('button', 'btn chico', 'Colapsar todo');
+  nada.type = 'button';
+  nada.addEventListener('click', () => { categoriasAbiertas.clear(); guardarAbiertas(); pintarLista(); });
+  barra.append(todo, nada);
+  lista.append(barra);
+
+  for (const g of visibles) {
+    const det = el('details', 'cat-grupo');
+    det.open = categoriasAbiertas.has(g.clave);
+    const resumen = el('summary', 'cat-resumen');
+    resumen.append(el('span', 'cat-nombre', g.nombre), el('span', 'chip', g.items.length === 1 ? '1 producto' : `${g.items.length} productos`));
+    det.append(resumen);
+    const rejilla = el('div', 'rejilla');
+    for (const p of g.items) rejilla.append(tarjeta(p));
+    det.append(rejilla);
+    det.addEventListener('toggle', () => { if (det.open) categoriasAbiertas.add(g.clave); else categoriasAbiertas.delete(g.clave); guardarAbiertas(); });
+    lista.append(det);
+  }
 }
+
+/* Qué categorías están abiertas: se recuerda en este navegador (solo es una comodidad visual). */
+const CLAVE_ABIERTAS = `cmd_cats_abiertas_${slugActual()}`;
+const categoriasAbiertas = new Set((() => { try { return JSON.parse(localStorage.getItem(CLAVE_ABIERTAS) || '[]'); } catch { return []; } })());
+function yaGuardoAbiertas() { try { return localStorage.getItem(CLAVE_ABIERTAS) !== null; } catch { return true; } }
+function guardarAbiertas() { try { localStorage.setItem(CLAVE_ABIERTAS, JSON.stringify([...categoriasAbiertas])); } catch { /* sin almacenamiento: no pasa nada */ } }
 
 function tarjeta(p) {
   const card = el('article', 'prod' + (p.disponible ? '' : ' agotado'));
