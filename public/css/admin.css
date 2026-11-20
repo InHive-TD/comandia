@@ -544,3 +544,7 @@ dialog.pagina .acciones-dialogo { position: sticky; bottom: 0; z-index: 5; backg
 /* "Agregar platillo" dentro del encabezado de cada categoría: solo con la categoría abierta */
 .cat-agregar { display: none; }
 .cat-grupo[open] > .cat-resumen .cat-agregar { display: inline-flex; }
+
+/* "Agregar platillo" de cada categoría: compacto y en verde (como los demás botones de confirmar) */
+.btn.cat-agregar { min-height: 0; padding: 4px 12px; font-size: .85rem; line-height: 1.2; background: var(--color-ok); border-color: var(--color-ok); color: #fff; }
+.btn.cat-agregar:hover { background: #256830; border-color: #256830; }
