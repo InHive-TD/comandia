@@ -69,7 +69,7 @@ function nuevaClave() {
 /* ------------------------------------------------------------------ */
 function mostrar(vista) {
   for (const id of ['vista-cargando', 'vista-aviso', 'vista-pedido', 'vista-mis', 'vista-pagar']) $(id).hidden = id !== vista;
-  $('subtitulo-texto').textContent = vista === 'vista-mis' ? 'Sigue tus pedidos' : vista === 'vista-pagar' ? 'Paga por transferencia' : pedidosActivos ? 'Haz tu pedido' : 'Nuestro menú';
+  $('subtitulo-texto').textContent = vista === 'vista-mis' ? 'Sigue tus pedidos' : vista === 'vista-pagar' ? 'Paga por transferencia' : 'Menú sucursal';
   if (vista === 'vista-mis') iniciarSondeo(); else detenerSondeo();
 }
 
@@ -113,7 +113,7 @@ async function cargarNegocio() {
   // Con varias sucursales se muestra, fija y bien visible, en cuál está el cliente (no es un selector).
   const fija = $('sucursal-fija');
   fija.hidden = r.sucursales.length < 2;
-  fija.textContent = 'Sucursal ' + suc.nombre;   // sin emoji: texto simple junto al subtítulo
+  fija.textContent = suc.nombre;   // solo el nombre dentro de la etiqueta; "Menú sucursal" va antes, como texto
 }
 
 /* Pestañas "Mi pedido" y "Pagar": cada sucursal puede ocultarlas. Si se ocultan las dos, desaparece toda la barra
@@ -133,7 +133,7 @@ function aplicarModoPedidos() {
   const suc = sucursalesNegocio.find((s) => s.id === sucursalPublica);
   pedidosActivos = !suc || suc.pedidos !== false;
   document.body.classList.toggle('solo-menu', !pedidosActivos);
-  $('subtitulo-texto').textContent = pedidosActivos ? 'Haz tu pedido' : 'Nuestro menú';   // en solo menú no se invita a pedir
+  $('subtitulo-texto').textContent = 'Menú sucursal';
 }
 
 async function iniciar() {

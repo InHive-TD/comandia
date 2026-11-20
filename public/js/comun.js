@@ -419,7 +419,7 @@ async function montarSucursal() {
     sel.setAttribute('aria-label', 'Sucursal');
     for (const s of r.sucursales) {
       const o = document.createElement('option');
-      o.value = String(s.id); o.textContent = 'Sucursal ' + s.nombre;
+      o.value = String(s.id); o.textContent = s.nombre;   // solo el nombre; la palabra "Sucursal" va fuera, como texto (no se alarga el selector)
       sel.append(o);
     }
     sel.value = String(r.actual);
@@ -427,6 +427,11 @@ async function montarSucursal() {
       try { await enviarJson(API + 'sucursal.php', { sucursal_id: Number(sel.value) }); location.reload(); }
       catch (err) { alert(err.message); }
     });
-    quien.after(sel);
+    const fila = document.createElement('div');
+    fila.className = 'fila-sucursal';
+    const etq = document.createElement('span');
+    etq.textContent = 'Sucursal';
+    fila.append(etq, sel);
+    quien.after(fila);
   } catch { /* sin sucursal no se muestra nada */ }
 }
