@@ -27,3 +27,14 @@ export const mayusculas = (s: string): string => s.toLocaleUpperCase('es-MX');
 export function esDuplicado(e: unknown): boolean {
   return (e as { errno?: number }).errno === 1062;
 }
+
+/**
+ * Convierte un nombre en una palabra apta para direcciones web: "Sucursal Centro" → "sucursal-centro", "Ñandú 2" → "nandu-2".
+ * Quita acentos, pasa a minúsculas y cambia todo lo demás por guiones. Un nombre solo de números se prefija con "suc-"
+ * para que nunca se confunda con un id (los QR viejos usan ?s=<id>). Sin letras ni números queda "sucursal".
+ */
+export function slugDeTexto(texto: string): string {
+  const base = texto.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '').slice(0, 40).replace(/-+$/, '');
+  if (base === '') return 'sucursal';
+  return /^\d+$/.test(base) ? `suc-${base}` : base;
+}

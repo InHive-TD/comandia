@@ -11,6 +11,7 @@ import type { FastifyInstance } from 'fastify';
 import { cuerpoJson, exigirMetodo, requerirGestion } from '../../auth.js';
 import { ejecutar, fila, filas } from '../../db.js';
 import { ErrorHttp, fallo } from '../../errores.js';
+import { completarSlugsSucursales } from '../../negocio.js';
 import { entero, largo, noVacio } from '../../util.js';
 
 function leerNombre(d: Record<string, unknown>): string {
@@ -35,8 +36,9 @@ export async function rutasSucursales(app: FastifyInstance): Promise<void> {
       const alcance = yo.alcance;
 
       if (req.method === 'GET') {
+        await completarSlugsSucursales(nid);   // sucursales viejas o recién creadas reciben su nombre corto para el QR
         const r = await filas(
-          `SELECT s.id, s.nombre, s.direccion, s.activa, s.orden,
+          `SELECT s.id, s.slug, s.nombre, s.direccion, s.activa, s.orden,
                   (SELECT COUNT(*) FROM mesas m WHERE m.sucursal_id = s.id AND m.activa = 1) AS mesas,
                   (SELECT COUNT(*) FROM usuarios u WHERE u.sucursal_id = s.id AND u.activo = 1) AS usuarios
              FROM sucursales s WHERE s.negocio_id = ?${alcance !== null ? ' AND s.id = ?' : ''} ORDER BY s.activa DESC, s.orden, s.id`,
@@ -45,7 +47,7 @@ export async function rutasSucursales(app: FastifyInstance): Promise<void> {
         return {
           ok: true,
           sucursales: r.map((s) => ({
-            id: Number(s['id']), nombre: s['nombre'], direccion: s['direccion'], activa: Boolean(Number(s['activa'])),
+            id: Number(s['id']), slug: s['slug'], nombre: s['nombre'], direccion: s['direccion'], activa: Boolean(Number(s['activa'])),
             orden: Number(s['orden']), mesas: Number(s['mesas']), usuarios: Number(s['usuarios']),
           })),
         };

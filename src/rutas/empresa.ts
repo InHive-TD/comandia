@@ -41,7 +41,7 @@ export async function rutasEmpresa(app: FastifyInstance): Promise<void> {
       ok: true,
       negocio: { nombre: req.negocio.nombre, slug: req.negocio.slug },
       // `pedidos`: ¿el cliente puede levantar su pedido desde el QR en esa sucursal, o solo ver el menú?
-      sucursales: (await sucursalesActivas(req.negocio.id)).map((s) => ({ id: s.id, nombre: s.nombre, pedidos: efectivo(estado, s.id) })),
+      sucursales: (await sucursalesActivas(req.negocio.id)).map((s) => ({ id: s.id, slug: s.slug, nombre: s.nombre, pedidos: efectivo(estado, s.id) })),
     };
   });
 

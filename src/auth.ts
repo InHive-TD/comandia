@@ -114,15 +114,15 @@ export async function requerirGestion(req: FastifyRequest): Promise<Usuario> {
   return u;
 }
 
-/** Cliente por QR: la sucursal viene en ?s=<id> o en el encabezado X-Sucursal; sin eso, la primera activa. */
+/** Cliente por QR: la sucursal viene en ?s=<nombre corto> (ej. "centro") o ?s=<id> (QR antiguos), o en el encabezado X-Sucursal; sin eso, la primera activa. */
 export async function fijarSucursalPublica(req: FastifyRequest): Promise<void> {
   const q = req.query as Record<string, unknown>;
   const cab = req.headers['x-sucursal'];
-  const pedida = Number(q['s'] ?? (typeof cab === 'string' ? cab : 0)) || 0;
+  const pedida = String(q['s'] ?? (typeof cab === 'string' ? cab : '')).trim().toLowerCase();
   const lista = await sucursalesActivas(req.negocio.id);
   const primera = lista[0];
   if (!primera) throw new ErrorHttp(404, 'sin_sucursal', 'Este negocio aún no tiene sucursales.');
-  req.sucursalId = lista.find((s) => s.id === pedida)?.id ?? primera.id;
+  req.sucursalId = (lista.find((s) => s.slug === pedida) ?? lista.find((s) => String(s.id) === pedida))?.id ?? primera.id;
 }
 
 /** Pantallas que usan personal y cliente: con sesión, la sucursal del usuario; si no, la del QR. */

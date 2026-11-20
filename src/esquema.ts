@@ -19,6 +19,7 @@ export async function asegurarEsquema(): Promise<void> {
     throw new Error('Esta base de datos es de un solo negocio (sin negocio_id). Hay que migrarla a multiempresa antes de usarla.');
   }
   await actualizarV2();
+  await asegurarColumna('sucursales', 'slug', 'VARCHAR(60) NULL');
   await asegurarColumna('orden_items', 'llevar', 'TINYINT(1) NOT NULL DEFAULT 0');
   await asegurarColumna('ordenes', 'pago_previsto', 'VARCHAR(15) NULL');
   await asegurarColumna('pagos', 'comision', 'DECIMAL(10,2) NOT NULL DEFAULT 0');

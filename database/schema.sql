@@ -35,6 +35,7 @@ CREATE TABLE IF NOT EXISTS sucursales (
     id         INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
     negocio_id INT UNSIGNED NOT NULL,
     nombre     VARCHAR(80)  NOT NULL,
+    slug       VARCHAR(60)  NULL,           -- nombre corto para el QR (?s=centro); se asigna solo y no cambia al renombrar
     direccion  VARCHAR(200) NULL,
     activa     TINYINT(1)   NOT NULL DEFAULT 1,
     orden      INT NOT NULL DEFAULT 0,

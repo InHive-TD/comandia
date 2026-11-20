@@ -630,18 +630,39 @@ $('btn-nombres').addEventListener('click', () => {
   if (datos) { pintar(); avanzarReloj(); }
 });
 
+/* Pedidos agendados (sección al final, colapsada): se ven ordenados por hora de entrega, con lo que lleva cada uno y
+   en cuánto tiempo entran a la fila de cocina. El <details> no se vuelve a crear, así que si lo abres sigue abierto al refrescar. */
 function pintarProgramadas() {
   const p = datos.programadas || [];
   $('bloque-prog').hidden = p.length === 0;
+  if (p.length === 0) $('bloque-prog').open = false;      // sin agendados la sección se esconde y queda cerrada
   $('cuenta-prog').textContent = `(${p.length})`;
   $('prog').replaceChildren(...p.map((o) => {
     const mios = o.items.some((i) => i.mio);
-    const c = el('button', 'chip-lista chip-prog' + (mios ? '' : ' otro'), `#${o.turno.slice(-3)} · ${o.cliente} · ${hora12(o.para)}`);
-    c.type = 'button';
-    c.append(el('small', '', `entra a la fila como máximo en ${Math.max(1, Math.round(o.activa_en / 60))} min`));
-    c.addEventListener('click', () => abrirPedido(o.id));
-    return c;
+    const fila = el('button', 'agendado' + (mios ? '' : ' otro'));
+    fila.type = 'button';
+    fila.append(el('span', 'ag-hora', '🕒 ' + hora12(o.para)));
+    const cuerpo = el('span', 'ag-cuerpo');
+    cuerpo.append(el('strong', '', `#${o.turno.slice(-3)} · ${o.cliente}`));
+    const resumen = o.items.map((i) => `${i.cantidad}× ${textoItem(i)}`).join(', ');
+    cuerpo.append(el('span', 'ag-items', resumen));
+    fila.append(cuerpo);
+    const entra = el('small', 'ag-entra');
+    entra.dataset.act = String(o.activa_en);
+    fila.append(entra);
+    fila.addEventListener('click', () => abrirPedido(o.id));
+    return fila;
   }));
+  textoEntradaAgendados();
+}
+
+/* "Entra a la fila en X min": se recalcula cada segundo con el tiempo transcurrido desde la última respuesta del servidor */
+function textoEntradaAgendados() {
+  const extra = Math.floor((performance.now() - recibidoEn) / 1000);
+  for (const e of document.querySelectorAll('.ag-entra[data-act]')) {
+    const min = Math.ceil((Number(e.dataset.act) - extra) / 60);
+    e.textContent = min <= 1 ? 'entra a la fila en menos de 1 min' : `entra a la fila en ${min} min`;
+  }
 }
 
 function pintarListas() {
@@ -675,6 +696,7 @@ function avanzarReloj() {
   }
 }
 setInterval(avanzarReloj, 1000);
+setInterval(textoEntradaAgendados, 1000);
 
 /* ------------------------------------------------------------------ */
 /*  Acciones                                                           */

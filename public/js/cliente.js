@@ -109,9 +109,11 @@ function preguntarSucursal(sucursales) {
 async function cargarNegocio() {
   const r = await pedir(API + 'negocio.php');
   sucursalesNegocio = r.sucursales;
-  const ids = r.sucursales.map((s) => String(s.id));
-  let elegida = new URLSearchParams(location.search).get('s');
-  if (!ids.includes(String(elegida))) elegida = r.sucursales.length > 1 ? await preguntarSucursal(r.sucursales) : ids[0];
+  // ?s= puede ser el nombre corto ("centro") o, en QR antiguos, el id numérico.
+  const pedida = (new URLSearchParams(location.search).get('s') || '').trim().toLowerCase();
+  const enLink = r.sucursales.find((s) => s.slug === pedida) || r.sucursales.find((s) => String(s.id) === pedida);
+  let elegida = enLink ? String(enLink.id) : null;
+  if (elegida === null) elegida = r.sucursales.length > 1 ? await preguntarSucursal(r.sucursales) : String(r.sucursales[0].id);
   try { localStorage.setItem(claveLS('sucursal'), String(elegida)); } catch { /* sin almacenamiento */ }
   mostrar('vista-cargando');
   sucursalPublica = Number(elegida);

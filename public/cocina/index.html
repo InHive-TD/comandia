@@ -8,7 +8,7 @@
   <link rel="icon" type="image/png" href="../img/favicon.png">
   <link rel="stylesheet" href="../css/estilos.css?v=202611201300">
   <link rel="stylesheet" href="../css/admin.css?v=202611192050">
-  <link rel="stylesheet" href="../css/cocina.css?v=202611192050">
+  <link rel="stylesheet" href="../css/cocina.css?v=202611201730">
   <link rel="stylesheet" href="../api/tema.php">
 </head>
 <body>
@@ -58,15 +58,18 @@
       <div id="hamb" class="hamb" hidden></div>
       <div id="tablero" class="tablero" aria-live="off"></div>
 
-      <div id="bloque-prog" class="listas" hidden>
-        <h3>📅 Agendados <span id="cuenta-prog"></span></h3>
-        <div id="prog" class="listas-chips"></div>
-      </div>
-
       <div id="bloque-listas" class="listas" hidden>
         <h3>Listas para entregar <span id="cuenta-listas"></span></h3>
         <div id="listas" class="listas-chips"></div>
       </div>
+
+      <!-- Pedidos agendados: sección al final, SIEMPRE colapsada al abrir; solo aparece si hay pedidos agendados.
+           Cuando falta poco (hora − minutos de preparación) cada pedido pasa solo a la fila de cocina. -->
+      <details id="bloque-prog" class="agendados" hidden>
+        <summary>📅 Pedidos agendados <span id="cuenta-prog"></span></summary>
+        <p class="ayuda">Aún no están en la fila: entran solos unos minutos antes de la hora. Toca uno para verlo o editarlo.</p>
+        <div id="prog" class="agendados-lista"></div>
+      </details>
     </section>
 
   </main>
@@ -93,6 +96,6 @@
   </div>
 
   <script src="../js/comun.js?v=202611201400"></script>
-  <script src="../js/cocina.js?v=202611201400"></script>
+  <script src="../js/cocina.js?v=202611201720"></script>
 </body>
 </html>
