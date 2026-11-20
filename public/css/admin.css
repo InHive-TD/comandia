@@ -566,3 +566,9 @@ dialog.pagina .acciones-dialogo { position: sticky; bottom: 0; z-index: 5; backg
 .su-qr { display: flex; flex-wrap: wrap; gap: 8px; width: 100%; }
 .su-qr input { flex: 1 1 260px; }
 #mesas-contenido { margin-top: 12px; padding: 14px; gap: 16px; }
+
+/* Sucursales: menos espacio entre el nombre de la sucursal y sus botones */
+.su-resumen { padding: 10px 16px; }
+.su-cuerpo { padding-top: 8px; gap: 12px; }
+.su-barra { margin-top: -2px; }
+.su-barra .btn.chico { min-height: 36px; padding: 4px 14px; }
