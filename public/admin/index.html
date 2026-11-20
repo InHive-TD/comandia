@@ -6,8 +6,8 @@
   <meta name="robots" content="noindex">
   <title>Administración · Comandia</title>
   <link rel="icon" type="image/png" href="../img/favicon.png">
-  <link rel="stylesheet" href="../css/estilos.css?v=202611210500">
-  <link rel="stylesheet" href="../css/admin.css?v=202611210500">
+  <link rel="stylesheet" href="../css/estilos.css?v=202611210520">
+  <link rel="stylesheet" href="../css/admin.css?v=202611210520">
   <link rel="stylesheet" href="../api/tema.php">
 </head>
 <body>
@@ -299,6 +299,19 @@
     </div>
   </dialog>
 
+  <!-- Mesas de una sucursal (ventana) -->
+  <dialog id="dlg-mesas" class="dlg-ancho">
+    <div class="formulario dialogo">
+      <h2 id="mesas-titulo">Mesas</h2>
+      <p class="ayuda">Son las que el mesero elige al levantar un pedido para comer aquí.</p>
+      <div id="mesas-contenido" class="mesas-caja"></div>
+      <p id="mesas-error" class="msg-error" role="alert"></p>
+      <div class="acciones-dialogo">
+        <button id="mesas-cerrar" class="btn" type="button">Cerrar</button>
+      </div>
+    </div>
+  </dialog>
+
   <!-- Editar persona (ventana) -->
   <dialog id="dlg-usuario-editar">
     <div class="formulario dialogo">
@@ -397,10 +410,9 @@
         Cada sucursal lleva sus propios pedidos, caja y personal; en reportes las ves juntas o por separado.
         Las mesas son las que el mesero elige al levantar un pedido para comer aquí.
       </p>
-      <div id="lista-sucursales" class="lista-usuarios"></div>
-
+      <details id="su-nueva-det" class="us-nuevo-det">
+      <summary class="btn chico">＋ Agregar sucursal</summary>
       <form id="form-nueva-sucursal" class="formulario nuevo-usuario" autocomplete="off">
-        <h3>Agregar sucursal</h3>
         <label>Nombre
           <input id="su-nombre" type="text" maxlength="80" placeholder="Ej. Centro" required>
         </label>
@@ -409,6 +421,10 @@
         </label>
         <button class="btn principal" type="submit">Crear sucursal</button>
       </form>
+      </details>
+      <p id="su-error" class="msg-error" role="alert"></p>
+      <div id="lista-sucursales" class="lista-sucursales"></div>
+
 
       <p id="su-error" class="msg-error" role="alert"></p>
       <div class="acciones-dialogo">
@@ -455,6 +471,6 @@
   <div id="toast" class="toast" role="status" hidden></div>
 
   <script src="../js/comun.js?v=202611210460"></script>
-  <script src="../js/admin.js?v=202611210500"></script>
+  <script src="../js/admin.js?v=202611210520"></script>
 </body>
 </html>

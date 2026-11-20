@@ -548,3 +548,21 @@ dialog.pagina .acciones-dialogo { position: sticky; bottom: 0; z-index: 5; backg
 /* "Agregar platillo" de cada categoría: compacto y en verde (como los demás botones de confirmar) */
 .btn.cat-agregar { min-height: 0; padding: 4px 12px; font-size: .85rem; line-height: 1.2; background: var(--color-ok); border-color: var(--color-ok); color: #fff; }
 .btn.cat-agregar:hover { background: #256830; border-color: #256830; }
+
+/* ---------- Sucursales: bloques colapsados con aire ---------- */
+.lista-sucursales { display: grid; gap: 14px; margin-top: 14px; }
+.su-grupo { background: #fff; border: 1px solid var(--color-borde); border-radius: 12px; }
+.su-grupo.inactivo { opacity: .75; }
+.su-resumen { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 10px; padding: 14px 16px; cursor: pointer; list-style: none; font-weight: 700; font-size: 1.05rem; }
+.su-resumen::-webkit-details-marker { display: none; }
+.su-resumen::before { content: '▸'; color: var(--color-vino); transition: transform .15s; }
+.su-grupo[open] > .su-resumen::before { transform: rotate(90deg); }
+.su-resumen .cat-nombre { flex: 1 1 auto; }
+.su-cuerpo { display: grid; gap: 16px; padding: 4px 16px 18px; border-top: 1px solid var(--color-borde); margin-top: 0; padding-top: 14px; }
+.su-barra { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 8px; }
+.su-cuerpo label { display: grid; gap: 6px; font-weight: 600; }
+.su-campo { display: grid; gap: 6px; justify-items: start; }
+.su-etq { font-weight: 600; }
+.su-qr { display: flex; flex-wrap: wrap; gap: 8px; width: 100%; }
+.su-qr input { flex: 1 1 260px; }
+#mesas-contenido { margin-top: 12px; padding: 14px; gap: 16px; }

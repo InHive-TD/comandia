@@ -894,20 +894,33 @@ $('form-nuevo-usuario').addEventListener('submit', async (ev) => {
 /* ------------------------------------------------------------------ */
 
 const dlgSucursales = $('dlg-sucursales');
-const sucAbierta = new Set();   // sucursales con las mesas desplegadas
+const sucAbierta = new Set();   // sucursales expandidas en la lista (por defecto todas colapsadas)
+let sucMesas = null;            // sucursal cuya ventana de mesas está abierta
 
 async function accionSucursal(url, cuerpo, mensaje) {
   $('su-error').textContent = '';
+  $('mesas-error').textContent = '';
   try {
     await enviarJson(API + url, cuerpo);
     if (mensaje) avisar(mensaje);
     await cargarSucursales();
+    if (sucMesas && $('dlg-mesas').open) await pintarMesas($('mesas-contenido'), sucMesas);   // refresca la ventana de mesas
     return true;
   } catch (err) {
-    $('su-error').textContent = err.message;
+    (sucMesas && $('dlg-mesas').open ? $('mesas-error') : $('su-error')).textContent = err.message;
     return false;
   }
 }
+
+/** Ventana (modal) con las mesas de una sucursal. */
+function abrirMesas(s) {
+  sucMesas = s;
+  $('mesas-titulo').textContent = `Mesas · ${s.nombre}`;
+  $('mesas-error').textContent = '';
+  $('dlg-mesas').showModal();
+  pintarMesas($('mesas-contenido'), s).catch((err) => { $('mesas-error').textContent = err.message; });
+}
+$('mesas-cerrar').addEventListener('click', () => $('dlg-mesas').close());
 
 async function pintarMesas(caja, s) {
   caja.replaceChildren();
@@ -955,38 +968,59 @@ async function cargarSucursales() {
   const r = await pedir(API + 'admin/sucursales.php');
   const lista = $('lista-sucursales');
   lista.replaceChildren();
-  $('form-nueva-sucursal').hidden = esGerente;
+  $('su-nueva-det').hidden = esGerente;
   for (const s of r.sucursales) {
-    if (esGerente) sucAbierta.add(s.id);
-    const tarj = el('div', 'usuario-fila' + (s.activa ? '' : ' inactivo'));
-    const cab = el('div', 'usuario-cab');
-    cab.append(el('strong', '', s.nombre), el('span', 'chip', `${s.mesas} mesas`), el('span', 'chip', `${s.usuarios} personas`), el('span', 'chip', s.activa ? 'Activa' : 'Pausada'));
-    const ctl = el('div', 'usuario-ctl');
+    // Cada sucursal es un bloque colapsado; al expandirlo aparecen sus datos y acciones
+    const det = el('details', 'su-grupo' + (s.activa ? '' : ' inactivo'));
+    det.open = esGerente || sucAbierta.has(s.id);
+    det.addEventListener('toggle', () => { if (det.open) sucAbierta.add(s.id); else sucAbierta.delete(s.id); });
+    const resumen = el('summary', 'su-resumen');
+    resumen.append(el('span', 'cat-nombre', s.nombre), el('span', 'chip', `${s.mesas} mesas`), el('span', 'chip', `${s.usuarios} personas`), el('span', 'chip ' + (s.activa ? 'activo' : 'sin'), s.activa ? '● Activa' : 'Desactivada'));
+    det.append(resumen);
+
+    const cuerpo = el('div', 'su-cuerpo');
     const nombre = document.createElement('input'); nombre.type = 'text'; nombre.value = s.nombre; nombre.maxLength = 80; nombre.setAttribute('aria-label', 'Nombre');
-    const dir = document.createElement('input'); dir.type = 'text'; dir.value = s.direccion || ''; dir.maxLength = 160; dir.placeholder = 'Dirección'; dir.setAttribute('aria-label', 'Dirección');
-    const guardar = el('button', 'btn', 'Guardar'); guardar.type = 'button';
-    guardar.addEventListener('click', () => accionSucursal('admin/sucursales.php', { accion: 'editar', id: s.id, nombre: nombre.value.trim(), direccion: dir.value.trim(), activa: s.activa }, 'Sucursal actualizada'));
-    const pausa = el('button', 'btn', s.activa ? 'Pausar' : 'Reactivar'); pausa.type = 'button';
-    pausa.addEventListener('click', () => accionSucursal('admin/sucursales.php', { accion: 'editar', id: s.id, nombre: nombre.value.trim(), direccion: dir.value.trim(), activa: !s.activa }, s.activa ? 'Sucursal pausada' : 'Sucursal reactivada'));
-    const mesasBtn = el('button', 'btn', sucAbierta.has(s.id) ? 'Ocultar mesas' : 'Mesas'); mesasBtn.type = 'button';
-    mesasBtn.addEventListener('click', () => { if (sucAbierta.has(s.id)) sucAbierta.delete(s.id); else sucAbierta.add(s.id); cargarSucursales(); });
-    if (esGerente) { tarj.append(cab); } else { ctl.append(nombre, dir, guardar, pausa, mesasBtn); tarj.append(cab, ctl); }
+    const dir = document.createElement('input'); dir.type = 'text'; dir.value = s.direccion || ''; dir.maxLength = 160; dir.placeholder = 'Calle y colonia'; dir.setAttribute('aria-label', 'Dirección');
+
+    // Botones arriba a la derecha del bloque: Guardar cambios y Desactivar/Reactivar sucursal
+    if (!esGerente) {
+      const barra = el('div', 'su-barra');
+      const pausa = el('button', 'btn chico' + (s.activa ? ' peligro' : ''), s.activa ? 'Desactivar sucursal' : 'Reactivar sucursal'); pausa.type = 'button';
+      pausa.addEventListener('click', async () => {
+        if (s.activa && !(await confirmar(`¿Desactivar la sucursal “${s.nombre}”? Dejará de recibir pedidos hasta que la reactives.`, { si: 'Desactivar', peligro: true }))) return;
+        accionSucursal('admin/sucursales.php', { accion: 'editar', id: s.id, nombre: nombre.value.trim(), direccion: dir.value.trim(), activa: !s.activa }, s.activa ? 'Sucursal desactivada' : 'Sucursal reactivada');
+      });
+      const guardar = el('button', 'btn chico principal', 'Guardar cambios'); guardar.type = 'button';
+      guardar.addEventListener('click', () => accionSucursal('admin/sucursales.php', { accion: 'editar', id: s.id, nombre: nombre.value.trim(), direccion: dir.value.trim(), activa: s.activa }, 'Sucursal actualizada'));
+      barra.append(pausa, guardar);
+      cuerpo.append(barra);
+      const l1 = el('label', '', 'Nombre'); l1.append(nombre);
+      const l2 = el('label', '', 'Dirección (opcional)'); l2.append(dir);
+      cuerpo.append(l1, l2);
+    } else if (s.direccion) {
+      cuerpo.append(el('p', 'ayuda', s.direccion));
+    }
+
     // Enlace para el QR de esta sucursal (el cliente abre el menú y sus pedidos van a esta sucursal)
-    const enlace = location.origin + location.pathname.replace(/admin\/(index\.html)?$/, '') + (s.slug || '') + '/';
-    const fila = el('div', 'fila-mesas');
+    const enlace = location.origin + location.pathname.replace(/admin(\/.*)?$/, '') + (s.slug || '') + '/';
     const campoEnlace = document.createElement('input');
     campoEnlace.type = 'text'; campoEnlace.readOnly = true; campoEnlace.value = enlace; campoEnlace.setAttribute('aria-label', 'Enlace para el QR');
     campoEnlace.addEventListener('focus', () => campoEnlace.select());
-    const copiar = el('button', 'btn chico', 'Copiar enlace del QR'); copiar.type = 'button';
+    const copiar = el('button', 'btn chico', 'Copiar enlace'); copiar.type = 'button';
     copiar.addEventListener('click', async () => { try { await navigator.clipboard.writeText(enlace); avisar('Enlace copiado'); } catch { campoEnlace.select(); } });
-    fila.append(campoEnlace, copiar);
-    tarj.append(fila);
-    if (sucAbierta.has(s.id)) {
-      const caja = el('div', 'mesas-caja');
-      tarj.append(caja);
-      pintarMesas(caja, s).catch((err) => { $('su-error').textContent = err.message; });
-    }
-    lista.append(tarj);
+    const filaQr = el('div', 'su-qr');
+    filaQr.append(campoEnlace, copiar);
+    const lq = el('div', 'su-campo'); lq.append(el('span', 'su-etq', 'Enlace para el QR de esta sucursal'), filaQr);
+    cuerpo.append(lq);
+
+    // Las mesas se administran en su propia ventana
+    const mesasBtn = el('button', 'btn', `Mesas (${s.mesas})`); mesasBtn.type = 'button';
+    mesasBtn.addEventListener('click', () => abrirMesas(s));
+    const lm = el('div', 'su-campo'); lm.append(el('span', 'su-etq', 'Mesas para comer aquí'), mesasBtn);
+    cuerpo.append(lm);
+
+    det.append(cuerpo);
+    lista.append(det);
   }
 }
 
