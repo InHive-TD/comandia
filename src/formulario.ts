@@ -8,6 +8,7 @@ export const FOTO_PESO_MAX = 8 * 1024 * 1024;
 export class Formulario {
   constructor(
     private readonly valores: Map<string, string[]>,
+    /** Archivo recibido (la foto de un producto o el logo, según el campo que se pidió leer). */
     readonly foto: Buffer | null,
   ) {}
 
@@ -24,7 +25,7 @@ export class Formulario {
 }
 
 /** Lee un FormData (multipart). Si la petición viene como JSON, usa sus campos. */
-export async function leerFormulario(req: FastifyRequest): Promise<Formulario> {
+export async function leerFormulario(req: FastifyRequest, campoArchivo = 'foto'): Promise<Formulario> {
   const valores = new Map<string, string[]>();
   let foto: Buffer | null = null;
 
@@ -34,7 +35,7 @@ export async function leerFormulario(req: FastifyRequest): Promise<Formulario> {
         if (parte.type === 'file') {
           const buf = await parte.toBuffer();
           if (parte.file.truncated) throw new ErrorHttp(400, 'validacion', 'La foto pesa más de 8 MB.');
-          if (buf.length > 0 && parte.fieldname === 'foto') foto = buf;
+          if (buf.length > 0 && parte.fieldname === campoArchivo) foto = buf;
         } else {
           const nombre = parte.fieldname.replace(/\[\]$/, '');
           valores.set(nombre, [...(valores.get(nombre) ?? []), String(parte.value ?? '')]);

@@ -62,7 +62,8 @@ export async function crearApp(): Promise<FastifyInstance> {
 
   app.addHook('onSend', async (req, reply, payload) => {
     await persistirSesion(req, reply);
-    reply.header('Cache-Control', req.url.includes('/api/') ? 'no-store' : reply.getHeader('Cache-Control') ?? 'no-cache');
+    // Las respuestas de /api/ no se guardan en caché, salvo las que lo pidan expresamente (tema y logo usan ETag).
+    reply.header('Cache-Control', reply.getHeader('Cache-Control') ?? (req.url.includes('/api/') ? 'no-store' : 'no-cache'));
     return payload;
   });
 

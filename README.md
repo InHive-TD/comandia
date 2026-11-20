@@ -27,7 +27,7 @@ npm run dev
 | 1 | Servidor, base de datos, empresas por ruta, sesiones, CSRF, login/logout, sucursal activa, sesión de plataforma | ✅ |
 | 2 | Menú, categorías, parrillas, extras, productos (con fotos), sucursales, mesas y usuarios (incluye gerente y carta por sucursal) | ✅ |
 | 3 | Pedidos, cocina y caja | ✅ listo (pedidos, cocina, caja, agotar, prioridades, tiempos) |
-| 4 | Cliente por QR, reportes, apariencia | pendiente |
+| 4 | Cliente por QR (pedir, espera, concepto, búsqueda), reportes, apariencia (colores y logo) | ✅ |
 | 5 | Panel de plataforma: empresas (lista, crear, editar, pausar, clave) | ✅ (falta la migración de bases viejas) |
 
 Las pantallas llaman a `/api/xxx.php`; el servidor acepta esos nombres (quita el `.php` internamente).
