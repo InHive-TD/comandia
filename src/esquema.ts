@@ -14,6 +14,11 @@ export async function asegurarEsquema(): Promise<void> {
   if (!base || Number(base['n']) === 0) {
     throw new Error('La base de datos no tiene las tablas de Comandia. Importa database/schema.sql primero.');
   }
+  // La base debe ser multiempresa (con negocio_id). Una base de un solo negocio primero se migra (Fase 5).
+  if ((await tipoColumna('usuarios', 'negocio_id')) === null) {
+    throw new Error('Esta base de datos es de un solo negocio (sin negocio_id). Hay que migrarla a multiempresa antes de usarla.');
+  }
+  await actualizarV2();
   await asegurarColumna('orden_items', 'llevar', 'TINYINT(1) NOT NULL DEFAULT 0');
   await asegurarColumna('ordenes', 'pago_previsto', 'VARCHAR(15) NULL');
   await asegurarColumna('pagos', 'comision', 'DECIMAL(10,2) NOT NULL DEFAULT 0');
@@ -33,4 +38,40 @@ async function asegurarColumna(tabla: string, columna: string, definicion: strin
     [tabla, columna],
   );
   if (Number(f?.['n']) === 0) await ejecutar(`ALTER TABLE ${tabla} ADD COLUMN ${columna} ${definicion}`);
+}
+
+/** Tipo de una columna ("enum('a','b')", "int unsigned"…) o null si no existe. */
+async function tipoColumna(tabla: string, columna: string): Promise<string | null> {
+  const f = await fila(
+    'SELECT COLUMN_TYPE AS t FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = ? AND COLUMN_NAME = ?',
+    [tabla, columna],
+  );
+  return f ? String(f['t']) : null;
+}
+
+/**
+ * Versión 2 del esquema (igual que `api/esquema.php` de la versión PHP): gerente de sucursal y carta por sucursal.
+ * Las bases creadas antes de esto no tienen el rol "gerente", productos.sucursal_id ni la tabla producto_sucursal.
+ * Es seguro repetirlo: cada paso solo actúa si falta.
+ */
+async function actualizarV2(): Promise<void> {
+  const rol = await tipoColumna('usuarios', 'rol');
+  if (rol !== null && !rol.includes("'gerente'")) {
+    await ejecutar("ALTER TABLE usuarios MODIFY rol ENUM('taquero','caja','admin','mesero','gerente') NOT NULL DEFAULT 'taquero'");
+  }
+  if ((await tipoColumna('productos', 'sucursal_id')) === null) {
+    await ejecutar('ALTER TABLE productos ADD COLUMN sucursal_id INT UNSIGNED NULL, ADD INDEX idx_producto_sucursal (sucursal_id)');
+  }
+  await ejecutar(`CREATE TABLE IF NOT EXISTS producto_sucursal (
+    producto_id   INT UNSIGNED NOT NULL,
+    sucursal_id   INT UNSIGNED NOT NULL,
+    negocio_id    INT UNSIGNED NOT NULL,
+    oculto        TINYINT(1) NOT NULL DEFAULT 0,
+    precio        DECIMAL(10,2) NULL,
+    agotado_fecha DATE NULL,
+    PRIMARY KEY (producto_id, sucursal_id),
+    INDEX idx_ps_sucursal (sucursal_id),
+    CONSTRAINT fk_ps_producto FOREIGN KEY (producto_id) REFERENCES productos(id) ON DELETE CASCADE,
+    CONSTRAINT fk_ps_sucursal FOREIGN KEY (sucursal_id) REFERENCES sucursales(id) ON DELETE CASCADE
+  ) ENGINE=InnoDB`);
 }
