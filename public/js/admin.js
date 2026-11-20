@@ -169,6 +169,14 @@ function pintarLista() {
     det.open = categoriasAbiertas.has(g.clave);
     const resumen = el('summary', 'cat-resumen');
     resumen.append(el('span', 'cat-nombre', g.nombre), el('span', 'chip', g.items.length === 1 ? '1 platillo' : `${g.items.length} platillos`));
+    // Botón "Agregar platillo" de la categoría (solo se ve con la categoría abierta, arriba a la derecha)
+    if (g.clave !== 'otros') {
+      const agregar = el('button', 'btn chico principal cat-agregar', '＋ Agregar platillo');
+      agregar.type = 'button';
+      agregar.title = `Agregar un platillo a ${g.nombre}`;
+      agregar.addEventListener('click', (ev) => { ev.preventDefault(); ev.stopPropagation(); abrirFormulario(null, Number(g.clave)); });
+      resumen.append(agregar);
+    }
     det.append(resumen);
     const rejilla = el('div', 'rejilla');
     for (const p of g.items) rejilla.append(tarjeta(p));
@@ -433,7 +441,8 @@ function ponerVistaPrevia(url) {
   if (url) { img.src = url; img.hidden = false; } else { img.removeAttribute('src'); img.hidden = true; }
 }
 
-function abrirFormulario(p = null) {
+/** Abre el formulario de platillo. Con categoriaId (botón de una categoría) el platillo nuevo ya viene en esa categoría. */
+function abrirFormulario(p = null, categoriaId = null) {
   formProducto.reset();
   limpiarVistaPrevia();
   $('f-error').textContent = '';
@@ -459,6 +468,7 @@ function abrirFormulario(p = null) {
     $('f-pedir').checked = !!p.pedir_opciones;
     ponerVistaPrevia(p.foto ? RUTA_FOTOS + encodeURIComponent(p.foto) : null);
   } else {
+    if (categoriaId !== null) select.value = String(categoriaId);
     $('f-disponible').checked = true;
     $('f-pedir').checked = false;
     ponerVistaPrevia(null);
@@ -549,9 +559,10 @@ formProducto.addEventListener('submit', async (ev) => {
     }
 
     await pedir(API + 'admin/productos.php', { method: 'POST', body: datos });
+    categoriasAbiertas.add($('f-categoria').value); guardarAbiertas();   // al volver, esa categoría se ve abierta con el platillo
     dlgProducto.close();
     await cargarCatalogo();
-    avisar('Producto guardado');
+    avisar('Platillo guardado');
   } catch (err) {
     error.textContent = err.message;
   } finally {

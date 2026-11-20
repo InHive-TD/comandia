@@ -540,3 +540,7 @@ fieldset.extras-campo { border: 1px solid #d9c690; border-radius: 10px; padding:
 dialog.pagina .acciones-dialogo [id$="-cerrar"] { display: none; }
 dialog.pagina .acciones-dialogo:not(:has(.btn:not([id$="-cerrar"]))) { display: none; }
 dialog.pagina .acciones-dialogo { position: sticky; bottom: 0; z-index: 5; background: var(--color-tarjeta); padding: 12px 0; margin-top: 8px; border-top: 1px solid var(--color-borde); }
+
+/* "Agregar platillo" dentro del encabezado de cada categoría: solo con la categoría abierta */
+.cat-agregar { display: none; }
+.cat-grupo[open] > .cat-resumen .cat-agregar { display: inline-flex; }
