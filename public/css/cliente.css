@@ -166,3 +166,6 @@ main.contenedor:has(#vista-pedido:not([hidden])) { padding-top: 0; }
 .sub-linea { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
 .sucursal-fija { padding: 0 8px; border-radius: 8px; background: var(--color-amarillo, #f4b400); color: #3b2a00; font-weight: 800; font-size: .85rem; line-height: 1.5; opacity: 1; }
 .sucursal-fija[hidden] { display: none; }
+
+/* Aire entre la franja de categorías y las tarjetas de los platillos (en pantallas grandes estaban pegadas) */
+#vista-pedido .menu-col > .productos { margin-top: 14px; }
