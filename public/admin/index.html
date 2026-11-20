@@ -7,7 +7,7 @@
   <title>Administración · Comandia</title>
   <link rel="icon" type="image/png" href="../img/favicon.png">
   <link rel="stylesheet" href="../css/estilos.css?v=202611202055">
-  <link rel="stylesheet" href="../css/admin.css?v=202611202350">
+  <link rel="stylesheet" href="../css/admin.css?v=202611210030">
   <link rel="stylesheet" href="../api/tema.php">
 </head>
 <body>
@@ -47,27 +47,40 @@
     </section>
 
     <!-- Panel de catálogo -->
-    <section id="vista-panel" hidden>
-      <div class="barra-acciones">
+    <section id="vista-panel" class="panel-lateral" hidden>
+      <!-- Barra lateral izquierda: todas las secciones del portal. Los id de los botones no cambian
+           (admin.js los usa para abrir cada sección y para ocultar los que el rol no puede ver). -->
+      <nav class="menu-lateral" aria-label="Secciones del portal">
         <button id="btn-nuevo" class="btn principal" type="button">＋ Nuevo producto</button>
-        <button id="btn-categorias" class="btn" type="button">Categorías</button>
-        <button id="btn-extras" class="btn" type="button">Extras</button>
-        <button id="btn-prioridades" class="btn" type="button">Ajustes</button>
-        <button id="btn-usuarios" class="btn" type="button">Usuarios</button>
-        <button id="btn-sucursales" class="btn" type="button">Sucursales y mesas</button>
-        <button id="btn-reportes" class="btn" type="button">Reportes</button>
-        <button id="btn-apariencia" class="btn" type="button">Apariencia</button>
-        <a class="btn" href="../pedidos/">Tomar pedidos</a>
-        <a class="btn" href="../cocina/">Cocina</a>
-        <a class="btn" href="../caja/">Caja y propinas</a>
+
+        <p class="menu-grupo">Catálogo</p>
+        <button id="btn-productos" class="btn nav-ico" data-ico="🌮" type="button">Productos</button>
+        <button id="btn-categorias" class="btn nav-ico" data-ico="🗂" type="button">Categorías</button>
+        <button id="btn-extras" class="btn nav-ico" data-ico="➕" type="button">Extras</button>
+
+        <p class="menu-grupo">Negocio</p>
+        <button id="btn-sucursales" class="btn nav-ico" data-ico="🏪" type="button">Sucursales y mesas</button>
+        <button id="btn-usuarios" class="btn nav-ico" data-ico="👥" type="button">Usuarios</button>
+        <button id="btn-prioridades" class="btn nav-ico" data-ico="⚙️" type="button">Ajustes</button>
+        <button id="btn-apariencia" class="btn nav-ico" data-ico="🎨" type="button">Apariencia</button>
+
+        <p class="menu-grupo">Análisis</p>
+        <button id="btn-reportes" class="btn nav-ico" data-ico="📊" type="button">Reportes</button>
+
+        <p class="menu-grupo">Operación</p>
+        <a class="btn nav-ico" data-ico="🧾" href="../pedidos/">Tomar pedidos</a>
+        <a class="btn nav-ico" data-ico="🔥" href="../cocina/">Cocina</a>
+        <a class="btn nav-ico" data-ico="💵" href="../caja/">Caja y propinas</a>
+      </nav>
+      <div class="panel-contenido" id="panel-contenido">
+        <div id="lista" class="rejilla" aria-live="polite"></div>
       </div>
-      <div id="lista" class="rejilla" aria-live="polite"></div>
     </section>
 
   </main>
 
   <!-- Formulario de producto -->
-  <dialog id="dlg-producto">
+  <dialog id="dlg-producto" class="pagina">
     <form id="form-producto" class="formulario dialogo">
       <h2 id="dlg-titulo">Nuevo producto</h2>
       <input type="hidden" id="f-id">
@@ -135,7 +148,7 @@
   </dialog>
 
   <!-- Categorías -->
-  <dialog id="dlg-categorias">
+  <dialog id="dlg-categorias" class="pagina">
     <div class="formulario dialogo">
       <h2>Categorías</h2>
       <div id="lista-categorias" class="lista-categorias"></div>
@@ -153,7 +166,7 @@
   </dialog>
 
   <!-- Extras -->
-  <dialog id="dlg-extras">
+  <dialog id="dlg-extras" class="pagina">
     <div class="formulario dialogo ex-dialogo">
       <h2>Extras</h2>
       <p class="ayuda">Son las opciones que el cliente puede <strong>añadir</strong> a un platillo (con queso, orden doble) o <strong>pedir sin algo</strong> (sin cebolla).
@@ -233,7 +246,7 @@
   </dialog>
 
   <!-- Usuarios del equipo -->
-  <dialog id="dlg-usuarios">
+  <dialog id="dlg-usuarios" class="pagina">
     <div class="formulario dialogo">
       <h2>Usuarios del equipo</h2>
       <p class="ayuda">
@@ -277,7 +290,7 @@
   </dialog>
 
   <!-- Apariencia: logo y colores de la empresa -->
-  <dialog id="dlg-apariencia">
+  <dialog id="dlg-apariencia" class="pagina">
     <div class="formulario dialogo">
       <h2>Apariencia</h2>
       <p class="ayuda">Personaliza cómo se ve tu negocio para tu equipo y tus clientes: logo y colores. Los cambios se ven al instante; pulsa <strong>Guardar</strong> para dejarlos.</p>
@@ -317,7 +330,7 @@
   </dialog>
 
   <!-- Reportes -->
-  <dialog id="dlg-reportes" class="dlg-ancho">
+  <dialog id="dlg-reportes" class="dlg-ancho pagina">
     <div class="formulario dialogo">
       <h2>Reportes</h2>
       <div class="rep-filtros">
@@ -340,7 +353,7 @@
   </dialog>
 
   <!-- Sucursales y mesas -->
-  <dialog id="dlg-sucursales">
+  <dialog id="dlg-sucursales" class="pagina">
     <div class="formulario dialogo">
       <h2>Sucursales y mesas</h2>
       <p class="ayuda">
@@ -368,7 +381,7 @@
   </dialog>
 
   <!-- Ajustes de cocina -->
-  <dialog id="dlg-prioridades">
+  <dialog id="dlg-prioridades" class="pagina">
     <div class="formulario dialogo">
       <h2>Ajustes de cocina</h2>
       <p class="ayuda">En cocina los pedidos <strong>para comer aquí</strong> se preparan primero, por orden de llegada; los <strong>para llevar</strong> y los de <strong>recoger</strong> van después, también por orden de llegada.</p>
@@ -405,6 +418,6 @@
   <div id="toast" class="toast" role="status" hidden></div>
 
   <script src="../js/comun.js?v=202611202350"></script>
-  <script src="../js/admin.js?v=202611202350"></script>
+  <script src="../js/admin.js?v=202611210030"></script>
 </body>
 </html>

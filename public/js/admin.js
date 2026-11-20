@@ -317,6 +317,37 @@ function pintarExtrasProducto(marcados, precios = {}) {
   }
 }
 
+
+/* ------------------------------------------------------------------ */
+/*  Secciones como páginas (en vez de ventanas)                        */
+/* ------------------------------------------------------------------ */
+// Cada sección del menú lateral es un <dialog class="pagina"> mostrado en el área de contenido (sin ventana flotante).
+// Solo hay una abierta a la vez; al cerrarla se vuelve a la lista de productos.
+const paginasPortal = [...document.querySelectorAll('dialog.pagina')];
+for (const d of paginasPortal) $('panel-contenido').append(d);   // dentro del área de contenido, junto a la lista
+
+function marcarMenu(idBoton) {
+  for (const b of document.querySelectorAll('.menu-lateral .nav-ico')) b.classList.toggle('activo', b.id === idBoton);
+}
+
+/** Muestra una sección como página: cierra la que estuviera abierta y oculta la lista de productos. */
+function abrirPagina(dlg, idBoton) {
+  for (const o of paginasPortal) if (o !== dlg && o.open) o.close();
+  $('lista').hidden = true;
+  if (!dlg.open) dlg.show();          // show() = no modal
+  marcarMenu(idBoton);
+  window.scrollTo({ top: 0 });
+}
+
+// Al cerrarse una página, si ya no queda ninguna abierta se regresa a Productos
+for (const d of paginasPortal) d.addEventListener('close', () => {
+  if (paginasPortal.some((o) => o.open)) return;
+  $('lista').hidden = false;
+  marcarMenu('btn-productos');
+});
+$('btn-productos').addEventListener('click', () => { for (const o of paginasPortal) if (o.open) o.close(); window.scrollTo({ top: 0 }); });
+marcarMenu('btn-productos');
+
 const dlgProducto = $('dlg-producto');
 const formProducto = $('form-producto');
 let urlVistaPrevia = null;
@@ -365,7 +396,7 @@ function abrirFormulario(p = null) {
   $('f-quitar-fila').hidden = !(p && p.foto);
   $('f-eliminar').hidden = !p;
   $('f-eliminar').dataset.nombre = p ? p.nombre : '';
-  dlgProducto.showModal();
+  abrirPagina(dlgProducto, 'btn-productos');
 }
 
 $('btn-nuevo').addEventListener('click', () => abrirFormulario());
@@ -568,7 +599,7 @@ async function accionCategoria(cuerpo, mensajeOk) {
 $('btn-categorias').addEventListener('click', () => {
   $('c-error').textContent = '';
   pintarCategorias();
-  dlgCategorias.showModal();
+  abrirPagina(dlgCategorias, 'btn-categorias');
 });
 $('c-cerrar').addEventListener('click', () => dlgCategorias.close());
 
@@ -709,7 +740,7 @@ async function accionUsuario(cuerpo, mensajeOk) {
 $('btn-usuarios').addEventListener('click', async () => {
   $('us-error').textContent = '';
   try { await cargarUsuarios(); } catch (err) { $('us-error').textContent = err.message; }
-  dlgUsuarios.showModal();
+  abrirPagina(dlgUsuarios, 'btn-usuarios');
 });
 $('us-cerrar').addEventListener('click', () => dlgUsuarios.close());
 $('form-nuevo-usuario').addEventListener('submit', async (ev) => {
@@ -826,7 +857,7 @@ async function cargarSucursales() {
 $('btn-sucursales').addEventListener('click', async () => {
   $('su-error').textContent = '';
   try { await cargarSucursales(); } catch (err) { $('su-error').textContent = err.message; }
-  dlgSucursales.showModal();
+  abrirPagina(dlgSucursales, 'btn-sucursales');
 });
 $('su-cerrar').addEventListener('click', () => dlgSucursales.close());
 $('form-nueva-sucursal').addEventListener('submit', async (ev) => {
@@ -913,7 +944,7 @@ async function cargarReporte() {
 
 $('btn-reportes').addEventListener('click', () => {
   if (!$('rp-desde').value) fijarRango('hoy');
-  dlgReportes.showModal();
+  abrirPagina(dlgReportes, 'btn-reportes');
   cargarReporte();
 });
 $('rp-cerrar').addEventListener('click', () => dlgReportes.close());
@@ -1010,7 +1041,7 @@ async function apCargar() {
 $('btn-apariencia').addEventListener('click', async () => {
   $('ap-error').textContent = '';
   try { await apCargar(); } catch (err) { $('ap-error').textContent = err.message; }
-  dlgApariencia.showModal();
+  abrirPagina(dlgApariencia, 'btn-apariencia');
 });
 dlgApariencia.addEventListener('close', apQuitarVistaPrevia);
 $('ap-cerrar').addEventListener('click', () => dlgApariencia.close());
@@ -1176,7 +1207,7 @@ async function guardarAjustes() {
 $('btn-prioridades').addEventListener('click', async () => {
   $('pr-error').textContent = '';
   try { await cargarAjustes(); } catch (err) { avisar(err.message, true); return; }
-  dlgAjustes.showModal();
+  abrirPagina(dlgAjustes, 'btn-prioridades');
 });
 $('pm-prep').addEventListener('change', guardarAjustes);
 $('pr-cerrar').addEventListener('click', () => dlgAjustes.close());
@@ -1558,7 +1589,7 @@ async function accionExtra(cuerpo, mensajeOk) {
 $('btn-extras').addEventListener('click', () => {
   $('x-error').textContent = '';
   pintarExtras();
-  dlgExtras.showModal();
+  abrirPagina(dlgExtras, 'btn-extras');
 });
 $('x-cerrar').addEventListener('click', () => dlgExtras.close());
 $('ex-nuevo-abrir').addEventListener('click', () => { $('form-nuevo-extra').hidden = false; $('ex-nuevo-abrir').hidden = true; $('x-nombre').focus(); });
