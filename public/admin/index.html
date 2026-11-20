@@ -7,7 +7,7 @@
   <title>Administración · Comandia</title>
   <link rel="icon" type="image/png" href="../img/favicon.png">
   <link rel="stylesheet" href="../css/estilos.css?v=202611202055">
-  <link rel="stylesheet" href="../css/admin.css?v=202611210250">
+  <link rel="stylesheet" href="../css/admin.css?v=202611210320">
   <link rel="stylesheet" href="../api/tema.php">
 </head>
 <body>
@@ -51,7 +51,7 @@
       <!-- Barra lateral izquierda: todas las secciones del portal. Los id de los botones no cambian
            (admin.js los usa para abrir cada sección y para ocultar los que el rol no puede ver). -->
       <nav class="menu-lateral" aria-label="Secciones del portal"><div class="menu-fijo">
-        <button id="btn-nuevo" class="btn principal" type="button">＋ Nuevo platillo</button>
+        <button id="btn-reportes" class="btn nav-ico" data-ico="📊" type="button">Inicio · Reportes</button>
 
         <p class="menu-grupo">Catálogo</p>
         <button id="btn-productos" class="btn nav-ico" data-ico="🌮" type="button">Platillos</button>
@@ -63,9 +63,6 @@
         <button id="btn-prioridades" class="btn nav-ico" data-ico="⚙️" type="button">Ajustes</button>
         <button id="btn-apariencia" class="btn nav-ico" data-ico="🎨" type="button">Apariencia</button>
 
-        <p class="menu-grupo">Análisis</p>
-        <button id="btn-reportes" class="btn nav-ico" data-ico="📊" type="button">Reportes</button>
-
         <p class="menu-grupo">Operación</p>
         <a class="btn nav-ico" data-ico="🧾" href="../pedidos/">Tomar pedidos</a>
         <a class="btn nav-ico" data-ico="🔥" href="../cocina/">Cocina</a>
@@ -76,7 +73,11 @@
         <div id="vista-platillos">
           <div class="cat-barra" id="barra-platillos">
             <span id="barra-expandir" class="cat-barra"></span>
-            <button id="btn-categorias" class="btn chico btn-categorias-platillos" type="button" title="Ver, agregar y acomodar las categorías de platillos">Categorías de platillos</button>
+            <!-- Nuevo platillo y Categorías de platillos, juntos y a la derecha -->
+            <span class="barra-der">
+              <button id="btn-nuevo" class="btn chico principal" type="button">＋ Nuevo platillo</button>
+              <button id="btn-categorias" class="btn chico btn-categorias-platillos" type="button" title="Ver, agregar y acomodar las categorías de platillos">Categorías de platillos</button>
+            </span>
           </div>
           <div id="lista" class="lista-cats" aria-live="polite"></div>
         </div>
@@ -340,7 +341,7 @@
   <!-- Reportes -->
   <dialog id="dlg-reportes" class="dlg-ancho pagina">
     <div class="formulario dialogo">
-      <h2>Reportes</h2>
+      <h2>Inicio · Reportes</h2>
       <div class="rep-filtros">
         <label>Desde <input id="rp-desde" type="date"></label>
         <label>Hasta <input id="rp-hasta" type="date"></label>
