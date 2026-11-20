@@ -28,7 +28,7 @@ npm run dev
 | 2 | Productos, categorías, extras, sucursales, mesas, usuarios | pendiente |
 | 3 | Pedidos, cocina y caja | pendiente |
 | 4 | Cliente por QR, reportes, apariencia | pendiente |
-| 5 | Panel de plataforma (empresas) y migración | pendiente |
+| 5 | Panel de plataforma: empresas (lista, crear, editar, pausar, clave) | ✅ (falta la migración de bases viejas) |
 
 Las pantallas llaman a `/api/xxx.php`; el servidor acepta esos nombres (quita el `.php` internamente).
 

@@ -52,3 +52,25 @@ export async function cerrarBd(): Promise<void> {
   if (pool) await pool.end();
   pool = null;
 }
+
+/** Ejecuta varias consultas como una sola operación: si algo falla, no se guarda nada. */
+export interface Tx {
+  ejecutar(sql: string, params?: unknown[]): Promise<ResultSetHeader>;
+}
+
+export async function transaccion<T>(trabajo: (tx: Tx) => Promise<T>): Promise<T> {
+  const c = await bd().getConnection();
+  try {
+    await c.beginTransaction();
+    const r = await trabajo({
+      ejecutar: async (sql, params = []) => (await c.execute<ResultSetHeader>(sql, params as never[]))[0],
+    });
+    await c.commit();
+    return r;
+  } catch (e) {
+    await c.rollback();
+    throw e;
+  } finally {
+    c.release();
+  }
+}
