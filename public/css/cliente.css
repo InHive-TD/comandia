@@ -150,3 +150,5 @@ body.nav-oculta .cliente-nav { transform: translateY(-110%); box-shadow: none; }
 
 .solo-menu .destino span { display: block; }
 .solo-menu .carrito-vacio .btn { display: none; }
+/* En "solo menú" siguen disponibles Menú, Mi pedido (seguimiento) y Pagar; solo se quita lo que crea pedidos nuevos. */
+.solo-menu #mis-nuevo { display: none; }
