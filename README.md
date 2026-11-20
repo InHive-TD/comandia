@@ -25,7 +25,7 @@ npm run dev
 | Fase | Contenido | Estado |
 |---|---|---|
 | 1 | Servidor, base de datos, empresas por ruta, sesiones, CSRF, login/logout, sucursal activa, sesión de plataforma | ✅ |
-| 2 | Productos, categorías, extras, sucursales, mesas, usuarios | pendiente |
+| 2 | Menú, categorías, parrillas, extras, productos (con fotos), sucursales, mesas y usuarios (incluye gerente y carta por sucursal) | ✅ |
 | 3 | Pedidos, cocina y caja | pendiente |
 | 4 | Cliente por QR, reportes, apariencia | pendiente |
 | 5 | Panel de plataforma: empresas (lista, crear, editar, pausar, clave) | ✅ (falta la migración de bases viejas) |

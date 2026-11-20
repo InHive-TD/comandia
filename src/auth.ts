@@ -135,3 +135,8 @@ export async function fijarSucursalAuto(req: FastifyRequest): Promise<void> {
   }
   await fijarSucursalPublica(req);
 }
+
+/** Rechaza la petición si no usa uno de los métodos permitidos. */
+export function exigirMetodo(req: FastifyRequest, ...permitidos: string[]): void {
+  if (!permitidos.includes(req.method)) throw new ErrorHttp(405, 'metodo', 'Método no permitido.');
+}

@@ -1,3 +1,7 @@
+/**
+ * Punto de entrada: prepara la base de datos, arranca el servidor HTTP y lo apaga limpiamente con Ctrl+C.
+ * Se corre con `npm run dev` (desarrollo, se reinicia solo al guardar) o `npm start` (producción, tras `npm run build`).
+ */
 import { crearApp } from './app.js';
 import { config } from './config.js';
 import { cerrarBd } from './db.js';

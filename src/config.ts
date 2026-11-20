@@ -11,7 +11,12 @@ function entero(nombre: string, porDefecto: number): number {
   return n;
 }
 
+import { fileURLToPath } from 'node:url';
+import { resolve } from 'node:path';
+
 export const config = {
+  /** Carpeta donde se guardan las fotos (uploads/<id de la empresa>/p_xxx.jpg). */
+  carpetaFotos: resolve(texto('UPLOADS_DIR', fileURLToPath(new URL('../uploads', import.meta.url)))),
   puerto: entero('PORT', 3000),
   host: texto('HOST', '127.0.0.1'),
   confiarProxy: texto('CONFIAR_PROXY', 'false') === 'true',

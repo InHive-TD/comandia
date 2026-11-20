@@ -1,9 +1,22 @@
+/**
+ * Arma la aplicación web (Fastify): plugins, manejo de errores, rutas de la API y entrega de las pantallas.
+ *
+ * Mapa de rutas (igual que la versión PHP, para reutilizar las pantallas sin cambios):
+ *   /api/plataforma/...      API del dueño de Comandia (sesión aparte)
+ *   /<empresa>/api/...       API de cada empresa (login, menú, administración...)
+ *   /<empresa>/              pantalla del cliente (QR)
+ *   /<empresa>/admin/ ...    pantallas del personal (admin, pedidos, cocina, caja)
+ *   /plataforma/, /css, /js  pantallas y archivos comunes
+ *   /<empresa>/uploads/...   fotos de productos
+ * Las pantallas llaman a "/api/xxx.php": el servidor quita el ".php" internamente (ver rewriteUrl).
+ */
 import { join, normalize, resolve, sep } from 'node:path';
 import { existsSync, statSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import Fastify, { type FastifyInstance } from 'fastify';
 import cookie from '@fastify/cookie';
 import estatico from '@fastify/static';
+import multipart from '@fastify/multipart';
 import { config } from './config.js';
 import { ErrorHttp } from './errores.js';
 import { cargarNegocio, slugValido } from './negocio.js';
@@ -24,6 +37,8 @@ export async function crearApp(): Promise<FastifyInstance> {
   });
 
   await app.register(cookie);
+  // Formularios con foto (FormData). El límite de tamaño de la foto se aplica en formulario.ts.
+  await app.register(multipart);
   await app.register(estatico, { root: RAIZ_PUBLICA, serve: false, cacheControl: true, maxAge: 0 });
 
   // JSON tolerante: un cuerpo vacío o inválido se lee como {} (igual que la versión PHP).
@@ -33,6 +48,16 @@ export async function crearApp(): Promise<FastifyInstance> {
     } catch {
       hecho(null, {});
     }
+  });
+
+  // Formularios clásicos (application/x-www-form-urlencoded): los campos repetidos se vuelven listas.
+  app.addContentTypeParser('application/x-www-form-urlencoded', { parseAs: 'string' }, (_req, cuerpo, hecho) => {
+    const campos: Record<string, string | string[]> = {};
+    for (const [k, v] of new URLSearchParams(cuerpo as string)) {
+      const previo = campos[k];
+      campos[k] = previo === undefined ? v : Array.isArray(previo) ? [...previo, v] : [previo, v];
+    }
+    hecho(null, campos);
   });
 
   app.addHook('onSend', async (req, reply, payload) => {
@@ -86,6 +111,14 @@ export async function crearApp(): Promise<FastifyInstance> {
       relativa = resto === '' ? 'cliente/index.html' : resto;
     } else {
       relativa = partes.join('/');
+    }
+
+    // Fotos de productos: viven en la carpeta de uploads (no en public/). Solo se entregan los nombres que genera
+    // fotos.ts ("<id>/p_xxxxxxxxxxxxxxxx.jpg"); cualquier otra ruta bajo /uploads/ no existe.
+    if (relativa.startsWith('uploads/')) {
+      const foto = relativa.slice('uploads/'.length);
+      if (!/^(?:\d+\/)?p_[a-f0-9]{16}\.jpg$/.test(foto)) return reply.code(404).send('No encontrado');
+      return reply.sendFile(foto, config.carpetaFotos);
     }
 
     let archivo = resolve(join(RAIZ_PUBLICA, normalize(relativa)));

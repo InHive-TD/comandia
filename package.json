@@ -15,10 +15,12 @@
   },
   "dependencies": {
     "@fastify/cookie": "^11.1.5",
+    "@fastify/multipart": "^10.1.9",
     "@fastify/static": "^10.1.12",
     "bcryptjs": "^3.0.3",
     "fastify": "^5.12.8",
-    "mysql2": "^3.24.6"
+    "mysql2": "^3.24.6",
+    "sharp": "^0.35.5"
   },
   "devDependencies": {
     "@types/node": "^26.6.6",

@@ -1,3 +1,14 @@
+/**
+ * Conexión a MySQL (un "pool" de conexiones que se reutilizan) y funciones para consultar.
+ *
+ *   filas(sql, params)    → SELECT, todas las filas
+ *   fila(sql, params)     → SELECT, una sola fila (o undefined)
+ *   ejecutar(sql, params) → INSERT / UPDATE / DELETE
+ *   transaccion(fn)       → varias consultas como una sola operación (todo o nada)
+ *
+ * IMPORTANTE: los valores SIEMPRE se pasan en `params` (los "?" del SQL), nunca pegados al texto de la consulta.
+ * Eso evita la inyección de SQL. Las fechas llegan como texto ("2026-11-20 13:00:00"), igual que en la versión PHP.
+ */
 import mysql, { type Pool, type PoolConnection, type RowDataPacket, type ResultSetHeader } from 'mysql2/promise';
 import { config } from './config.js';
 
@@ -56,6 +67,7 @@ export async function cerrarBd(): Promise<void> {
 /** Ejecuta varias consultas como una sola operación: si algo falla, no se guarda nada. */
 export interface Tx {
   ejecutar(sql: string, params?: unknown[]): Promise<ResultSetHeader>;
+  filas<T extends Fila = Fila>(sql: string, params?: unknown[]): Promise<T[]>;
 }
 
 export async function transaccion<T>(trabajo: (tx: Tx) => Promise<T>): Promise<T> {
@@ -64,6 +76,7 @@ export async function transaccion<T>(trabajo: (tx: Tx) => Promise<T>): Promise<T
     await c.beginTransaction();
     const r = await trabajo({
       ejecutar: async (sql, params = []) => (await c.execute<ResultSetHeader>(sql, params as never[]))[0],
+      filas: async <T extends Fila = Fila>(sql: string, params: unknown[] = []) => (await c.execute<T[]>(sql, params as never[]))[0],
     });
     await c.commit();
     return r;
