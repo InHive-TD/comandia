@@ -980,6 +980,7 @@ let datosPrio = null;
 async function cargarAjustes() {
   datosPrio = await pedir(API + 'admin/prioridades.php');
   $('pm-prep').value = datosPrio.min_preparacion;
+  await cargarClientePedidos();
   const lista = $('lote-lista');
   lista.replaceChildren();
   for (const c of datosPrio.lote) {
@@ -991,6 +992,37 @@ async function cargarAjustes() {
     lista.append(f);
   }
 }
+
+/* Pedidos del cliente por QR: interruptor de toda la empresa (dueño) y de cada sucursal (dueño o gerente) */
+async function cargarClientePedidos() {
+  const r = await pedir(API + 'admin/cliente-pedidos.php');
+  $('cp-general-fila').hidden = !r.puede_general;
+  $('cp-general').checked = r.general;
+  const lista = $('cp-lista');
+  lista.replaceChildren();
+  for (const s of r.sucursales) {
+    const f = el('label', 'lote-op');
+    const x = document.createElement('input');
+    x.type = 'checkbox'; x.checked = s.activo;
+    x.disabled = !r.general && !r.puede_general;   // el gerente no puede encenderlo si la empresa lo apagó
+    x.addEventListener('change', () => guardarClientePedidos({ accion: 'sucursal', sucursal_id: s.id, activo: x.checked }));
+    f.append(x, el('span', '', s.nombre + (s.activo && !s.efectivo ? ' (apagado por la empresa)' : '')));
+    lista.append(f);
+  }
+  const nota = $('cp-nota');
+  nota.hidden = r.general || r.puede_general;
+  nota.textContent = 'El dueño desactivó los pedidos por QR en toda la empresa. Solo él puede volver a activarlos.';
+}
+
+async function guardarClientePedidos(cuerpo) {
+  $('pr-error').textContent = '';
+  try {
+    await enviarJson(API + 'admin/cliente-pedidos.php', cuerpo);
+    avisar(cuerpo.activo ? 'Pedidos por QR activados' : 'Pedidos por QR desactivados: el cliente solo verá el menú');
+  } catch (err) { $('pr-error').textContent = err.message; }
+  try { await cargarClientePedidos(); } catch { /* se queda como estaba */ }
+}
+$('cp-general').addEventListener('change', () => guardarClientePedidos({ accion: 'general', activo: $('cp-general').checked }));
 
 async function guardarLote() {
   $('pr-error').textContent = '';

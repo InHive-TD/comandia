@@ -24,6 +24,7 @@ import {
   type Cx, ESTADOS_ACTIVOS, activarAgendados, agregarAOrden, calcularHoraPrometida, cambiarCantidad, colaActiva, contexto, crearOrden, enTransaccion,
   estimarNuevo, leerModalidad, minutosEstimados, quitarRenglon, textoTurno, validarLineas,
 } from '../ordenes.js';
+import { clientePuedePedir } from '../pedidosClientes.js';
 import { entero, largo } from '../util.js';
 
 const MAX_PEDIDOS_POR_RATO = 6; // por dirección IP
@@ -101,6 +102,13 @@ async function vistaOrden(base: Cx, o: Fila): Promise<Record<string, unknown>> {
       bloqueado: i['estado'] !== 'pendiente', // solo lo pendiente se puede bajar o quitar desde el celular del cliente
     })),
   };
+}
+
+/** Rechaza la petición si en esta sucursal el cliente solo puede ver el menú (el dueño o el gerente lo desactivaron). */
+async function exigirPedidosActivos(c: Cx): Promise<void> {
+  if (!(await clientePuedePedir(c.nid, c.sid))) {
+    throw new ErrorHttp(403, 'pedidos_desactivados', 'Por ahora los pedidos se toman en el mostrador. ¡Puedes ver el menú y pedir en caja!');
+  }
 }
 
 /** Cuenta intentos recientes de un tipo (usa la tabla intentos_login con un "usuario" que sirve de etiqueta). */
@@ -199,6 +207,7 @@ export async function rutasCliente(app: FastifyInstance): Promise<void> {
         // Límites por dirección IP (por empresa)
         await fijarSucursalPublica(req);
         const c = contexto(req);
+        await exigirPedidosActivos(c);
         const ip = sha(`${req.ip}|taqueria|${nid}`);
         await ejecutar('DELETE FROM intentos_pedido WHERE creado_en < NOW() - INTERVAL 1 DAY');
         const rato = await c.filas(`SELECT COUNT(*) AS n FROM intentos_pedido WHERE negocio_id = ? AND ip_hash = ? AND creado_en > NOW() - INTERVAL ${MINUTOS_RATO} MINUTE`, [nid, ip]);
@@ -234,6 +243,7 @@ export async function rutasCliente(app: FastifyInstance): Promise<void> {
 
       switch (accion) {
         case 'agregar': {
+          await exigirPedidosActivos(c);
           const [lineas, total] = await validarLineas(c, datos['items']);
           await agregarAOrden(c, ordenId, lineas, total);
           break;

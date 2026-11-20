@@ -9,7 +9,7 @@
   <link rel="stylesheet" href="css/estilos.css?v=202611201300">
   <link rel="stylesheet" href="css/admin.css?v=202611192050">
   <link rel="stylesheet" href="css/pedidos.css?v=202611192050">
-  <link rel="stylesheet" href="css/cliente.css?v=202611192050">
+  <link rel="stylesheet" href="css/cliente.css?v=202611201640">
   <link rel="stylesheet" href="api/tema.php">
 </head>
 <body>
@@ -50,6 +50,7 @@
           <span id="agregando-texto"></span>
           <button id="agregando-volver" class="btn" type="button">Volver a mis pedidos</button>
         </div>
+        <p id="aviso-solo-menu" class="destino" hidden><span>👀 Por ahora puedes <strong>ver el menú</strong>. Los pedidos se toman en el mostrador.</span></p>
         <button id="ver-mis" class="btn ver-mis" type="button" hidden>Mis pedidos (<span id="ver-mis-n">0</span>)</button>
         <div id="cats" class="cats"></div>
         <p class="tip-toque solo-movil"><span aria-hidden="true">👆</span> <span><strong>Toca la foto del platillo una vez por cada pieza que quieras.</strong> Ej.: toca 3 veces «Taco de alambre» para agregar 3 tacos. Si quieres elegir carne u opciones, toca «con opciones» (la parte de abajo). Para quitar, abre <em>Ver tu pedido</em> y baja la cantidad o quítalo.</span></p>
@@ -203,6 +204,6 @@
   <div id="toast" class="toast" role="status" hidden></div>
 
   <script src="js/comun.js?v=202611201400"></script>
-  <script src="js/cliente.js?v=202611201400"></script>
+  <script src="js/cliente.js?v=202611201640"></script>
 </body>
 </html>

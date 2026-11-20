@@ -323,6 +323,16 @@
         <p class="ayuda">En cocina, arriba del tablero, se juntan los platillos de estas categorías de todos los pedidos (por ejemplo 5 hamburguesas iguales) para marcarlos de un solo toque. Elige cuáles quieres ver ahí:</p>
         <div id="lote-lista" class="lote-lista"></div>
       </fieldset>
+      <fieldset class="lote-caja">
+        <legend>📱 Pedidos del cliente por QR</legend>
+        <p class="ayuda">Si está <strong>activado</strong>, el cliente escanea el QR, arma y envía su propio pedido. Si está <strong>desactivado</strong>, solo puede ver el menú (y consultar sus pedidos) y pide en el mostrador.</p>
+        <label id="cp-general-fila" class="lote-op" hidden>
+          <input id="cp-general" type="checkbox">
+          <span><strong>Toda la empresa</strong> (si lo apagas aquí, ninguna sucursal puede recibir pedidos por QR)</span>
+        </label>
+        <div id="cp-lista" class="lote-lista"></div>
+        <p id="cp-nota" class="ayuda" hidden></p>
+      </fieldset>
       <p id="pr-error" class="msg-error" role="alert"></p>
       <div class="acciones-dialogo">
         <button id="pr-cerrar" class="btn" type="button">Cerrar</button>
@@ -333,6 +343,6 @@
   <div id="toast" class="toast" role="status" hidden></div>
 
   <script src="../js/comun.js?v=202611201400"></script>
-  <script src="../js/admin.js?v=202611201500"></script>
+  <script src="../js/admin.js?v=202611201600"></script>
 </body>
 </html>

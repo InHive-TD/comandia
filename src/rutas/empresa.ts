@@ -4,6 +4,7 @@ import { contextoNegocio, csrfToken, cuerpoJson, requerirRol, resolverSucursal, 
 import { ejecutar, fila } from '../db.js';
 import { ErrorHttp } from '../errores.js';
 import { sucursalesActivas } from '../negocio.js';
+import { efectivo, estadoPedidosCliente } from '../pedidosClientes.js';
 import { rutasAdminProductos } from './admin/productos.js';
 import { rutasCategorias } from './admin/categorias.js';
 import { rutasEstaciones } from './admin/estaciones.js';
@@ -15,6 +16,7 @@ import { rutasPrioridades } from './admin/prioridades.js';
 import { rutasTiempos } from './admin/tiempos.js';
 import { rutasCaja } from './caja.js';
 import { rutasCocina } from './cocina.js';
+import { rutasClientePedidos } from './admin/clientePedidos.js';
 import { rutasMarca } from './admin/marca.js';
 import { rutasReportes } from './admin/reportes.js';
 import { rutasCliente } from './cliente.js';
@@ -28,16 +30,20 @@ const esperar = (ms: number): Promise<void> => new Promise((r) => setTimeout(r, 
 
 export async function rutasEmpresa(app: FastifyInstance): Promise<void> {
   // Menú y administración del catálogo (cada archivo documenta sus reglas y permisos)
-  for (const grupo of [rutasMenu, rutasCategorias, rutasEstaciones, rutasExtras, rutasAdminProductos, rutasSucursales, rutasAdminMesas, rutasUsuarios, rutasOrdenes, rutasCocina, rutasCaja, rutasPrioridades, rutasTiempos, rutasMarca, rutasReportes, rutasCliente, rutasTema]) {
+  for (const grupo of [rutasMenu, rutasCategorias, rutasEstaciones, rutasExtras, rutasAdminProductos, rutasSucursales, rutasAdminMesas, rutasUsuarios, rutasOrdenes, rutasCocina, rutasCaja, rutasPrioridades, rutasTiempos, rutasMarca, rutasReportes, rutasCliente, rutasTema, rutasClientePedidos]) {
     await app.register(grupo);
   }
 
   /** Datos públicos para la pantalla del cliente (QR): nombre y sucursales. */
-  app.get('/negocio', async (req) => ({
-    ok: true,
-    negocio: { nombre: req.negocio.nombre, slug: req.negocio.slug },
-    sucursales: (await sucursalesActivas(req.negocio.id)).map((s) => ({ id: s.id, nombre: s.nombre })),
-  }));
+  app.get('/negocio', async (req) => {
+    const estado = await estadoPedidosCliente(req.negocio.id);
+    return {
+      ok: true,
+      negocio: { nombre: req.negocio.nombre, slug: req.negocio.slug },
+      // `pedidos`: ¿el cliente puede levantar su pedido desde el QR en esa sucursal, o solo ver el menú?
+      sucursales: (await sucursalesActivas(req.negocio.id)).map((s) => ({ id: s.id, nombre: s.nombre, pedidos: efectivo(estado, s.id) })),
+    };
+  });
 
   /** ¿Hay sesión iniciada? También entrega el código CSRF. */
   app.get('/sesion', async (req) => {

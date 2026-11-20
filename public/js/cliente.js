@@ -24,6 +24,8 @@ let ordenesBuscadas = [];         // su última vista
 let destino = null;               // pedido al que se le agrega (null = pedido nuevo)
 let claveNueva = null;            // clave del pedido nuevo mientras se envía
 let modalidad = 'aqui';
+let pedidosActivos = true;        // ¿el cliente puede levantar su pedido aquí? (si no, solo ve el menú)
+let sucursalesNegocio = [];       // [{id, nombre, pedidos}]
 const cuando = montarCuando($('cuando'));
 const actualizarEspera = montarEspera($('espera-previa'), API + 'cliente/espera.php', () => ({
   modalidad,
@@ -91,19 +93,30 @@ $('aviso-reintentar').addEventListener('click', iniciar);
 /* Sucursal: viene en el QR (?s=ID); si el negocio tiene varias y el QR no la trae, el cliente la elige */
 async function cargarNegocio() {
   const r = await pedir(API + 'negocio.php');
+  sucursalesNegocio = r.sucursales;
   const ids = r.sucursales.map((s) => String(s.id));
   let elegida = new URLSearchParams(location.search).get('s');
   try { if (!ids.includes(String(elegida))) elegida = localStorage.getItem(claveLS('sucursal')); } catch { /* sin almacenamiento */ }
   if (!ids.includes(String(elegida))) elegida = ids[0];
   sucursalPublica = Number(elegida);
+  aplicarModoPedidos();
   const sel = $('sel-sucursal-cliente');
   if (r.sucursales.length > 1) {
     sel.replaceChildren();
     for (const s of r.sucursales) { const o = document.createElement('option'); o.value = String(s.id); o.textContent = '📍 ' + s.nombre; sel.append(o); }
     sel.value = String(sucursalPublica);
     sel.hidden = false;
-    sel.onchange = () => { sucursalPublica = Number(sel.value); try { localStorage.setItem(claveLS('sucursal'), sel.value); } catch { /* sin almacenamiento */ } };
+    sel.onchange = () => { sucursalPublica = Number(sel.value); aplicarModoPedidos(); cargarMenu().catch(() => {}); try { localStorage.setItem(claveLS('sucursal'), sel.value); } catch { /* sin almacenamiento */ } };
   }
+}
+
+/* Si en esta sucursal el cliente no puede pedir (lo desactivó el dueño o el gerente), la pantalla queda en "solo menú":
+   se ven los productos, pero sin carrito ni botones para agregar. El servidor también rechaza esos pedidos. */
+function aplicarModoPedidos() {
+  const suc = sucursalesNegocio.find((s) => s.id === sucursalPublica);
+  pedidosActivos = !suc || suc.pedidos !== false;
+  document.body.classList.toggle('solo-menu', !pedidosActivos);
+  $('aviso-solo-menu').hidden = pedidosActivos;
 }
 
 async function iniciar() {
@@ -200,6 +213,7 @@ function pintarProductos() {
     else if (p.extras.length) info.append(el('span', 'pr-mas', 'con opciones ›'));
     b.append(foto, info);
     b.addEventListener('click', (ev) => {
+      if (!pedidosActivos) return;     // solo se puede ver el menú
       const desdeFoto = !!ev.target.closest('.pr-foto');
       if (p.extras.length && (!desdeFoto || p.pedir_opciones)) abrirOpciones(p);
       else { agregarLinea(p, [], 1, ''); avisar(`${p.nombre} agregado`); }
@@ -521,9 +535,12 @@ function tarjetaPedido(o) {
 
   const acc = el('div', 'acciones-dialogo');
   if (o.editable) {
-    const ag = el('button', 'btn principal grande', '＋ Agregar más'); ag.type = 'button';
-    ag.addEventListener('click', () => agregarAPedido(o));
-    acc.append(ag);
+    // En modo solo menú no se ofrece "Agregar más" (el cliente ya no arma pedidos desde el QR).
+    if (pedidosActivos) {
+      const ag = el('button', 'btn principal grande', '＋ Agregar más'); ag.type = 'button';
+      ag.addEventListener('click', () => agregarAPedido(o));
+      acc.append(ag);
+    }
     if (o.items.every((i) => i.estado === 'pendiente')) {
       const ca = el('button', 'btn peligro', 'Cancelar pedido'); ca.type = 'button';
       ca.addEventListener('click', async () => { if (await confirmar('¿Cancelar este pedido?', { si: 'Cancelar pedido', no: 'Volver', peligro: true })) await accion(o, err, { accion: 'cancelar' }); });
@@ -581,6 +598,7 @@ async function accion(o, zonaError, cuerpo) {
 }
 
 function agregarAPedido(o) {
+  if (!pedidosActivos) { avisar('Por ahora los pedidos se toman en el mostrador.', true); return; }
   destino = o;
   carrito = [];
   platoActual = platosBase();

@@ -141,3 +141,12 @@ body.nav-oculta .cliente-nav { transform: translateY(-110%); box-shadow: none; }
 .vista-pagar .transferencia .btn { min-height: 52px; font-size: 1.05rem; }
 .vista-pagar .transf-buscar input { min-height: 52px; font-size: 1.15rem; }
 @media (max-width: 440px) { .vista-pagar .clabe { font-size: 1.15rem; } }
+
+/* ---------- Modo "solo menú": el cliente ve los productos pero no puede pedir ---------- */
+.solo-menu .carrito, .solo-menu .barra-carrito, .solo-menu .tip-toque, .solo-menu .pr-mas, .solo-menu #ver-mis { display: none !important; }
+.solo-menu .pedido { display: block; }
+.solo-menu .pr { cursor: default; }
+.solo-menu .pedido { padding-bottom: 16px; }
+
+.solo-menu .destino span { display: block; }
+.solo-menu .carrito-vacio .btn { display: none; }
