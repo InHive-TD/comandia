@@ -979,7 +979,8 @@ function descargarQr(qr, nombreArchivo) {
 }
 
 async function cargarSucursales() {
-  const r = await pedir(API + 'admin/sucursales.php');
+  const [r, pq] = await Promise.all([pedir(API + 'admin/sucursales.php'), pedir(API + 'admin/cliente-pedidos.php')]);
+  const pedidosQr = new Map(pq.sucursales.map((x) => [x.id, x.activo]));   // ¿el cliente puede levantar pedidos desde el QR de cada sucursal?
   const lista = $('lista-sucursales');
   lista.replaceChildren();
   $('su-nueva-det').hidden = esGerente;
@@ -1036,6 +1037,32 @@ async function cargarSucursales() {
     bajar.addEventListener('click', () => descargarQr(qr, `qr-${s.slug || 'sucursal'}.png`));
     lq.append(cajaQr, bajar);
     cuerpo.append(lq);
+
+    // Interruptor: ¿el cliente puede levantar pedidos desde el QR o solo ver el menú? (mismo ajuste que Ajustes → pedidos de clientes por QR)
+    if (pedidosQr.has(s.id)) {
+      const bloqueado = !pq.general && !pq.puede_general;   // el dueño lo apagó para toda la empresa y el gerente no puede encenderlo
+      const sw = el('label', 'switch');
+      const caja = document.createElement('input');
+      caja.type = 'checkbox'; caja.checked = pedidosQr.get(s.id); caja.disabled = bloqueado;
+      const texto = el('span', '', caja.checked ? 'El cliente puede levantar pedidos' : 'Solo ver el menú');
+      sw.append(caja, el('span', 'slider'), texto);
+      caja.addEventListener('change', async () => {
+        caja.disabled = true;
+        $('su-error').textContent = '';
+        try {
+          await enviarJson(API + 'admin/cliente-pedidos.php', { accion: 'sucursal', sucursal_id: s.id, activo: caja.checked });
+          texto.textContent = caja.checked ? 'El cliente puede levantar pedidos' : 'Solo ver el menú';
+          avisar(caja.checked ? 'Ahora el cliente puede levantar pedidos desde el QR' : 'Ahora el cliente solo verá el menú');
+        } catch (err) { caja.checked = !caja.checked; $('su-error').textContent = err.message; }
+        caja.disabled = false;
+      });
+      const lp = el('div', 'su-campo');
+      lp.append(el('span', 'su-etq', 'Pedidos desde el QR'), sw,
+        el('span', 'ayuda', bloqueado
+          ? 'El dueño desactivó los pedidos de clientes en toda la empresa; aquí no se pueden activar.'
+          : 'Activado: el cliente que escanea el QR puede levantar su pedido. Desactivado: solo ve el menú.'));
+      cuerpo.append(lp);
+    }
 
     // Las mesas se administran en su propia ventana
     const mesasBtn = el('button', 'btn', `Mesas (${s.mesas})`); mesasBtn.type = 'button';
