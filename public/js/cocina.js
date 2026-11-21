@@ -553,12 +553,12 @@ function comanda(o, carril = '') {
   const completo = o.items.length > 0 && nListos === o.items.length;     // todos los renglones listos: la comanda se pliega
   if (completo) {
     c.classList.add('completo');
-    const t = el('button', 'com-toggle', verTodos ? '▾ Ocultar renglones' : `▸ Todo listo · ver los ${o.items.length} renglones`);
+    const t = el('button', 'com-toggle', verTodos ? '▾ Ocultar' : `▸ Ver ${o.items.length} ${o.items.length === 1 ? 'platillo listo' : 'platillos listos'}`);
     t.type = 'button';
     t.addEventListener('click', () => { if (verTodos) expandidos.delete(o.id); else expandidos.add(o.id); firma = ''; pintar(); avanzarReloj(); });
     c.append(t);
   } else if (nListos > 0 && nListos < o.items.length) {
-    const t = el('button', 'com-toggle', verTodos ? '▾ Ocultar los listos' : `▸ Ver todos (${nListos} ${nListos === 1 ? 'listo oculto' : 'listos ocultos'})`);
+    const t = el('button', 'com-toggle', verTodos ? '▾ Ocultar listos' : `▸ Ver ${nListos} ${nListos === 1 ? 'listo' : 'listos'}`);
     t.type = 'button';
     t.addEventListener('click', () => { if (verTodos) expandidos.delete(o.id); else expandidos.add(o.id); firma = ''; pintar(); avanzarReloj(); });
     c.append(t);
