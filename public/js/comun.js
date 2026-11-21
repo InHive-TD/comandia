@@ -107,7 +107,7 @@ function infoRestante(seg) {
   if (seg > 300) return { clase: 'rest-ok', min: `${Math.ceil(seg / 60)} min`, lbl: 'faltan' };
   if (seg > 120) return { clase: 'rest-pronto', min: `${Math.ceil(seg / 60)} min`, lbl: 'ya casi' };
   if (seg > 0) return { clase: 'rest-ya', min: `${Math.max(1, Math.ceil(seg / 60))} min`, lbl: '¡entregar!' };
-  return { clase: 'rest-tarde', min: `+${Math.max(1, Math.ceil(-seg / 60))} min`, lbl: 'atrasado' };
+  return { clase: 'rest-tarde', min: `−${Math.max(1, Math.ceil(-seg / 60))} min`, lbl: 'atrasado' };
 }
 /** Pinta el recuadro de espera (con .min y .lbl dentro) según los segundos que faltan */
 function pintarRestante(caja, seg, sMin, sLbl) {
