@@ -14,7 +14,7 @@ import type { FastifyInstance } from 'fastify';
 import { cuerpoJson, exigirMetodo, requerirRol } from '../auth.js';
 import { fallo } from '../errores.js';
 import {
-  ESTADOS_ACTIVOS, actualizarEstadoOrden, activarAgendados, bonosModalidad, calcularHoraPrometida, cambiarCantidad, cancelarOrden, categoriasLote, cerrarOrden,
+  ESTADOS_ACTIVOS, actualizarEstadoOrden, activarAgendados, bonosModalidad, calcularHoraPrometida, cambiarCantidad, cancelarOrden, categoriasLote, cerrarOrden, productosLote,
   colaActiva, contexto, enTransaccion, hacerPrioritaria, leerMesa, leerModalidad, minutosPreparacion, quitarRenglon, reabrirEntregada, registrarEntrega, textoTurno,
 } from '../ordenes.js';
 import { entero } from '../util.js';
@@ -32,6 +32,7 @@ interface ItemCocina {
   plato: number;
   llevar: boolean;
   categoria: unknown;
+  producto_id: number | null;
   estacion_id: number | null;
   nivel: number;
   extras: { nombre: unknown; codigo: unknown }[];
@@ -79,7 +80,7 @@ export async function rutasCocina(app: FastifyInstance): Promise<void> {
         if (ordenes.length > 0) {
           const ids = ordenes.map((o) => Number(o['id']));
           const items = await c.filas(
-            `SELECT i.id, i.orden_id, i.cantidad, i.nombre_producto, i.codigo, i.notas, i.estado, i.estacion_id, i.plato, i.llevar, i.categoria,
+            `SELECT i.id, i.orden_id, i.cantidad, i.nombre_producto, i.codigo, i.notas, i.estado, i.estacion_id, i.plato, i.llevar, i.categoria, i.producto_id,
                     COALESCE(pr.nivel, 0) AS nivel
                FROM orden_items i
                LEFT JOIN prioridades pr ON pr.producto_id = i.producto_id AND pr.estacion_id = ?
@@ -100,7 +101,7 @@ export async function rutasCocina(app: FastifyInstance): Promise<void> {
             const k = Number(i['orden_id']);
             const it: ItemCocina = {
               id: Number(i['id']), cantidad: Number(i['cantidad']), nombre: i['nombre_producto'], codigo: i['codigo'], notas: i['notas'], estado: String(i['estado']),
-              plato: Number(i['plato']), llevar: Boolean(Number(i['llevar'])), categoria: i['categoria'],
+              plato: Number(i['plato']), llevar: Boolean(Number(i['llevar'])), categoria: i['categoria'], producto_id: i['producto_id'] === null ? null : Number(i['producto_id']),
               estacion_id: i['estacion_id'] === null ? null : Number(i['estacion_id']), nivel: Math.min(2, Number(i['nivel'])), extras: extrasPorItem.get(Number(i['id'])) ?? [],
             };
             itemsPorOrden.set(k, [...(itemsPorOrden.get(k) ?? []), it]);
@@ -188,6 +189,7 @@ export async function rutasCocina(app: FastifyInstance): Promise<void> {
           programadas: programadas.sort((a, b) => Number(a.faltan) - Number(b.faltan)),
           min_preparacion: prep,
           lote: (await categoriasLote(c)).filter((k) => k.activa).map((k) => k.nombre),
+          lote_productos: await productosLote(c),   // platillos sueltos que también van al lote
           bonos: BONO_MINUTOS, bonos_modalidad: bonoModalidad,
         };
       }

@@ -14,7 +14,7 @@
 import type { FastifyInstance } from 'fastify';
 import { cuerpoJson, exigirMetodo, requerirGestion } from '../../auth.js';
 import { fallo, ErrorHttp } from '../../errores.js';
-import { bonosModalidad, categoriasLote, contexto, enTransaccion, minutosPreparacion } from '../../ordenes.js';
+import { bonosModalidad, categoriasLote, contexto, enTransaccion, minutosPreparacion, productosLote } from '../../ordenes.js';
 import { enteros, entero } from '../../util.js';
 
 export async function rutasPrioridades(app: FastifyInstance): Promise<void> {
@@ -43,7 +43,7 @@ export async function rutasPrioridades(app: FastifyInstance): Promise<void> {
           )
         ).map((f) => ({ id: Number(f['id']), nombre: f['nombre'], categoria_id: Number(f['categoria_id']), categoria: f['categoria'], prioridades: niveles.get(Number(f['id'])) ?? {} }));
         const general = alcance === null;
-        return { ok: true, estaciones, productos, modalidad: await bonosModalidad(c, general), min_preparacion: await minutosPreparacion(c, general), lote: await categoriasLote(c, general), general };
+        return { ok: true, estaciones, productos, modalidad: await bonosModalidad(c, general), min_preparacion: await minutosPreparacion(c, general), lote: await categoriasLote(c, general), lote_productos: await productosLote(c, general), general };
       }
 
       exigirMetodo(req, 'POST');
@@ -55,6 +55,12 @@ export async function rutasPrioridades(app: FastifyInstance): Promise<void> {
 
       if (accion === 'lote') {
         await guardar('lote_categorias' + sufijo, JSON.stringify(enteros(datos['categorias'])));
+        // Platillos sueltos (opcional): solo se aceptan los que existen en ESTA empresa
+        if (datos['productos'] !== undefined) {
+          const pedidos = enteros(datos['productos']);
+          const validos = pedidos.length ? (await c.filas(`SELECT id FROM productos WHERE negocio_id = ? AND id IN (${pedidos.map(() => '?').join(',')})`, [c.nid, ...pedidos])).map((f) => Number(f['id'])) : [];
+          await guardar('lote_productos' + sufijo, JSON.stringify(validos));
+        }
         return { ok: true };
       }
       if (accion === 'modalidad') {

@@ -576,3 +576,15 @@ dialog.pagina .acciones-dialogo { position: sticky; bottom: 0; z-index: 5; backg
 /* Código QR de la sucursal */
 .su-qr-img { width: 180px; height: 180px; padding: 6px; background: #fff; border: 1px solid var(--color-borde); border-radius: 10px; }
 .su-qr-img svg { width: 100%; height: 100%; display: block; }
+
+/* Preparar en lote: categorías colapsadas con sus platillos */
+#lote-lista { display: grid; gap: 8px; }
+.lote-cat { border: 1px solid var(--color-borde); border-radius: 12px; background: #fff; }
+.lote-cat-resumen { display: flex; align-items: center; gap: 10px; padding: 10px 14px; cursor: pointer; list-style: none; font-weight: 700; }
+.lote-cat-resumen::-webkit-details-marker { display: none; }
+.lote-cat-resumen::before { content: '▸'; color: var(--color-vino); transition: transform .15s; }
+.lote-cat[open] > .lote-cat-resumen::before { transform: rotate(90deg); }
+.lote-cat-marca { width: 22px; height: 22px; }
+.lote-cat-cuerpo { display: flex; flex-wrap: wrap; gap: 8px; padding: 4px 14px 14px; border-top: 1px solid var(--color-borde); padding-top: 12px; }
+.lote-cat-cuerpo .lote-op { min-height: 40px; }
+.lote-cat-cuerpo .lote-op input:disabled + span { opacity: .6; }

@@ -417,10 +417,11 @@ let lotePlegado = leer('cocina_lote_plegado') === '1';
 function pintarHamburguesas() {
   const caja = $('hamb');
   const lote = new Set((datos.lote || []).map((n) => String(n).toLowerCase()));
+  const loteProductos = new Set(datos.lote_productos || []);   // platillos sueltos elegidos en Ajustes
   const grupos = new Map();
   for (const o of datos.ordenes) {
     for (const i of o.items) {
-      if (!i.mio || i.estado === 'listo' || !lote.has(String(i.categoria || '').toLowerCase())) continue;
+      if (!i.mio || i.estado === 'listo' || !(lote.has(String(i.categoria || '').toLowerCase()) || loteProductos.has(i.producto_id))) continue;
       const k = textoItem(i);
       const g = grupos.get(k) || { cant: 0, detalle: detalleItem(i), lineas: [] };
       g.cant += i.cantidad;

@@ -1309,15 +1309,65 @@ async function cargarAjustes() {
   datosPrio = await pedir(API + 'admin/prioridades.php');
   $('pm-prep').value = datosPrio.min_preparacion;
   await cargarClientePedidos();
+  pintarLote();
+}
+
+/* "Preparar en lote": categorías colapsadas; al expandir una se ven sus platillos. Se puede elegir la categoría completa
+   (incluye también los platillos que agregues después) o solo platillos concretos. Se guarda al marcar. */
+const loteCats = new Set();      // categorías elegidas completas
+const loteProds = new Set();     // platillos sueltos elegidos
+const loteAbiertas = new Set();  // categorías expandidas en pantalla
+
+function pintarLote() {
+  loteCats.clear(); loteProds.clear();
+  for (const c of datosPrio.lote) if (c.activa) loteCats.add(c.id);
+  for (const id of datosPrio.lote_productos || []) loteProds.add(id);
   const lista = $('lote-lista');
   lista.replaceChildren();
   for (const c of datosPrio.lote) {
-    const f = el('label', 'lote-op');
-    const x = document.createElement('input');
-    x.type = 'checkbox'; x.value = String(c.id); x.checked = c.activa;
-    x.addEventListener('change', guardarLote);
-    f.append(x, el('span', '', c.nombre));
-    lista.append(f);
+    const platillos = datosPrio.productos.filter((p) => p.categoria_id === c.id);
+    const det = el('details', 'lote-cat');
+    det.open = loteAbiertas.has(c.id);
+    det.addEventListener('toggle', () => { if (det.open) loteAbiertas.add(c.id); else loteAbiertas.delete(c.id); });
+    const resumen = el('summary', 'lote-cat-resumen');
+    const marca = document.createElement('input');
+    marca.type = 'checkbox'; marca.className = 'lote-cat-marca';
+    marca.setAttribute('aria-label', `Toda la categoría ${c.nombre}`);
+    marca.addEventListener('click', (ev) => ev.stopPropagation());
+    marca.addEventListener('change', () => { if (marca.checked) loteCats.add(c.id); else loteCats.delete(c.id); refrescarLote(); guardarLote(); });
+    const cuenta = el('span', 'chip');
+    resumen.append(marca, el('span', 'cat-nombre', c.nombre), cuenta);
+    det.append(resumen);
+    const cuerpo = el('div', 'lote-cat-cuerpo');
+    const casillas = [];
+    if (platillos.length === 0) cuerpo.append(el('p', 'ayuda', 'Esta categoría aún no tiene platillos.'));
+    for (const p of platillos) {
+      const f = el('label', 'lote-op');
+      const x = document.createElement('input');
+      x.type = 'checkbox'; x.value = String(p.id);
+      x.addEventListener('change', () => { if (x.checked) loteProds.add(p.id); else loteProds.delete(p.id); refrescarLote(); guardarLote(); });
+      f.append(x, el('span', '', p.nombre));
+      cuerpo.append(f);
+      casillas.push({ p, x });
+    }
+    det.append(cuerpo);
+    lista.append(det);
+    c._ui = { marca, cuenta, casillas };
+  }
+  refrescarLote();
+}
+
+/** Pone al día las casillas y los contadores según lo elegido (categoría completa → sus platillos quedan marcados y fijos). */
+function refrescarLote() {
+  for (const c of datosPrio.lote) {
+    const { marca, cuenta, casillas } = c._ui;
+    const completa = loteCats.has(c.id);
+    const sueltos = casillas.filter(({ p }) => loteProds.has(p.id)).length;
+    marca.checked = completa;
+    marca.indeterminate = !completa && sueltos > 0;
+    for (const { p, x } of casillas) { x.checked = completa || loteProds.has(p.id); x.disabled = completa; }
+    cuenta.textContent = completa ? 'Toda la categoría' : sueltos ? `${sueltos} de ${casillas.length} platillos` : 'Ninguno';
+    cuenta.classList.toggle('activo', completa || sueltos > 0);
   }
 }
 
@@ -1409,10 +1459,13 @@ $('cp-guardar').addEventListener('click', guardarClientePedidos);
 
 async function guardarLote() {
   $('pr-error').textContent = '';
-  const ids = [...document.querySelectorAll('#lote-lista input:checked')].map((x) => Number(x.value));
+  const cats = [...loteCats];
+  // Los platillos de una categoría completa ya van incluidos: solo se guardan los sueltos de las demás
+  const completas = new Set(datosPrio.productos.filter((p) => loteCats.has(p.categoria_id)).map((p) => p.id));
+  const prods = [...loteProds].filter((id) => !completas.has(id));
   try {
-    await enviarJson(API + 'admin/prioridades.php', { accion: 'lote', categorias: ids });
-    avisar('Guardado: cocina verá esas categorías en “Preparar en lote”');
+    await enviarJson(API + 'admin/prioridades.php', { accion: 'lote', categorias: cats, productos: prods });
+    avisar('Guardado: cocina verá esas categorías y platillos en “Preparar en lote”');
   } catch (err) { $('pr-error').textContent = err.message; }
 }
 

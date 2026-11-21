@@ -304,6 +304,21 @@ export async function categoriasLote(c: Cx, general = false): Promise<CategoriaL
   }));
 }
 
+/**
+ * Platillos sueltos que cocina también ve en "Preparar en lote" (además de las categorías completas).
+ * Se guardan como lista de ids en el ajuste lote_productos; sin configurar, no hay ninguno.
+ */
+export async function productosLote(c: Cx, general = false): Promise<number[]> {
+  const v = await ajusteValor(c, 'lote_productos', general);
+  if (v === null) return [];
+  try {
+    const j: unknown = JSON.parse(v);
+    return (Array.isArray(j) ? j : []).map(entero).filter((x) => x > 0);
+  } catch {
+    return [];
+  }
+}
+
 /** Minutos que la cocina necesita para tener listo un pedido programado (se ve en cocina desde "hora − esto"). */
 export async function minutosPreparacion(c: Cx, general = false): Promise<number> {
   const v = await ajusteValor(c, 'min_preparacion', general);
