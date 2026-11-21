@@ -7,7 +7,7 @@
   <title>Administración · Comandia</title>
   <link rel="icon" type="image/png" href="../img/favicon.png">
   <link rel="stylesheet" href="../css/estilos.css?v=202611210600">
-  <link rel="stylesheet" href="../css/admin.css?v=202611210600">
+  <link rel="stylesheet" href="../css/admin.css?v=202611210700">
   <link rel="stylesheet" href="../api/tema.php">
 </head>
 <body>
@@ -53,20 +53,23 @@
       <nav class="menu-lateral" aria-label="Secciones del portal"><div class="menu-fijo">
         <button id="btn-reportes" class="btn nav-ico" data-ico="📊" type="button">Inicio · Reportes</button>
 
-        <p class="menu-grupo">Catálogo</p>
-        <button id="btn-productos" class="btn nav-ico" data-ico="🌮" type="button">Platillos</button>
-        <button id="btn-extras" class="btn nav-ico" data-ico="➕" type="button">Extras</button>
-
-        <p class="menu-grupo">Negocio</p>
-        <button id="btn-sucursales" class="btn nav-ico" data-ico="🏪" type="button">Sucursales y mesas</button>
-        <button id="btn-usuarios" class="btn nav-ico" data-ico="👥" type="button">Usuarios</button>
-        <button id="btn-prioridades" class="btn nav-ico" data-ico="⚙️" type="button">Ajustes</button>
-        <button id="btn-apariencia" class="btn nav-ico" data-ico="🎨" type="button">Apariencia</button>
-
         <p class="menu-grupo">Operación</p>
         <a class="btn nav-ico" data-ico="🧾" href="../pedidos/">Tomar pedidos</a>
         <a class="btn nav-ico" data-ico="🔥" href="../cocina/">Cocina</a>
         <a class="btn nav-ico" data-ico="💵" href="../caja/">Caja y propinas</a>
+
+        <!-- Todo lo que se configura vive en "Ajustes", agrupado por para qué sirve. Los id de los botones no cambian. -->
+        <p class="menu-grupo menu-ajustes">⚙️ Ajustes</p>
+        <p class="menu-sub">Menú</p>
+        <button id="btn-productos" class="btn nav-ico" data-ico="🌮" type="button">Platillos</button>
+        <button id="btn-extras" class="btn nav-ico" data-ico="➕" type="button">Extras</button>
+        <p class="menu-sub">Cocina y pedidos</p>
+        <button id="btn-prioridades" class="btn nav-ico" data-ico="🍳" type="button">Cocina</button>
+        <button id="btn-pedidos-qr" class="btn nav-ico" data-ico="📱" type="button">Pedidos por QR</button>
+        <p class="menu-sub">Negocio</p>
+        <button id="btn-sucursales" class="btn nav-ico" data-ico="🏪" type="button">Sucursales y mesas</button>
+        <button id="btn-usuarios" class="btn nav-ico" data-ico="👥" type="button">Usuarios</button>
+        <button id="btn-apariencia" class="btn nav-ico" data-ico="🎨" type="button">Apariencia</button>
       </div></nav>
       <div class="panel-contenido" id="panel-contenido">
         <!-- Página de Platillos: barra de acciones (categorías de platillos, expandir/colapsar) + lista por categoría -->
@@ -446,8 +449,17 @@
         <p class="ayuda">En cocina, arriba del tablero, se juntan los platillos de estas categorías de todos los pedidos (por ejemplo 5 hamburguesas iguales) para marcarlos de un solo toque. Elige categorías completas o solo platillos concretos (expande una categoría para verlos):</p>
         <div id="lote-lista" class="lote-lista"></div>
       </fieldset>
-      <fieldset class="lote-caja">
-        <legend>📱 Pedidos del cliente por QR</legend>
+      <p id="pr-error" class="msg-error" role="alert"></p>
+      <div class="acciones-dialogo">
+        <button id="pr-cerrar" class="btn" type="button">Cerrar</button>
+      </div>
+    </div>
+  </dialog>
+
+  <dialog id="dlg-pedidos-qr" class="pagina">
+    <div class="formulario dialogo">
+      <h2>Ajustes de pedidos por QR</h2>
+      <div>
         <p class="ayuda">Si está <strong>activado</strong>, el cliente escanea el QR, arma y envía su propio pedido. Si está <strong>desactivado</strong>, solo puede ver el menú (y consultar sus pedidos) y pide en el mostrador.</p>
         <label id="cp-general-fila" class="lote-op" hidden>
           <input id="cp-general" type="checkbox">
@@ -460,10 +472,10 @@
         <div id="cp-pestanas"></div>
         <p id="cp-pendiente" class="ayuda" hidden>Tienes cambios sin guardar.</p>
         <button id="cp-guardar" class="btn principal" type="button" disabled>Guardar configuración</button>
-      </fieldset>
-      <p id="pr-error" class="msg-error" role="alert"></p>
+      </div>
+      <p id="cp-error" class="msg-error" role="alert"></p>
       <div class="acciones-dialogo">
-        <button id="pr-cerrar" class="btn" type="button">Cerrar</button>
+        <button id="cp-cerrar" class="btn" type="button">Cerrar</button>
       </div>
     </div>
   </dialog>
@@ -472,6 +484,6 @@
 
   <script src="../js/comun.js?v=202611210460"></script>
   <script src="../js/vendor/qrcode.js"></script>
-  <script src="../js/admin.js?v=202611210600"></script>
+  <script src="../js/admin.js?v=202611210700"></script>
 </body>
 </html>

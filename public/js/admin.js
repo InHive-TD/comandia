@@ -383,9 +383,12 @@ function marcarMenu(idBoton) {
 /** Muestra una sección como página: cierra la que estuviera abierta y oculta la lista de productos. */
 /* Cada sección tiene su propia dirección: /<empresa>/admin/usuarios, /extras… (Inicio es solo /<empresa>/admin/).
    Se puede recargar, guardar en favoritos y usar "atrás". Las direcciones no llevan "#". */
-const RUTAS = { inicio: 'btn-reportes', platillos: 'btn-productos', categorias: 'btn-categorias', extras: 'btn-extras', sucursales: 'btn-sucursales', usuarios: 'btn-usuarios', ajustes: 'btn-prioridades', apariencia: 'btn-apariencia' };
+const RUTAS = { inicio: 'btn-reportes', platillos: 'btn-productos', categorias: 'btn-categorias', extras: 'btn-extras', sucursales: 'btn-sucursales', usuarios: 'btn-usuarios', 'ajustes-cocina': 'btn-prioridades', 'ajustes-pedidos': 'btn-pedidos-qr', apariencia: 'btn-apariencia' };
 const BASE_ADMIN = location.pathname.replace(/\/admin(\/.*)?$/, '/admin/');   // "/lavale/admin/"
-const seccionDeLaDireccion = () => (location.pathname.startsWith(BASE_ADMIN) ? location.pathname.slice(BASE_ADMIN.length).replace(/\/+$/, '') : '') || 'inicio';
+const seccionDeLaDireccion = () => {
+  const n = (location.pathname.startsWith(BASE_ADMIN) ? location.pathname.slice(BASE_ADMIN.length).replace(/\/+$/, '') : '') || 'inicio';
+  return n === 'ajustes' ? 'ajustes-cocina' : n;   // "ajustes" era la dirección anterior de Cocina
+};
 let rutaActual = seccionDeLaDireccion();
 function fijarRuta(idBoton) {
   const nombre = Object.keys(RUTAS).find((k) => RUTAS[k] === idBoton);
@@ -1308,7 +1311,6 @@ let datosPrio = null;
 async function cargarAjustes() {
   datosPrio = await pedir(API + 'admin/prioridades.php');
   $('pm-prep').value = datosPrio.min_preparacion;
-  await cargarClientePedidos();
   pintarLote();
 }
 
@@ -1445,13 +1447,13 @@ async function cargarClientePedidos() {
 
 /** Envía al servidor todos los cambios pendientes y vuelve a leer el estado real. */
 async function guardarClientePedidos() {
-  $('pr-error').textContent = '';
+  $('cp-error').textContent = '';
   const boton = $('cp-guardar');
   boton.disabled = true;
   try {
     for (const cambio of cpCambios()) await enviarJson(API + 'admin/cliente-pedidos.php', cambio);
     avisar('Configuración guardada');
-  } catch (err) { $('pr-error').textContent = err.message; }
+  } catch (err) { $('cp-error').textContent = err.message; }
   try { await cargarClientePedidos(); } catch { /* se queda como estaba */ }
 }
 $('cp-general').addEventListener('change', cpActualizarPendiente);
@@ -1487,6 +1489,15 @@ $('btn-prioridades').addEventListener('click', async () => {
 });
 $('pm-prep').addEventListener('change', guardarAjustes);
 $('pr-cerrar').addEventListener('click', () => dlgAjustes.close());
+
+/* Ajustes de pedidos por QR: su propia página */
+const dlgPedidosQr = $('dlg-pedidos-qr');
+$('btn-pedidos-qr').addEventListener('click', async () => {
+  $('cp-error').textContent = '';
+  try { await cargarClientePedidos(); } catch (err) { avisar(err.message, true); return; }
+  abrirPagina(dlgPedidosQr, 'btn-pedidos-qr');
+});
+$('cp-cerrar').addEventListener('click', () => dlgPedidosQr.close());
 
 /* ------------------------------------------------------------------ */
 /*  Extras                                                             */

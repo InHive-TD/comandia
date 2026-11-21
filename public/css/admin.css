@@ -89,6 +89,8 @@ input[type="file"] { padding: 9px 10px; }
 .menu-lateral { background: var(--color-tarjeta); border-right: 1px solid var(--color-borde); }
 .menu-fijo { position: sticky; top: 0; display: flex; flex-direction: column; gap: 2px; padding: 14px 12px 16px; }
 .menu-fijo > .btn.principal { margin-bottom: 4px; justify-content: center; }
+.menu-lateral .menu-ajustes { margin-top: 14px; padding-top: 10px; border-top: 1px solid var(--color-borde); color: var(--color-principal); font-size: .76rem; }
+.menu-sub { margin: 6px 10px 0; font-size: .66rem; font-weight: 700; color: #a59586; }
 .menu-grupo { margin: 12px 8px 3px; font-size: .7rem; font-weight: 700; letter-spacing: .8px; text-transform: uppercase; color: #8a7a6c; }
 .panel-contenido { padding: 20px 24px 48px; min-width: 0; }
 /* Productos agrupados por categoría (expandibles) */
@@ -110,7 +112,7 @@ input[type="file"] { padding: 9px 10px; }
 .menu-lateral .nav-ico:hover { background: #f6efe7; }
 .menu-lateral .nav-ico[hidden] { display: none; }
 /* Pantallas bajas: se compacta el menú para que SIEMPRE quepa completo en la pantalla (sin scroll propio). */
-@media (max-height: 900px) { .menu-grupo { margin-top: 8px; } .menu-lateral .nav-ico { padding: 4px 10px; min-height: 33px; } .menu-fijo { padding-top: 10px; } }
+@media (max-height: 900px) { .menu-grupo { margin-top: 8px; } .menu-lateral .menu-ajustes { margin-top: 8px; padding-top: 6px; } .menu-sub { margin-top: 3px; } .menu-lateral .nav-ico { padding: 4px 10px; min-height: 33px; } .menu-fijo { padding-top: 10px; } }
 @media (max-height: 760px) {
   .menu-grupo { margin: 5px 8px 1px; font-size: .64rem; }
   .menu-lateral .nav-ico { padding: 2px 10px; font-size: .88rem; min-height: 28px; }
@@ -122,7 +124,7 @@ input[type="file"] { padding: 9px 10px; }
   .panel-lateral { grid-template-columns: 1fr; min-height: 0; }
   .menu-lateral { border-right: 0; border-bottom: 1px solid var(--color-borde); }
   .menu-fijo { position: static; flex-direction: row; overflow-x: auto; align-items: center; padding: 10px; gap: 6px; }
-  .menu-lateral .menu-grupo { display: none; }
+  .menu-lateral .menu-grupo, .menu-lateral .menu-sub { display: none; }
   .menu-lateral .btn { width: auto; flex: 0 0 auto; white-space: nowrap; }
   .menu-fijo > .btn.principal { margin: 0 6px 0 0; }
   .panel-contenido { padding: 14px 16px 40px; }
@@ -375,7 +377,7 @@ fieldset.extras-campo { border: 1px solid #d9c690; border-radius: 10px; padding:
 .lote-caja { border: 2px solid var(--color-borde); border-radius: var(--radio); padding: 8px 12px 12px; margin: 10px 0; }
 .lote-caja legend { font-weight: 800; padding: 0 6px; }
 .lote-lista { display: flex; flex-wrap: wrap; gap: 8px; }
-.lote-op { display: inline-flex; align-items: center; gap: 8px; min-height: 48px; padding: 4px 14px; border: 2px solid var(--color-borde); border-radius: 24px; background: #fff; font-weight: 600; cursor: pointer; }
+.lote-op { display: inline-flex; flex-direction: row; align-items: center; gap: 8px; min-height: 48px; padding: 4px 14px; border: 2px solid var(--color-borde); border-radius: 24px; background: #fff; font-weight: 600; cursor: pointer; }
 .lote-op input { width: 22px; height: 22px; }
 
 /* Verde = "todo bien / listo". El rojo se reserva para lo urgente o atrasado. */
@@ -588,3 +590,4 @@ dialog.pagina .acciones-dialogo { position: sticky; bottom: 0; z-index: 5; backg
 .lote-cat-cuerpo { display: flex; flex-wrap: wrap; gap: 8px; padding: 4px 14px 14px; border-top: 1px solid var(--color-borde); padding-top: 12px; }
 .lote-cat-cuerpo .lote-op { min-height: 40px; }
 .lote-cat-cuerpo .lote-op input:disabled + span { opacity: .6; }
+.formulario label.lote-op { display: inline-flex; flex-direction: row; align-items: center; }
