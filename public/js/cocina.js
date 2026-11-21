@@ -450,8 +450,7 @@ function pintarHamburguesas() {
   for (const [k, g] of orden) {
     const c = el('div', 'hamb-chip');
     c.title = g.detalle;
-    c.append(el('span', 'hamb-cant', g.cant + '×'), el('span', 'hamb-nombre', k));
-    if (nombresCompletos) c.append(el('span', 'hamb-completo', g.detalle));
+    c.append(el('span', 'hamb-cant', g.cant + '×'), el('span', 'hamb-nombre', nombresCompletos ? g.detalle : k));
     const lineas = el('div', 'hamb-lineas');
     for (const { o, i } of g.lineas) {
       const b = el('button', 'hamb-linea estado-' + i.estado);
@@ -624,15 +623,15 @@ function filaItem(o, i) {
   const fila = el('div', 'fila-item');
   const b = el('button', `it estado-${i.estado}` + (i.mio ? '' : ' otro'));
   b.type = 'button';
-  b.append(el('span', 'cant', `${i.cantidad}×`), el('span', 'cod', textoItem(i)), estadoIcono(i.estado));
+  // Con "Nombres completos" el código se cambia por el nombre del platillo (y sus extras), en letra más chica
+  const abierto = nombresCompletos || detallesAbiertos.has(i.id);
+  b.append(el('span', 'cant', `${i.cantidad}×`), el('span', 'cod' + (abierto ? ' nombre-completo' : ''), abierto ? detalleItem(i) : textoItem(i)), estadoIcono(i.estado));
   if (i.mio && i.nivel > 0 && i.estado !== 'listo') b.append(el('span', 'nivel', NIVEL_TEXTO[i.nivel]));
   if (!i.mio) {
     const e = estaciones.find((x) => x.id === i.estacion_id);
     b.append(el('span', 'parrilla-etiqueta', e ? e.nombre : ''));
   }
   if (i.notas) b.append(el('span', 'nota', `“${i.notas}”`));
-  const abierto = nombresCompletos || detallesAbiertos.has(i.id);
-  if (abierto) b.append(el('span', 'detalle', detalleItem(i)));
 
   if (i.mio) b.addEventListener('click', () => cambiarItem(o, i, SIGUIENTE[i.estado]));
   else b.disabled = true;
