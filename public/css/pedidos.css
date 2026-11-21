@@ -263,6 +263,11 @@
 .cinta-agregado.cinta-mod { background: #6b2fa8; }
 
 
+/* ---------- Franja fija de categorías y código rápido (en todos los tamaños) ----------
+   Se queda arriba al hacer scroll y los platillos pasan POR DETRÁS (fondo sólido y z-index mayor que las tarjetas). */
+.menu-fijo { position: sticky; top: 0; z-index: 8; background: var(--color-fondo); padding-top: 2px; box-shadow: 0 6px 8px -6px rgba(80,40,10,.35); }
+.menu-fijo > .cats { padding-bottom: 8px; }
+
 /* ---------- Celular: categorías y código rápido ---------- */
 @media (max-width: 640px) {
   /* Chips que se ajustan al largo del texto y se acomodan en las filas que hagan falta */
