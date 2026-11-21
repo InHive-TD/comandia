@@ -268,7 +268,11 @@
 .menu-fijo { position: sticky; top: 0; z-index: 8; background: var(--color-fondo); padding-top: 2px; box-shadow: 0 6px 8px -6px rgba(80,40,10,.35); }
 .menu-fijo > .cats { padding-bottom: 8px; }
 /* Espacio entre la franja de categorías y donde empiezan los platillos (8 mm) */
-.menu-fijo { margin-bottom: 8mm; }
+:root { --sep-menu: 8mm; }   /* mismo espacio bajo el código rápido y bajo las categorías */
+.menu-fijo { margin-bottom: var(--sep-menu); }
+.menu-fijo > .codigo-rapido { margin-bottom: var(--sep-menu); }
+.menu-fijo > .codigo-rapido:has(+ #codigo-msg:not(:empty)) { margin-bottom: 0; }   /* si hay un aviso de error, va pegado al campo */
+#codigo-msg:not(:empty) { margin-bottom: var(--sep-menu); }
 
 /* ---------- Celular: categorías y código rápido ---------- */
 @media (max-width: 640px) {
@@ -279,12 +283,13 @@
   /* Categorías primero; el código rápido va debajo de ellas. Esta franja se queda fija al hacer scroll */
   .menu-fijo { display: flex; flex-direction: column; position: sticky; top: var(--alto-encab, 72px); z-index: 6;
     background: var(--color-fondo); padding: 6px 0 4px; margin: 0 -2px; transition: top .22s ease; box-shadow: 0 6px 8px -6px rgba(80,40,10,.35); }
-  .menu-fijo > .codigo-rapido { order: 1; margin-bottom: 2px; }
+  .menu-fijo > .codigo-rapido { order: 1; }
   .menu-fijo > .cats { order: 2; }
   .menu-fijo > #codigo-msg { order: 3; margin: 0; }
   .menu-fijo > #codigo-msg:empty { display: none; }
   .menu-col > .productos { margin-top: 0; }
-  .menu-fijo { padding-top: 0; margin-bottom: 4mm; }
+  :root { --sep-menu: 4mm; }
+  .menu-fijo { padding-top: 0; }
   .pedido { gap: 6px; }
 
   /* Encabezado: se esconde al bajar y reaparece al subir un poco */
