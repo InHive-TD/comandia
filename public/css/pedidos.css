@@ -337,3 +337,7 @@
 
 .pagar-ahora { width: 100%; min-height: 56px; margin-top: 8px; font-weight: 800; }
 .codigo-rapido[hidden] { display: none; }
+
+/* Editar una línea con opciones y lista de lo agregado con "Agregar y pedir otro" */
+.linea-ctl .editar-linea { min-height: 40px; padding: 4px 12px; }
+.op-agregados { margin: 0; padding: 8px 12px; list-style: none; display: grid; gap: 4px; background: #eaf5ea; border-radius: 10px; color: #245c2c; font-weight: 600; font-size: .9rem; }

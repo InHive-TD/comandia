@@ -309,13 +309,20 @@ const dlgOpciones = $('dlg-opciones');
 let opProducto = null;
 let opCantidad = 1;
 
-function abrirOpciones(p) {
+let opEditando = null;   // línea del carrito que se está editando (null = se agrega una nueva)
+
+/** Abre la hoja de opciones. Con `linea` se edita esa línea del carrito: sale con sus extras, cantidad y nota ya marcados. */
+function abrirOpciones(p, linea = null) {
   opProducto = p;
-  opCantidad = 1;
-  $('op-cantidad').textContent = '1';
+  opEditando = linea;
+  opCantidad = linea ? linea.cantidad : 1;
+  $('op-cantidad').textContent = String(opCantidad);
+  $('op-agregar').textContent = linea ? 'Guardar cambios' : 'Agregar';
+  $('op-otro').hidden = !!linea;                 // "pedir otro" solo al agregar, no al editar
+  $('op-agregados').hidden = true; $('op-agregados').replaceChildren();
   $('op-titulo').textContent = p.nombre;
   $('op-precio').textContent = dinero.format(p.precio) + (p.porcion ? ` · ${p.porcion}` : '');
-  $('op-notas').value = '';
+  $('op-notas').value = linea ? linea.notas : '';
   $('op-desc').textContent = p.descripcion || '';
   $('op-desc').hidden = !p.descripcion;
 
@@ -334,6 +341,7 @@ function abrirOpciones(p) {
     const c = document.createElement('input');
     c.type = 'checkbox';
     c.value = String(x.id);
+    c.checked = !!linea && linea.extras.some((e) => e.id === x.id);
     f.append(c, el('span', '', x.nombre));
     if (x.codigo) f.append(el('span', 'cod-extra', x.codigo));
     f.append(el('span', 'precio-extra', x.precio > 0 ? `+${dinero.format(x.precio)}` : ''));
@@ -348,13 +356,44 @@ function abrirOpciones(p) {
 $('op-menos').addEventListener('click', () => { opCantidad = Math.max(1, opCantidad - 1); $('op-cantidad').textContent = String(opCantidad); });
 $('op-mas').addEventListener('click', () => { opCantidad = Math.min(50, opCantidad + 1); $('op-cantidad').textContent = String(opCantidad); });
 $('op-cancelar').addEventListener('click', () => dlgOpciones.close());
+/** Extras marcados en la hoja de opciones. */
+const extrasElegidos = () => {
+  const ids = [...$('op-extras').querySelectorAll('input:checked')].map((c) => Number(c.value));
+  return opProducto.extras.filter((x) => ids.includes(x.id));
+};
+
 $('form-opciones').addEventListener('submit', (ev) => {
   ev.preventDefault();
-  const ids = [...$('op-extras').querySelectorAll('input:checked')].map((c) => Number(c.value));
-  const extras = opProducto.extras.filter((x) => ids.includes(x.id));
-  agregarLinea(opProducto, extras, opCantidad, $('op-notas').value.trim());
+  const extras = extrasElegidos();
+  const notas = $('op-notas').value.trim();
+  if (opEditando) {
+    // Editar: la línea cambia sus extras/cantidad/nota en el MISMO plato; si queda igual a otra línea, se juntan
+    const l = opEditando;
+    carrito = carrito.filter((x) => x !== l);
+    agregarLinea(l.producto, extras, opCantidad, notas, l.plato);
+    dlgOpciones.close();
+    avisar(`${l.producto.nombre} actualizado`);
+    return;
+  }
+  agregarLinea(opProducto, extras, opCantidad, notas);
   dlgOpciones.close();
   avisar(`${opProducto.nombre} agregado`);
+});
+
+/* "Agregar y pedir otro": agrega lo elegido y deja la ventana abierta con las opciones limpias para pedir el mismo
+   platillo con otra variante (por ejemplo, un combinado de arrachera y luego otro de pastor). */
+$('op-otro').addEventListener('click', () => {
+  const extras = extrasElegidos();
+  const notas = $('op-notas').value.trim();
+  agregarLinea(opProducto, extras, opCantidad, notas);
+  const lista = $('op-agregados');
+  lista.hidden = false;
+  lista.append(el('li', '', `✔ ${opCantidad} × ${opProducto.nombre}` + (extras.length ? ' · ' + extras.map((x) => x.nombre).join(', ') : '') + (notas ? ` · “${notas}”` : '')));
+  // Limpia para la siguiente variante (se rehabilitan las casillas bloqueadas por el máximo de carnes)
+  opCantidad = 1; $('op-cantidad').textContent = '1';
+  $('op-notas').value = '';
+  for (const c of $('op-extras').querySelectorAll('input[type=checkbox]')) { c.checked = false; c.disabled = false; }
+  $('op-extras').dispatchEvent(new Event('change', { bubbles: true }));
 });
 
 /* ------------------------------------------------------------------ */
@@ -432,7 +471,14 @@ function pintarCarrito() {
     menos.addEventListener('click', () => { if (l.cantidad > 1) l.cantidad--; else carrito = carrito.filter((x) => x !== l); pintarCarrito(); });
     mas.addEventListener('click', () => { l.cantidad = Math.min(50, l.cantidad + 1); pintarCarrito(); });
     quitar.addEventListener('click', () => { carrito = carrito.filter((x) => x !== l); pintarCarrito(); });
-    ctl.append(menos, num, mas, quitar);
+    ctl.append(menos, num, mas);
+    // Editar: solo para platillos con opciones; reabre la hoja con lo elegido para cambiarlo sin quitar y volver a agregar
+    if (l.producto.extras && l.producto.extras.length) {
+      const editar = el('button', 'btn editar-linea', '✏️ Editar'); editar.type = 'button';
+      editar.addEventListener('click', () => abrirOpciones(l.producto, l));
+      ctl.append(editar);
+    }
+    ctl.append(quitar);
     fila.append(ctl);
     caja.append(fila);
   }
