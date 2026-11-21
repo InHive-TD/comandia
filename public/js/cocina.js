@@ -546,7 +546,6 @@ function comanda(o, carril = '') {
 
   const varios = new Set(o.items.map((i) => i.plato)).size > 1;
   const rotular = varios || o.items.some((i) => i.llevar);   // con platos para llevar siempre se rotula el plato
-  if (varios && o.items.some((i) => i.mio && i.estado !== 'listo')) c.append(resumenTotal(o));   // sin pendientes no se muestra "nada, todo listo"
 
   const nListos = o.items.filter((i) => i.estado === 'listo').length;
   const verTodos = expandidos.has(o.id);
@@ -558,7 +557,7 @@ function comanda(o, carril = '') {
     t.addEventListener('click', () => { if (verTodos) expandidos.delete(o.id); else expandidos.add(o.id); firma = ''; pintar(); avanzarReloj(); });
     c.append(t);
   } else if (nListos > 0 && nListos < o.items.length) {
-    const t = el('button', 'com-toggle', verTodos ? '▾ Ocultar listos' : `▸ Ver ${nListos} ${nListos === 1 ? 'listo' : 'listos'}`);
+    const t = el('button', 'com-toggle', verTodos ? '▾ Ocultar' : `▸ Ver ${nListos} ${nListos === 1 ? 'platillo listo' : 'platillos listos'}`);
     t.type = 'button';
     t.addEventListener('click', () => { if (verTodos) expandidos.delete(o.id); else expandidos.add(o.id); firma = ''; pintar(); avanzarReloj(); });
     c.append(t);
@@ -595,21 +594,6 @@ function comanda(o, carril = '') {
   }
   c.append(pie);
   return c;
-}
-
-/* Pedido grande: cuánto hay que hacer EN TOTAL de cada cosa (solo lo pendiente de esta parrilla) */
-function resumenTotal(o) {
-  const suma = new Map();
-  for (const i of o.items) {
-    if (!i.mio || i.estado === 'listo') continue;
-    const k = textoItem(i);
-    suma.set(k, (suma.get(k) || 0) + i.cantidad);
-  }
-  const caja = el('div', 'com-total');
-  caja.append(el('span', 'com-total-et', 'En total por hacer:'));
-  if (suma.size === 0) caja.append(el('strong', '', 'nada, todo listo ✓'));
-  for (const [k, n] of suma) caja.append(el('strong', 'com-total-i', `${n}× ${k}`));
-  return caja;
 }
 
 /** Estado del renglón en un símbolo chico (el color del renglón lo refuerza): ○ pendiente · 🔥 preparando · ✓ listo */
