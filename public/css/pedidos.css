@@ -355,3 +355,6 @@ main.contenedor:has(#vista-pedido:not([hidden])) { padding-top: 0; }
 .cinta-agregado { text-align: center; }
 .cinta-pista { display: block; width: auto; animation: none; }
 .cinta-pista span { padding-right: 0; }
+/* Cinta de pedido agendado ("Para las 7:29 pm"): misma forma que la de prioridad, otro color */
+.cinta-agregado.cinta-agenda { background: #0f766e; color: #fff; }
+.cinta-agregado.cinta-agenda.tarde { background: #c8261a; }

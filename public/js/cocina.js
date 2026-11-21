@@ -522,13 +522,14 @@ function comanda(o, carril = '') {
   c.classList.add(o.modalidad === 'aqui' ? 'aqui' : 'llevar');
   if (o.modalidad === 'recoger') c.classList.add('recoger');
   if (o.prioritario) { c.classList.add('prioritaria'); c.append(cintaPrioridad()); }
+  // Pedido agendado: cinta fija arriba (como la de prioridad) con la hora a la que lo recogen/entregan
+  if (o.para) c.append(cintaPrioridad('🕒 Para las ' + hora12(o.para), 'cinta-agenda' + (o.faltan !== null && o.faltan < 0 ? ' tarde' : '')));
   c.dataset.espera = String(o.espera);
 
   const cab = el('div', 'com-cab');
   const quien = el('div', 'com-cliente', o.cliente);
   const datosLinea = el('div', 'com-datos');
   datosLinea.append(el('span', 'com-turno', '#' + o.turno.slice(-3)), ...(o.mesa ? [el('span', 'chip-mesa', '🪑 ' + o.mesa)] : []));
-  if (o.para) datosLinea.append(el('span', 'chip-para' + (o.faltan !== null && o.faltan < 0 ? ' tarde' : ''), '🕒 Para las ' + hora12(o.para)));
   const izq = el('div', 'com-izq');
   izq.append(quien, datosLinea);
   const espera = el('div', 'com-espera');
