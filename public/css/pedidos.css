@@ -267,6 +267,8 @@
    Se queda arriba al hacer scroll y los platillos pasan POR DETRÁS (fondo sólido y z-index mayor que las tarjetas). */
 .menu-fijo { position: sticky; top: 0; z-index: 8; background: var(--color-fondo); padding-top: 2px; box-shadow: 0 6px 8px -6px rgba(80,40,10,.35); }
 .menu-fijo > .cats { padding-bottom: 8px; }
+/* Espacio entre la franja de categorías y donde empiezan los platillos (8 mm) */
+.menu-fijo { margin-bottom: 8mm; }
 
 /* ---------- Celular: categorías y código rápido ---------- */
 @media (max-width: 640px) {
@@ -281,7 +283,7 @@
   .menu-fijo > .codigo-rapido { order: 2; margin-bottom: 2px; }
   .menu-fijo > #codigo-msg { order: 3; margin: 0; }
   .menu-fijo > #codigo-msg:empty { display: none; }
-  .menu-col > .productos { margin-top: 6px; }
+  .menu-col > .productos { margin-top: 0; }
 
   /* Encabezado: se esconde al bajar y reaparece al subir un poco */
   body.encab-oculto .menu-fijo { top: 0; }
