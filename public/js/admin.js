@@ -1490,22 +1490,42 @@ $('btn-prioridades').addEventListener('click', async () => {
 $('pm-prep').addEventListener('change', guardarAjustes);
 $('pr-cerrar').addEventListener('click', () => dlgAjustes.close());
 
-/* Ajustes de tomar pedidos: interruptor del código rápido (solo el dueño; se guarda al marcar) */
+/* Ajustes de tomar pedidos: interruptor del código rápido. Lo cambian el dueño (empresa o cualquier sucursal) y el gerente
+   (solo su sucursal). Se guarda al marcar. */
 const dlgTomaPedidos = $('dlg-toma-pedidos');
-$('btn-toma-pedidos').addEventListener('click', async () => {
-  $('tp-error').textContent = '';
-  try { await cargarAjustes(); } catch (err) { avisar(err.message, true); return; }
-  $('tp-codigo').checked = datosPrio.codigo_rapido;
-  $('tp-codigo').disabled = !datosPrio.general;   // el gerente lo ve pero no lo cambia
-  abrirPagina(dlgTomaPedidos, 'btn-toma-pedidos');
-});
-$('tp-codigo').addEventListener('change', async () => {
+
+/** Dibuja el interruptor general y una casilla por sucursal con el estado que manda el servidor. */
+function pintarCodigoRapido(cr) {
+  $('tp-general-fila').hidden = !cr.puede_general;
+  $('tp-general').checked = cr.general;
+  $('tp-nota').hidden = cr.general || cr.puede_general;
+  const lista = $('tp-lista');
+  lista.replaceChildren();
+  for (const s of cr.sucursales) {
+    const x = el('input'); x.type = 'checkbox'; x.checked = cr.general && s.activo; x.disabled = !cr.general;
+    x.addEventListener('change', () => guardarCodigoRapido({ ambito: 'sucursal', sucursal_id: s.id, activo: x.checked }));
+    const fila = el('label', 'lote-op'); fila.append(x, el('span', '', s.nombre));
+    lista.append(fila);
+  }
+}
+
+async function guardarCodigoRapido(cambio) {
   $('tp-error').textContent = '';
   try {
-    await enviarJson(API + 'admin/prioridades.php', { accion: 'codigo_rapido', activo: $('tp-codigo').checked });
-    datosPrio.codigo_rapido = $('tp-codigo').checked;
-    avisar($('tp-codigo').checked ? 'Código rápido activado' : 'Código rápido desactivado');
-  } catch (err) { $('tp-error').textContent = err.message; $('tp-codigo').checked = !$('tp-codigo').checked; }
+    const r = await enviarJson(API + 'admin/prioridades.php', { accion: 'codigo_rapido', ...cambio });
+    pintarCodigoRapido(r.codigo_rapido);
+    avisar('Guardado');
+  } catch (err) {
+    $('tp-error').textContent = err.message;
+    try { pintarCodigoRapido((await pedir(API + 'admin/prioridades.php')).codigo_rapido); } catch { /* se queda como estaba */ }
+  }
+}
+$('tp-general').addEventListener('change', () => guardarCodigoRapido({ ambito: 'general', activo: $('tp-general').checked }));
+
+$('btn-toma-pedidos').addEventListener('click', async () => {
+  $('tp-error').textContent = '';
+  try { pintarCodigoRapido((await pedir(API + 'admin/prioridades.php')).codigo_rapido); } catch (err) { avisar(err.message, true); return; }
+  abrirPagina(dlgTomaPedidos, 'btn-toma-pedidos');
 });
 $('tp-cerrar').addEventListener('click', () => dlgTomaPedidos.close());
 

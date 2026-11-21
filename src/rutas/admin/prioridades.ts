@@ -16,6 +16,29 @@ import { cuerpoJson, exigirMetodo, requerirGestion } from '../../auth.js';
 import { fallo, ErrorHttp } from '../../errores.js';
 import { bonosModalidad, categoriasLote, contexto, enTransaccion, minutosPreparacion, productosLote } from '../../ordenes.js';
 import { enteros, entero, noVacio } from '../../util.js';
+import { filas } from '../../db.js';
+
+/** ¿El dueño dejó el código rápido activo para toda la empresa? (por defecto sí) */
+export async function codigoRapidoGeneral(nid: number): Promise<boolean> {
+  const r = await filas("SELECT valor FROM ajustes WHERE negocio_id = ? AND clave = 'codigo_rapido'", [nid]);
+  return r.length === 0 || r[0]!['valor'] !== '0';
+}
+
+/** ¿Está activo el código rápido en esta sucursal? Necesita el interruptor general Y el de la sucursal (ambos por defecto sí). */
+export async function codigoRapidoEn(nid: number, sid: number): Promise<boolean> {
+  if (!(await codigoRapidoGeneral(nid))) return false;
+  const r = await filas('SELECT valor FROM ajustes WHERE negocio_id = ? AND clave = ?', [nid, `codigo_rapido@${sid}`]);
+  return r.length === 0 || r[0]!['valor'] !== '0';
+}
+
+/** Estado para el panel: interruptor general y el de cada sucursal (el gerente solo ve la suya). */
+async function estadoCodigoRapido(nid: number, alcance: number | null) {
+  const sucs = await filas(`SELECT id, nombre FROM sucursales WHERE negocio_id = ? AND activa = 1${alcance !== null ? ` AND id = ${Math.trunc(alcance)}` : ''} ORDER BY orden, id`, [nid]);
+  const general = await codigoRapidoGeneral(nid);
+  const propios = await filas("SELECT clave, valor FROM ajustes WHERE negocio_id = ? AND clave LIKE 'codigo_rapido@%'", [nid]);
+  const apagadas = new Set(propios.filter((f) => f['valor'] === '0').map((f) => Number(String(f['clave']).split('@')[1])));
+  return { general, puede_general: alcance === null, sucursales: sucs.map((s) => ({ id: Number(s['id']), nombre: s['nombre'], activo: !apagadas.has(Number(s['id'])) })) };
+}
 
 export async function rutasPrioridades(app: FastifyInstance): Promise<void> {
   app.route({
@@ -44,20 +67,31 @@ export async function rutasPrioridades(app: FastifyInstance): Promise<void> {
         ).map((f) => ({ id: Number(f['id']), nombre: f['nombre'], categoria_id: Number(f['categoria_id']), categoria: f['categoria'], prioridades: niveles.get(Number(f['id'])) ?? {} }));
         const general = alcance === null;
         return { ok: true, estaciones, productos, modalidad: await bonosModalidad(c, general), min_preparacion: await minutosPreparacion(c, general), lote: await categoriasLote(c, general), lote_productos: await productosLote(c, general), general,
-          codigo_rapido: (await c.filas("SELECT valor FROM ajustes WHERE negocio_id = ? AND clave = 'codigo_rapido'", [c.nid])).every((f) => f['valor'] !== '0') };
+          codigo_rapido: await estadoCodigoRapido(c.nid, alcance) };
       }
 
       exigirMetodo(req, 'POST');
       const datos = cuerpoJson(req);
       const accion = String(datos['accion'] ?? '');
-      if (alcance !== null && !['lote', 'modalidad'].includes(accion)) throw new ErrorHttp(403, 'validacion', 'Solo el dueño de la empresa puede cambiar esto.');
+      if (alcance !== null && !['lote', 'modalidad', 'codigo_rapido'].includes(accion)) throw new ErrorHttp(403, 'validacion', 'Solo el dueño de la empresa puede cambiar esto.');
       const guardar = (clave: string, valor: string) =>
         c.ejecutar('INSERT INTO ajustes (negocio_id, clave, valor) VALUES (?, ?, ?) ON DUPLICATE KEY UPDATE valor = VALUES(valor)', [c.nid, clave, valor]);
 
-      // Activa o desactiva el buscador por código rápido (y su botón "Agregar") en Tomar pedidos. Solo el dueño.
+      // Activa o desactiva el buscador por código rápido (y su botón "Agregar") en Tomar pedidos.
+      // El dueño lo cambia para toda la empresa o para cualquier sucursal; el gerente solo para la suya
+      // y no puede encenderlo si el dueño lo apagó en toda la empresa.
       if (accion === 'codigo_rapido') {
-        await guardar('codigo_rapido', noVacio(datos['activo']) ? '1' : '0');
-        return { ok: true };
+        const activo = noVacio(datos['activo']);
+        if (datos['ambito'] === 'general') {
+          if (alcance !== null) throw new ErrorHttp(403, 'validacion', 'Solo el dueño de la empresa puede cambiar esto para toda la empresa.');
+          await guardar('codigo_rapido', activo ? '1' : '0');
+        } else {
+          const sid = alcance ?? entero(datos['sucursal_id']);
+          if ((await c.filas('SELECT id FROM sucursales WHERE id = ? AND negocio_id = ?', [sid, c.nid])).length === 0) throw new ErrorHttp(404, 'validacion', 'Esa sucursal no existe.');
+          if (activo && alcance !== null && !(await codigoRapidoGeneral(c.nid))) throw new ErrorHttp(403, 'validacion', 'El dueño desactivó el código rápido en toda la empresa. Pídele que lo active para poder activarlo aquí.');
+          await guardar(`codigo_rapido@${sid}`, activo ? '1' : '0');
+        }
+        return { ok: true, codigo_rapido: await estadoCodigoRapido(c.nid, alcance) };
       }
 
       if (accion === 'lote') {

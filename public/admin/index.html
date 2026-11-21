@@ -7,7 +7,7 @@
   <title>Administración · Comandia</title>
   <link rel="icon" type="image/png" href="../img/favicon.png">
   <link rel="stylesheet" href="../css/estilos.css?v=202611210600">
-  <link rel="stylesheet" href="../css/admin.css?v=202611210900">
+  <link rel="stylesheet" href="../css/admin.css?v=202611210920">
   <link rel="stylesheet" href="../api/tema.php">
 </head>
 <body>
@@ -460,11 +460,14 @@
   <dialog id="dlg-toma-pedidos" class="pagina">
     <div class="formulario dialogo">
       <h2>Ajustes de tomar pedidos</h2>
-      <label class="lote-op">
-        <input id="tp-codigo" type="checkbox">
-        <span><strong>Levantar pedidos por código rápido</strong> (muestra el buscador de códigos como “2 AH XQ” y su botón Agregar)</span>
+      <h3 class="cp-sub">⌨️ Levantar pedidos por código rápido</h3>
+      <p class="ayuda">Muestra el buscador de códigos (como “2 AH XQ”) y su botón Agregar. Si lo desactivas, quienes toman pedidos solo ven las categorías y los platillos para tocar.</p>
+      <label id="tp-general-fila" class="lote-op" hidden>
+        <input id="tp-general" type="checkbox">
+        <span><strong>Toda la empresa</strong> (si lo apagas aquí, ninguna sucursal lo usa)</span>
       </label>
-      <p class="ayuda">Si lo desactivas, quienes toman pedidos solo verán las categorías y los platillos para tocar.</p>
+      <div id="tp-lista" class="lote-lista"></div>
+      <p id="tp-nota" class="ayuda" hidden>El dueño desactivó el código rápido en toda la empresa. Solo él puede volver a activarlo.</p>
       <p id="tp-error" class="msg-error" role="alert"></p>
       <div class="acciones-dialogo">
         <button id="tp-cerrar" class="btn" type="button">Cerrar</button>
@@ -500,6 +503,6 @@
 
   <script src="../js/comun.js?v=202611210460"></script>
   <script src="../js/vendor/qrcode.js"></script>
-  <script src="../js/admin.js?v=202611210900"></script>
+  <script src="../js/admin.js?v=202611210920"></script>
 </body>
 </html>
