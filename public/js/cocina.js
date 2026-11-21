@@ -833,13 +833,6 @@ async function quitarItem(o, i) {
   pintarPedido();
 }
 
-$('dp-reabrir').addEventListener('click', async () => {
-  $('dp-error').textContent = '';
-  try { await enviarJson(API + 'cocina.php', { accion: 'reabrir', orden_id: pedidoAbierto }); avisar('Pedido regresado a cocina'); }
-  catch (err) { $('dp-error').textContent = err.message; }
-  await cargar(true);
-  pintarPedido();
-});
 $('dp-cerrar').addEventListener('click', () => $('dlg-pedido').close());
 
 iniciar();
