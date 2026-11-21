@@ -31,6 +31,24 @@ export async function codigoRapidoEn(nid: number, sid: number): Promise<boolean>
   return r.length === 0 || r[0]!['valor'] !== '0';
 }
 
+/** ¿Las comandas de Cocina van en UNA fila con scroll lateral (true) o apiladas hacia abajo (false, por defecto)?
+ *  Cada sucursal puede tener su propio valor (clave cocina_horizontal@ID); si no lo tiene, usa el de toda la empresa. */
+export async function cocinaHorizontalEn(nid: number, sid: number): Promise<boolean> {
+  const r = await filas("SELECT clave, valor FROM ajustes WHERE negocio_id = ? AND clave IN ('cocina_horizontal', ?)", [nid, `cocina_horizontal@${sid}`]);
+  const propio = r.find((f) => f['clave'] === `cocina_horizontal@${sid}`);
+  const general = r.find((f) => f['clave'] === 'cocina_horizontal');
+  return (propio ?? general)?.['valor'] === '1';
+}
+
+/** Estado para el panel: interruptor general de Cocina horizontal y el efectivo de cada sucursal (el gerente solo ve la suya). */
+async function estadoCocinaHorizontal(nid: number, alcance: number | null) {
+  const sucs = await filas(`SELECT id, nombre FROM sucursales WHERE negocio_id = ? AND activa = 1${alcance !== null ? ` AND id = ${Math.trunc(alcance)}` : ''} ORDER BY orden, id`, [nid]);
+  const g = await filas("SELECT valor FROM ajustes WHERE negocio_id = ? AND clave = 'cocina_horizontal'", [nid]);
+  const out = [];
+  for (const s of sucs) out.push({ id: Number(s['id']), nombre: s['nombre'], activo: await cocinaHorizontalEn(nid, Number(s['id'])) });
+  return { general: g[0]?.['valor'] === '1', puede_general: alcance === null, sucursales: out };
+}
+
 /** Estado para el panel: interruptor general y el de cada sucursal (el gerente solo ve la suya). */
 async function estadoCodigoRapido(nid: number, alcance: number | null) {
   const sucs = await filas(`SELECT id, nombre FROM sucursales WHERE negocio_id = ? AND activa = 1${alcance !== null ? ` AND id = ${Math.trunc(alcance)}` : ''} ORDER BY orden, id`, [nid]);
@@ -67,13 +85,13 @@ export async function rutasPrioridades(app: FastifyInstance): Promise<void> {
         ).map((f) => ({ id: Number(f['id']), nombre: f['nombre'], categoria_id: Number(f['categoria_id']), categoria: f['categoria'], prioridades: niveles.get(Number(f['id'])) ?? {} }));
         const general = alcance === null;
         return { ok: true, estaciones, productos, modalidad: await bonosModalidad(c, general), min_preparacion: await minutosPreparacion(c, general), lote: await categoriasLote(c, general), lote_productos: await productosLote(c, general), general,
-          codigo_rapido: await estadoCodigoRapido(c.nid, alcance) };
+          codigo_rapido: await estadoCodigoRapido(c.nid, alcance), cocina_horizontal: await estadoCocinaHorizontal(c.nid, alcance) };
       }
 
       exigirMetodo(req, 'POST');
       const datos = cuerpoJson(req);
       const accion = String(datos['accion'] ?? '');
-      if (alcance !== null && !['lote', 'modalidad', 'codigo_rapido'].includes(accion)) throw new ErrorHttp(403, 'validacion', 'Solo el dueño de la empresa puede cambiar esto.');
+      if (alcance !== null && !['lote', 'modalidad', 'codigo_rapido', 'cocina_horizontal'].includes(accion)) throw new ErrorHttp(403, 'validacion', 'Solo el dueño de la empresa puede cambiar esto.');
       const guardar = (clave: string, valor: string) =>
         c.ejecutar('INSERT INTO ajustes (negocio_id, clave, valor) VALUES (?, ?, ?) ON DUPLICATE KEY UPDATE valor = VALUES(valor)', [c.nid, clave, valor]);
 
@@ -92,6 +110,22 @@ export async function rutasPrioridades(app: FastifyInstance): Promise<void> {
           await guardar(`codigo_rapido@${sid}`, activo ? '1' : '0');
         }
         return { ok: true, codigo_rapido: await estadoCodigoRapido(c.nid, alcance) };
+      }
+
+      // Distribución de las comandas en Cocina: apiladas hacia abajo o en una fila con scroll izquierda-derecha.
+      // El dueño la fija para toda la empresa (y limpia lo particular de cada sucursal) o para una sucursal; el gerente, solo la suya.
+      if (accion === 'cocina_horizontal') {
+        const activo = noVacio(datos['activo']);
+        if (datos['ambito'] === 'general') {
+          if (alcance !== null) throw new ErrorHttp(403, 'validacion', 'Solo el dueño de la empresa puede cambiar esto para toda la empresa.');
+          await guardar('cocina_horizontal', activo ? '1' : '0');
+          await c.ejecutar("DELETE FROM ajustes WHERE negocio_id = ? AND clave LIKE 'cocina\\_horizontal@%'", [c.nid]);
+        } else {
+          const sid = alcance ?? entero(datos['sucursal_id']);
+          if ((await c.filas('SELECT id FROM sucursales WHERE id = ? AND negocio_id = ?', [sid, c.nid])).length === 0) throw new ErrorHttp(404, 'validacion', 'Esa sucursal no existe.');
+          await guardar(`cocina_horizontal@${sid}`, activo ? '1' : '0');
+        }
+        return { ok: true, cocina_horizontal: await estadoCocinaHorizontal(c.nid, alcance) };
       }
 
       if (accion === 'lote') {

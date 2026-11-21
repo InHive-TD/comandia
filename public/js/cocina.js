@@ -236,6 +236,7 @@ async function cargar(forzar = false) {
   try {
     const r = await pedir(API + `cocina.php?estacion=${estacionId}`);
     datos = r;
+    $('tablero').classList.toggle('horizontal', !!r.horizontal);   // ajuste del administrador: una fila con scroll lateral
     recibidoEn = performance.now();
     detectarNuevos();
     detectarEdiciones();
@@ -355,6 +356,7 @@ function pintar() {
   caja.style.minHeight = caja.offsetHeight + 'px';
   caja.replaceChildren();
   caja.classList.add('carriles');
+  caja.classList.toggle('horizontal', !!datos.horizontal);
   for (const [id, c] of cancelAvisos) {
     const b = el('div', 'aviso-cancel');
     b.append(el('strong', '', `🚫 CANCELADO · #${c.turno.slice(-3)} ${c.cliente}`), el('span', '', 'No lo prepares; si ya empezaste, avisa a quien levanta pedidos.'));

@@ -485,3 +485,9 @@ body.barra-auto main.contenedor { padding-top: 8px; min-height: 100vh; }
 /* Cinta de pedido agendado ("Para las 7:29 pm"): misma forma que la de prioridad, otro color */
 .cinta-agregado.cinta-agenda { background: #0f766e; color: #fff; }
 .cinta-agregado.cinta-agenda.tarde { background: #c8261a; }
+
+/* ---------- Distribución "una sola fila" (ajuste del administrador): las comandas no se apilan, se recorren con scroll lateral ----------
+   Es la excepción pedida a la regla de "sin scroll propio": solo en este modo y solo en horizontal. */
+.tablero.horizontal .carril .carril-cuerpo { display: flex !important; flex-wrap: nowrap; align-items: flex-start; gap: 8px; overflow-x: auto; overflow-y: hidden; padding: 5px 5px 10px; -webkit-overflow-scrolling: touch; scroll-snap-type: x proximity; }
+.tablero.horizontal .carril .carril-cuerpo > .comanda { flex: 0 0 210px; width: 210px; max-width: none !important; grid-row-end: auto !important; scroll-snap-align: start; }
+.tablero.horizontal .carril .carril-cuerpo > .vacio { flex: none; }

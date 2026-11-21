@@ -446,6 +446,16 @@
         <input id="pm-prep" type="number" min="0" max="120" step="1" inputmode="numeric">
       </label>
       <fieldset class="lote-caja">
+        <legend>↔️ Distribución de las comandas</legend>
+        <p class="ayuda">Elige cómo se acomodan las comandas en Cocina: <strong>apiladas</strong> hacia abajo, o en <strong>una sola fila</strong> con scroll de izquierda a derecha (los pedidos siguen ordenados por prioridad y llegada).</p>
+        <label id="ch-general-fila" class="lote-op" hidden>
+          <input id="ch-general" type="checkbox">
+          <span><strong>Toda la empresa</strong>: una sola fila con scroll lateral</span>
+        </label>
+        <div id="ch-lista" class="lote-lista"></div>
+        <p class="ayuda">Marcada = una fila con scroll lateral · Sin marcar = apiladas hacia abajo.</p>
+      </fieldset>
+      <fieldset class="lote-caja">
         <legend>🍳 Preparar en lote</legend>
         <p class="ayuda">En cocina, arriba del tablero, se juntan los platillos de estas categorías de todos los pedidos (por ejemplo 5 hamburguesas iguales) para marcarlos de un solo toque. Elige categorías completas o solo platillos concretos (expande una categoría para verlos):</p>
         <div id="lote-lista" class="lote-lista"></div>
@@ -503,6 +513,6 @@
 
   <script src="../js/comun.js?v=202611211180"></script>
   <script src="../js/vendor/qrcode.js"></script>
-  <script src="../js/admin.js?v=202611210920"></script>
+  <script src="../js/admin.js?v=202611211210"></script>
 </body>
 </html>

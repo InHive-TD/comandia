@@ -1311,8 +1311,35 @@ $('ap-logo-quitar').addEventListener('click', async () => {
 const dlgAjustes = $('dlg-prioridades');
 let datosPrio = null;
 
+/** Distribución de comandas en Cocina (apiladas / una fila con scroll lateral): interruptor general (dueño) y por sucursal. Se guarda al marcar. */
+function pintarCocinaHorizontal(ch) {
+  $('ch-general-fila').hidden = !ch.puede_general;
+  $('ch-general').checked = ch.general;
+  const lista = $('ch-lista');
+  lista.replaceChildren();
+  for (const s of ch.sucursales) {
+    const x = el('input'); x.type = 'checkbox'; x.checked = s.activo;
+    x.addEventListener('change', () => guardarCocinaHorizontal({ ambito: 'sucursal', sucursal_id: s.id, activo: x.checked }));
+    const fila = el('label', 'lote-op'); fila.append(x, el('span', '', s.nombre));
+    lista.append(fila);
+  }
+}
+async function guardarCocinaHorizontal(cambio) {
+  $('pr-error').textContent = '';
+  try {
+    const r = await enviarJson(API + 'admin/prioridades.php', { accion: 'cocina_horizontal', ...cambio });
+    pintarCocinaHorizontal(r.cocina_horizontal);
+    avisar('Guardado');
+  } catch (err) {
+    $('pr-error').textContent = err.message;
+    try { pintarCocinaHorizontal((await pedir(API + 'admin/prioridades.php')).cocina_horizontal); } catch { /* se queda como estaba */ }
+  }
+}
+$('ch-general').addEventListener('change', () => guardarCocinaHorizontal({ ambito: 'general', activo: $('ch-general').checked }));
+
 async function cargarAjustes() {
   datosPrio = await pedir(API + 'admin/prioridades.php');
+  pintarCocinaHorizontal(datosPrio.cocina_horizontal);
   $('pm-prep').value = datosPrio.min_preparacion;
   pintarLote();
 }
