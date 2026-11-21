@@ -331,8 +331,6 @@ document.addEventListener('DOMContentLoaded', () => {
       principal.classList.add('dlg-ok');
       barra.append(principal);
     }
-    // Botones secundarios que deben ir junto al principal en la barra de arriba (clase dlg-extra), más chicos
-    for (const x of [...acc.querySelectorAll('.dlg-extra')]) { x.classList.remove('grande'); barra.append(x); }
     barra.append(cerrar);
     padre.prepend(barra);
     if (!acc.children.length) acc.remove();

@@ -318,7 +318,6 @@ function abrirOpciones(p, linea = null) {
   opCantidad = linea ? linea.cantidad : 1;
   $('op-cantidad').textContent = String(opCantidad);
   $('op-agregar').textContent = linea ? 'Guardar cambios' : 'Agregar';
-  $('op-otro').hidden = !!linea;                 // "pedir otro" solo al agregar, no al editar
   $('op-agregados').hidden = true; $('op-agregados').replaceChildren();
   $('op-titulo').textContent = p.nombre;
   $('op-precio').textContent = dinero.format(p.precio) + (p.porcion ? ` · ${p.porcion}` : '');
@@ -375,25 +374,15 @@ $('form-opciones').addEventListener('submit', (ev) => {
     avisar(`${l.producto.nombre} actualizado`);
     return;
   }
-  agregarLinea(opProducto, extras, opCantidad, notas);
-  dlgOpciones.close();
-  avisar(`${opProducto.nombre} agregado`);
-});
-
-/* "Agregar y pedir otro": agrega lo elegido y deja la ventana abierta con las opciones limpias para pedir el mismo
-   platillo con otra variante (por ejemplo, un combinado de arrachera y luego otro de pastor). */
-$('op-otro').addEventListener('click', () => {
-  const extras = extrasElegidos();
-  const notas = $('op-notas').value.trim();
+  // Agregar NO cierra la ventana: queda abierta, anota lo agregado abajo y limpia las opciones para pedir otra variante
+  // (por ejemplo un combinado de arrachera y luego otro de pastor). Se sale con la ✕.
   agregarLinea(opProducto, extras, opCantidad, notas);
   const lista = $('op-agregados');
   lista.hidden = false;
   lista.append(el('li', '', `✔ ${opCantidad} × ${opProducto.nombre}` + (extras.length ? ' · ' + extras.map((x) => x.nombre).join(', ') : '') + (notas ? ` · “${notas}”` : '')));
-  // Limpia para la siguiente variante (se rehabilitan las casillas bloqueadas por el máximo de carnes)
   opCantidad = 1; $('op-cantidad').textContent = '1';
   $('op-notas').value = '';
-  for (const c of $('op-extras').querySelectorAll('input[type=checkbox]')) { c.checked = false; c.disabled = false; }
-  $('op-extras').dispatchEvent(new Event('change', { bubbles: true }));
+  for (const c of $('op-extras').querySelectorAll('input[type=checkbox]')) { c.checked = false; c.disabled = false; }   // rehabilita las bloqueadas por el máximo de carnes
 });
 
 /* ------------------------------------------------------------------ */

@@ -592,8 +592,6 @@ dialog.pagina .acciones-dialogo { position: sticky; bottom: 0; z-index: 5; backg
 .lote-cat-cuerpo .lote-op input:disabled + span { opacity: .6; }
 .formulario label.lote-op { display: inline-flex; flex-direction: row; align-items: center; }
 
-/* Barra de la ventana de opciones: "Agregar" y "＋ Y otro" juntos, compactos, en el mismo espacio */
-#dlg-opciones .dlg-barra .btn { min-height: 38px; }
-#dlg-opciones .dlg-barra .dlg-ok { padding: 4px 14px; font-size: .95rem; max-width: 150px; }
-#dlg-opciones .dlg-barra .dlg-extra { padding: 4px 12px; font-size: .88rem; white-space: nowrap; background: #eaf5ea; border: 2px solid var(--color-ok); color: #245c2c; }
-.dlg-barra .dlg-extra[hidden] { display: none; }
+/* Ventana de opciones: Agregar compacto (la ventana no se cierra al agregar; solo con la ✕) */
+#dlg-opciones .dlg-barra .btn { min-height: 40px; }
+#dlg-opciones .dlg-barra .dlg-ok { padding: 4px 18px; max-width: 180px; }
