@@ -274,7 +274,11 @@ let recientes = new Set();
 /* Pedidos modificados / cancelados mientras estaban en cocina */
 const revVista = new Map();         // id → última revisión que esta tablet ya conoce
 const expandidos = new Set();        // pedidos donde se muestran también los renglones ya listos
-const modificados = new Map();      // id → hora de la edición (hasta que el cocinero toque "Entendido")
+/* Aviso "Modificado": se muestra mientras la revisión del pedido sea mayor que la que el cocinero ya vio (al tocar la franja).
+   Sale SIEMPRE que el pedido se edita (aunque lo haya editado esta misma tablet) y sobrevive a recargar la pantalla. */
+const modVistas = new Map((() => { try { return Object.entries(JSON.parse(leer('cocina_mod_vistas') || '{}')).map(([k, v]) => [Number(k), Number(v)]); } catch { return []; } })());
+const modPendiente = (o) => o.revision > (modVistas.get(o.id) ?? 0);
+const guardarModVistas = () => guardar('cocina_mod_vistas', JSON.stringify(Object.fromEntries(modVistas)));
 const cancelAvisos = new Map();     // id → { turno, cliente } (hasta "Entendido")
 const canceladasVistas = new Set();
 const propios = new Map();          // id → momento en que ESTA tablet lo editó (no suena para uno mismo)
@@ -287,7 +291,7 @@ function detectarEdiciones() {
     const antes = revVista.get(o.id);
     if (antes !== undefined && o.revision > antes) {
       const mio = propios.has(o.id) && Date.now() - propios.get(o.id) < 8000;
-      if (!mio && !primeraRevision) { editados.push(o); modificados.set(o.id, o.editado); }
+      if (!mio && !primeraRevision) { editados.push(o); }   // solo para el sonido y el aviso emergente (no para uno mismo)
     }
     revVista.set(o.id, o.revision);
   }
@@ -512,7 +516,6 @@ function comanda(o, carril = '') {
   c.classList.add(o.modalidad === 'aqui' ? 'aqui' : 'llevar');
   if (o.modalidad === 'recoger') c.classList.add('recoger');
   if (o.prioritario) { c.classList.add('prioritaria'); c.append(cintaPrioridad()); }
-  else if (o.revision > 0 && !o.urgente) { c.append(cintaPrioridad('✎ PEDIDO MODIFICADO', 'cinta-mod')); }
   c.dataset.espera = String(o.espera);
 
   const cab = el('div', 'com-cab');
@@ -532,14 +535,14 @@ function comanda(o, carril = '') {
   cab.append(izq, espera);
   cab.title = o.turno;
   c.append(cab);
-  if (modificados.has(o.id)) {
+  if (modPendiente(o)) {
     c.classList.add('modificado');
     // Franja de una línea: "✎ Modificado · 7:05 pm". Tocarla la quita (equivale al antiguo botón "Entendido").
     const m = el('button', 'com-modificado');
     m.type = 'button';
     m.title = 'Toca para quitar este aviso';
-    m.append(el('strong', '', '✎ Modificado' + (modificados.get(o.id) ? ' · ' + hora12(modificados.get(o.id)) : '')), el('span', 'com-mod-x', '✕'));
-    m.addEventListener('click', () => { modificados.delete(o.id); firma = ''; pintar(); avanzarReloj(); });
+    m.append(el('strong', '', '✎ Modificado' + (o.editado ? ' · ' + hora12(o.editado) : '')), el('span', 'com-mod-x', '✕'));
+    m.addEventListener('click', () => { modVistas.set(o.id, o.revision); guardarModVistas(); firma = ''; pintar(); avanzarReloj(); });
     c.append(m);
   }
   if (o.notas) c.append(el('div', 'com-notas', o.notas));
