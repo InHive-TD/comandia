@@ -15,7 +15,7 @@ import type { FastifyInstance } from 'fastify';
 import { cuerpoJson, exigirMetodo, requerirGestion } from '../../auth.js';
 import { fallo, ErrorHttp } from '../../errores.js';
 import { bonosModalidad, categoriasLote, contexto, enTransaccion, minutosPreparacion, productosLote } from '../../ordenes.js';
-import { enteros, entero } from '../../util.js';
+import { enteros, entero, noVacio } from '../../util.js';
 
 export async function rutasPrioridades(app: FastifyInstance): Promise<void> {
   app.route({
@@ -43,7 +43,8 @@ export async function rutasPrioridades(app: FastifyInstance): Promise<void> {
           )
         ).map((f) => ({ id: Number(f['id']), nombre: f['nombre'], categoria_id: Number(f['categoria_id']), categoria: f['categoria'], prioridades: niveles.get(Number(f['id'])) ?? {} }));
         const general = alcance === null;
-        return { ok: true, estaciones, productos, modalidad: await bonosModalidad(c, general), min_preparacion: await minutosPreparacion(c, general), lote: await categoriasLote(c, general), lote_productos: await productosLote(c, general), general };
+        return { ok: true, estaciones, productos, modalidad: await bonosModalidad(c, general), min_preparacion: await minutosPreparacion(c, general), lote: await categoriasLote(c, general), lote_productos: await productosLote(c, general), general,
+          codigo_rapido: (await c.filas("SELECT valor FROM ajustes WHERE negocio_id = ? AND clave = 'codigo_rapido'", [c.nid])).every((f) => f['valor'] !== '0') };
       }
 
       exigirMetodo(req, 'POST');
@@ -52,6 +53,12 @@ export async function rutasPrioridades(app: FastifyInstance): Promise<void> {
       if (alcance !== null && !['lote', 'modalidad'].includes(accion)) throw new ErrorHttp(403, 'validacion', 'Solo el dueño de la empresa puede cambiar esto.');
       const guardar = (clave: string, valor: string) =>
         c.ejecutar('INSERT INTO ajustes (negocio_id, clave, valor) VALUES (?, ?, ?) ON DUPLICATE KEY UPDATE valor = VALUES(valor)', [c.nid, clave, valor]);
+
+      // Activa o desactiva el buscador por código rápido (y su botón "Agregar") en Tomar pedidos. Solo el dueño.
+      if (accion === 'codigo_rapido') {
+        await guardar('codigo_rapido', noVacio(datos['activo']) ? '1' : '0');
+        return { ok: true };
+      }
 
       if (accion === 'lote') {
         await guardar('lote_categorias' + sufijo, JSON.stringify(enteros(datos['categorias'])));

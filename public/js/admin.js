@@ -383,7 +383,7 @@ function marcarMenu(idBoton) {
 /** Muestra una sección como página: cierra la que estuviera abierta y oculta la lista de productos. */
 /* Cada sección tiene su propia dirección: /<empresa>/admin/usuarios, /extras… (Inicio es solo /<empresa>/admin/).
    Se puede recargar, guardar en favoritos y usar "atrás". Las direcciones no llevan "#". */
-const RUTAS = { inicio: 'btn-reportes', platillos: 'btn-productos', categorias: 'btn-categorias', extras: 'btn-extras', sucursales: 'btn-sucursales', usuarios: 'btn-usuarios', 'ajustes-cocina': 'btn-prioridades', 'ajustes-pedidos': 'btn-pedidos-qr', apariencia: 'btn-apariencia' };
+const RUTAS = { inicio: 'btn-reportes', platillos: 'btn-productos', categorias: 'btn-categorias', extras: 'btn-extras', sucursales: 'btn-sucursales', usuarios: 'btn-usuarios', 'ajustes-cocina': 'btn-prioridades', 'ajustes-pedidos': 'btn-pedidos-qr', 'ajustes-toma': 'btn-toma-pedidos', apariencia: 'btn-apariencia' };
 const BASE_ADMIN = location.pathname.replace(/\/admin(\/.*)?$/, '/admin/');   // "/lavale/admin/"
 const seccionDeLaDireccion = () => {
   const n = (location.pathname.startsWith(BASE_ADMIN) ? location.pathname.slice(BASE_ADMIN.length).replace(/\/+$/, '') : '') || 'inicio';
@@ -1489,6 +1489,25 @@ $('btn-prioridades').addEventListener('click', async () => {
 });
 $('pm-prep').addEventListener('change', guardarAjustes);
 $('pr-cerrar').addEventListener('click', () => dlgAjustes.close());
+
+/* Ajustes de tomar pedidos: interruptor del código rápido (solo el dueño; se guarda al marcar) */
+const dlgTomaPedidos = $('dlg-toma-pedidos');
+$('btn-toma-pedidos').addEventListener('click', async () => {
+  $('tp-error').textContent = '';
+  try { await cargarAjustes(); } catch (err) { avisar(err.message, true); return; }
+  $('tp-codigo').checked = datosPrio.codigo_rapido;
+  $('tp-codigo').disabled = !datosPrio.general;   // el gerente lo ve pero no lo cambia
+  abrirPagina(dlgTomaPedidos, 'btn-toma-pedidos');
+});
+$('tp-codigo').addEventListener('change', async () => {
+  $('tp-error').textContent = '';
+  try {
+    await enviarJson(API + 'admin/prioridades.php', { accion: 'codigo_rapido', activo: $('tp-codigo').checked });
+    datosPrio.codigo_rapido = $('tp-codigo').checked;
+    avisar($('tp-codigo').checked ? 'Código rápido activado' : 'Código rápido desactivado');
+  } catch (err) { $('tp-error').textContent = err.message; $('tp-codigo').checked = !$('tp-codigo').checked; }
+});
+$('tp-cerrar').addEventListener('click', () => dlgTomaPedidos.close());
 
 /* Ajustes de pedidos por QR: su propia página */
 const dlgPedidosQr = $('dlg-pedidos-qr');

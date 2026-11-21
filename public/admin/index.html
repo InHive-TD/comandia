@@ -7,7 +7,7 @@
   <title>Administración · Comandia</title>
   <link rel="icon" type="image/png" href="../img/favicon.png">
   <link rel="stylesheet" href="../css/estilos.css?v=202611210600">
-  <link rel="stylesheet" href="../css/admin.css?v=202611210750">
+  <link rel="stylesheet" href="../css/admin.css?v=202611210900">
   <link rel="stylesheet" href="../api/tema.php">
 </head>
 <body>
@@ -65,6 +65,7 @@
         <button id="btn-extras" class="btn nav-ico" data-ico="➕" type="button">Extras</button>
         <p class="menu-sub">Cocina y pedidos</p>
         <button id="btn-prioridades" class="btn nav-ico" data-ico="🍳" type="button">Cocina</button>
+        <button id="btn-toma-pedidos" class="btn nav-ico" data-ico="🧾" type="button">Tomar pedidos</button>
         <button id="btn-pedidos-qr" class="btn nav-ico" data-ico="📱" type="button">Pedidos por QR</button>
         <p class="menu-sub">Negocio</p>
         <button id="btn-sucursales" class="btn nav-ico" data-ico="🏪" type="button">Sucursales y mesas</button>
@@ -456,6 +457,21 @@
     </div>
   </dialog>
 
+  <dialog id="dlg-toma-pedidos" class="pagina">
+    <div class="formulario dialogo">
+      <h2>Ajustes de tomar pedidos</h2>
+      <label class="lote-op">
+        <input id="tp-codigo" type="checkbox">
+        <span><strong>Levantar pedidos por código rápido</strong> (muestra el buscador de códigos como “2 AH XQ” y su botón Agregar)</span>
+      </label>
+      <p class="ayuda">Si lo desactivas, quienes toman pedidos solo verán las categorías y los platillos para tocar.</p>
+      <p id="tp-error" class="msg-error" role="alert"></p>
+      <div class="acciones-dialogo">
+        <button id="tp-cerrar" class="btn" type="button">Cerrar</button>
+      </div>
+    </div>
+  </dialog>
+
   <dialog id="dlg-pedidos-qr" class="pagina">
     <div class="formulario dialogo">
       <h2>Ajustes de pedidos por QR</h2>
@@ -484,6 +500,6 @@
 
   <script src="../js/comun.js?v=202611210460"></script>
   <script src="../js/vendor/qrcode.js"></script>
-  <script src="../js/admin.js?v=202611210750"></script>
+  <script src="../js/admin.js?v=202611210900"></script>
 </body>
 </html>

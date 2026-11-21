@@ -66,7 +66,9 @@ export async function rutasMenu(app: FastifyInstance): Promise<void> {
       });
       menu.set(cid, grupo);
     }
-    return { ok: true, menu: [...menu.values()] };
+    // Interruptor del dueño: ¿se muestra el código rápido en Tomar pedidos? (por defecto sí)
+    const cr = await filas("SELECT valor FROM ajustes WHERE negocio_id = ? AND clave = 'codigo_rapido'", [nid]);
+    return { ok: true, menu: [...menu.values()], codigo_rapido: cr.length === 0 || cr[0]!['valor'] !== '0' };
   });
 
   app.get('/mesas', async (req) => {

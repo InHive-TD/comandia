@@ -186,6 +186,9 @@ async function cargarMenu() {
   try {
     const r = await pedir(API + 'productos.php');
     menu = r.menu;
+    // El dueño puede apagar el buscador por código rápido: se oculta toda la sección (campo, botón y mensajes)
+    $('form-codigo').hidden = r.codigo_rapido === false;
+    if (r.codigo_rapido === false) $('codigo-msg').textContent = '';
     porId = new Map();
     porCodigo = new Map();
     for (const c of menu) for (const p of c.productos) {
