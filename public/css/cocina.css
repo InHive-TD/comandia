@@ -415,7 +415,7 @@ body.barra-auto main.contenedor { padding-top: 8px; min-height: 100vh; }
 /* Comanda con todos los renglones listos: se ve plegada y con el botón de mover a listas para entregar */
 .comanda.completo { opacity: 1; box-shadow: 0 0 0 3px #2f8f4e; }
 .comanda.completo .com-toggle { background: #e6f5ea; border-style: solid; border-color: #2f8f4e; color: #1d5a31; }
-.com-acciones .com-mover { min-height: 48px; font-size: .9rem; font-weight: 800; white-space: normal; line-height: 1.1; }
+.com-acciones .com-mover { min-height: 40px; font-size: .95rem; font-weight: 800; white-space: nowrap; line-height: 1.1; }
 .com-acciones .com-mover:disabled { background: #e8e1d6; color: #8a7a68; border-color: transparent; cursor: not-allowed; opacity: .85; }
 
 /* Mismo tamaño de comanda en "por entregar", "comer aquí" y "para llevar" (el compacto de por entregar) */

@@ -586,9 +586,10 @@ function comanda(o, carril = '') {
   ed.addEventListener('click', () => abrirPedido(o.id));
   pie.append(ed);
   if (completo) {                      // el botón solo aparece cuando TODOS los renglones están listos (y se va si el pedido se reabre)
-    const mover = el('button', 'btn verde com-mover', '✓ Listo para entregar');
+    const mover = el('button', 'btn verde com-mover', '✓ Listo');
     mover.type = 'button';
-    mover.title = 'Pasar este pedido a "listas para entregar"';
+    mover.title = 'Listo para entregar: pasa este pedido a "listas para entregar"';
+    mover.setAttribute('aria-label', 'Listo para entregar');
     mover.addEventListener('click', () => moverAListas(o));
     pie.append(mover);
   }
