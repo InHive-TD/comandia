@@ -124,7 +124,7 @@
 .chip-lista { font-weight: 700; color: inherit; }
 
 .chip-mod { display: inline-block; padding: 2px 8px; border-radius: 10px; font-size: .8rem; font-weight: 800; background: var(--color-suave); color: #5a4636; white-space: nowrap; }
-.chip-mod.llevar { background: #3f8fcb; color: #fff; }
+.chip-mod.llevar { background: var(--color-llevar, #3f8fcb); color: var(--texto-llevar, #fff); }
 .chip-mod.recoger { background: #7b4fb8; color: #fff; }
 .chip-mod.aqui { background: #5aa878; color: #10361d; }
 
@@ -146,7 +146,7 @@
 
 /* Colores por tipo: AZUL = comer aquí, NARANJA-AMARILLO = para llevar (el rojo queda solo para lo atrasado) */
 .comanda.aqui { border-color: #a9d6b8; border-top-color: #5aa878; background: #eef8f1; }
-.comanda.llevar { border-color: #b7d6ee; border-top-color: #3f8fcb; background: #eef6fc; }
+.comanda.llevar { border-color: color-mix(in srgb, var(--color-llevar, #3f8fcb) 35%, white); border-top-color: var(--color-llevar, #3f8fcb); background: color-mix(in srgb, var(--color-llevar, #3f8fcb) 9%, white); }
 .comanda.recoger { border-color: #cdbbe6; border-top-color: #7b4fb8; background: #f5f0fb; }
 .com-trans { font-variant-numeric: tabular-nums; font-weight: 700; color: #5a4636; white-space: nowrap; }
 
@@ -154,7 +154,7 @@
 .tablero.carriles { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; align-items: start; }
 .carril { min-width: 0; }
 .carril-titulo { margin: 0 0 8px; padding: 8px 12px; border-radius: 10px; font-size: 1.05rem; color: #fff; }
-.carril.llevar .carril-titulo { background: #3f8fcb; color: #fff; }
+.carril.llevar .carril-titulo { background: var(--color-llevar, #3f8fcb); color: var(--texto-llevar, #fff); }
 .carril.aqui .carril-titulo { background: #5aa878; color: #10361d; }
 .carril-cuerpo { display: grid; gap: 14px; grid-template-columns: repeat(auto-fill, minmax(min(100%, 300px), 1fr)); align-items: start; }
 .carril-cuerpo .vacio { color: #5a4636; margin: 4px; }
@@ -431,7 +431,8 @@ body.barra-auto main.contenedor { padding-top: 8px; min-height: 100vh; }
 .hamb-toggle { flex: none; min-height: 34px; padding: 2px 12px; border: 1px dashed var(--color-borde); border-radius: 10px; background: #fff; color: #5a4636; font: inherit; font-size: .85rem; font-weight: 700; cursor: pointer; }
 
 /* Plato para llevar dentro de un pedido para comer aquí: bien visible para el taquero */
-.plato-cab.llevar { background: #ffe08a; color: #4a2f00; border-left-color: #c8261a; font-weight: 800; }
+/* Mismo color que el carril "Para llevar" (configurable en Apariencia) */
+.plato-cab.llevar { background: var(--color-llevar, #3f8fcb); color: var(--texto-llevar, #fff); border-left-color: color-mix(in srgb, var(--color-llevar, #3f8fcb) 60%, black); font-weight: 800; }
 
 /* ---------- Pedidos agendados (sección colapsable al final del tablero) ---------- */
 .agendados { margin-top: 22px; background: #fff7d6; border: 1px solid var(--color-amarillo); border-radius: 14px; padding: 4px 14px; }

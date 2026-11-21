@@ -403,7 +403,7 @@ fieldset.extras-campo { border: 1px solid #d9c690; border-radius: 10px; padding:
 @media (max-width: 420px) { .fila-categoria > .mover { flex-wrap: wrap; max-width: 96px; } }
 
 /* Platos para llevar dentro de un pedido para comer aquí */
-.plato-cab.llevar, .plato-titulo.llevar { background: #fff0c2; color: #5a3b00; border-left: 5px solid var(--color-amarillo); padding-left: 8px; font-weight: 800; }
+.plato-cab.llevar, .plato-titulo.llevar { background: var(--color-llevar, #3f8fcb); color: var(--texto-llevar, #fff); border-left: 5px solid color-mix(in srgb, var(--color-llevar, #3f8fcb) 60%, black); padding-left: 8px; font-weight: 800; }
 .plato-llevar { min-height: 44px; padding: 4px 12px; font-weight: 700; }
 .plato-llevar.activo { background: var(--color-amarillo); border-color: var(--color-amarillo); color: var(--color-oscuro); font-weight: 800; }
 

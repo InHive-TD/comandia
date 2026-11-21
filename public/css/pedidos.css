@@ -176,7 +176,7 @@
 .mod-btn { min-height: 52px; font-weight: 700; padding: 6px 4px; white-space: nowrap; }
 .mod-btn[aria-pressed="true"] { background: var(--color-amarillo); border-color: var(--color-amarillo); color: var(--color-oscuro); }
 .chip-mod { display: inline-block; padding: 2px 8px; border-radius: 10px; font-size: .8rem; font-weight: 800; background: var(--color-suave); color: #5a4636; white-space: nowrap; }
-.chip-mod.llevar { background: #3f8fcb; color: #fff; }
+.chip-mod.llevar { background: var(--color-llevar, #3f8fcb); color: var(--texto-llevar, #fff); }
 .chip-mod.recoger { background: #7b4fb8; color: #fff; }
 .chip-mod.aqui { background: #5aa878; color: #10361d; }
 
@@ -206,7 +206,7 @@
 .seg-cobrar-bloque { margin-bottom: 12px; }
 
 .seg-tarjeta.aqui { border-color: #a9d6b8; border-top-color: #5aa878; background: #eef8f1; }
-.seg-tarjeta.llevar { border-color: #b7d6ee; border-top-color: #3f8fcb; background: #eef6fc; }
+.seg-tarjeta.llevar { border-color: color-mix(in srgb, var(--color-llevar, #3f8fcb) 35%, white); border-top-color: var(--color-llevar, #3f8fcb); background: color-mix(in srgb, var(--color-llevar, #3f8fcb) 9%, white); }
 .seg-tarjeta.recoger { border-color: #cdbbe6; border-top-color: #7b4fb8; background: #f5f0fb; }
 .seg-tarjeta.lista { background: #f2fbf3; }
 .seg-trans { font-variant-numeric: tabular-nums; font-weight: 700; color: #5a4636; }

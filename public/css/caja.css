@@ -42,7 +42,7 @@
 .estado-chip.entregada-chip { background: #dff2e1; color: #1f5a2a; }
 .estado-chip.alerta-chip { background: #f8d7d3; color: #8c1c12; }
 .chip-mod { padding: 1px 8px; border-radius: 10px; font-size: .78rem; font-weight: 800; background: var(--color-suave); color: #5a4636; }
-.chip-mod.llevar { background: #3f8fcb; color: #fff; }
+.chip-mod.llevar { background: var(--color-llevar, #3f8fcb); color: var(--texto-llevar, #fff); }
 .chip-mod.recoger { background: #7b4fb8; color: #fff; }
 .chip-mod.aqui { background: #5aa878; color: #10361d; }
 

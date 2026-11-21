@@ -1210,6 +1210,8 @@ function apAplicar(c) {
   s.setProperty('--color-borde', apMezcla(c.fondo, c.texto, 0.12));
   s.setProperty('--texto-encabezado', apTextoSobre(c.encabezado));
   s.setProperty('--texto-boton', apTextoSobre(c.boton));
+  s.setProperty('--color-llevar', c.llevar);
+  s.setProperty('--texto-llevar', apContraste(c.llevar, '#ffffff') >= 3.2 ? '#ffffff' : '#1a1a1a');   // letras en negritas grandes: basta contraste 3.2 (así el azul de siempre conserva letras blancas)
   const malo = apContraste(c.texto, c.fondo) < 4.5;
   $('ap-aviso').textContent = malo ? '⚠ El texto casi no se lee sobre ese fondo; elige colores con más contraste.' : '';
   $('ap-guardar').disabled = malo;
@@ -1217,7 +1219,7 @@ function apAplicar(c) {
 
 function apQuitarVistaPrevia() {
   const s = document.documentElement.style;
-  ['--color-vino', '--color-amarillo', '--color-principal', '--color-fondo', '--color-oscuro', '--color-tarjeta', '--color-suave', '--color-borde', '--texto-encabezado', '--texto-boton'].forEach((p) => s.removeProperty(p));
+  ['--color-vino', '--color-amarillo', '--color-principal', '--color-fondo', '--color-oscuro', '--color-tarjeta', '--color-suave', '--color-borde', '--texto-encabezado', '--texto-boton', '--color-llevar', '--texto-llevar'].forEach((p) => s.removeProperty(p));
 }
 
 function apRecargarTema() {
@@ -1250,7 +1252,8 @@ function apPintar() {
     b.title = p.nombre;
     for (const k of ['encabezado', 'acento', 'boton', 'fondo']) { const m = el('i', ''); m.style.background = p.colores[k]; b.append(m); }
     b.append(el('span', '', p.nombre));
-    b.addEventListener('click', () => { apColores = { ...p.colores }; apPintar(); apAplicar(apColores); });
+    b.addEventListener('click', () => { apColores = { ...apColores, ...p.colores };   // los temas no cambian el color de "Para llevar"
+    apPintar(); apAplicar(apColores); });
     pre.append(b);
   }
 }

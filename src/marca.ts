@@ -17,6 +17,7 @@ export const MARCA_DEFECTO = {
   boton: '#2f7d3a', // botones y acciones (verde amable; el rojo se reserva para alertas y eliminar)
   fondo: '#fff7e0', // fondo de la página
   texto: '#2a1015', // texto
+  llevar: '#3f8fcb', // "Para llevar": carril de cocina y platos para llevar dentro de un pedido para comer aquí
 } as const;
 export type ClaveColor = keyof typeof MARCA_DEFECTO;
 export const CLAVES_COLOR = Object.keys(MARCA_DEFECTO) as ClaveColor[];
@@ -27,6 +28,7 @@ export const MARCA_NOMBRES: Record<ClaveColor, string> = {
   boton: 'Botones',
   fondo: 'Fondo',
   texto: 'Texto',
+  llevar: 'Para llevar (cocina y pedidos)',
 };
 
 /** "#aabbcc" en minúsculas, o null si no es un color válido. */
@@ -87,7 +89,7 @@ export function marcaCss(m: Marca): string {
     ':root {\n' +
     `  --color-vino: ${m.encabezado};\n  --color-amarillo: ${m.acento};\n  --color-principal: ${m.boton};\n  --color-fondo: ${m.fondo};\n` +
     `  --color-oscuro: ${m.texto};\n  --color-tarjeta: ${tarjeta};\n  --color-suave: ${suave};\n  --color-borde: ${borde};\n` +
-    `  --texto-encabezado: ${textoSobre(m.encabezado)};\n  --texto-boton: ${textoSobre(m.boton)};\n}\n`
+    `  --texto-encabezado: ${textoSobre(m.encabezado)};\n  --texto-boton: ${textoSobre(m.boton)};\n  --color-llevar: ${m.llevar};\n  --texto-llevar: ${contraste(m.llevar, '#ffffff') >= 3.2 ? '#ffffff' : '#1a1a1a'};\n}\n`
   );
 }
 

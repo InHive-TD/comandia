@@ -57,7 +57,7 @@ export async function rutasMarca(app: FastifyInstance): Promise<void> {
           return { ...(await estado(nid)), avisos };
         }
         case 'restablecer':
-          await ejecutar("DELETE FROM ajustes WHERE negocio_id = ? AND clave IN ('marca_encabezado','marca_acento','marca_boton','marca_fondo','marca_texto')", [nid]);
+          await ejecutar("DELETE FROM ajustes WHERE negocio_id = ? AND clave IN ('marca_encabezado','marca_acento','marca_boton','marca_fondo','marca_texto','marca_llevar')", [nid]);
           return estado(nid);
         case 'logo': {
           if (!form?.foto) throw fallo('Elige una imagen para el logo.');
