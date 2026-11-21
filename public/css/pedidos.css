@@ -270,9 +270,9 @@
 /* Espacio entre la franja de categorías y donde empiezan los platillos (8 mm) */
 :root { --sep-menu: 8mm; }   /* mismo espacio bajo el código rápido y bajo las categorías */
 .menu-fijo { margin-bottom: var(--sep-menu); }
-.menu-fijo > .codigo-rapido { margin-bottom: var(--sep-menu); }
+.menu-fijo > .codigo-rapido { margin-top: 10px; margin-bottom: 4px; }   /* aire arriba; pegado a las categorías de abajo */
 .menu-fijo > .codigo-rapido:has(+ #codigo-msg:not(:empty)) { margin-bottom: 0; }   /* si hay un aviso de error, va pegado al campo */
-#codigo-msg:not(:empty) { margin-bottom: var(--sep-menu); }
+#codigo-msg:not(:empty) { margin-bottom: 4px; }
 
 /* ---------- Celular: categorías y código rápido ---------- */
 @media (max-width: 640px) {
@@ -290,6 +290,7 @@
   .menu-col > .productos { margin-top: 0; }
   :root { --sep-menu: 4mm; }
   .menu-fijo { padding-top: 0; }
+  .menu-fijo > .codigo-rapido { margin-top: 10px; margin-bottom: 2px; }
   .pedido { gap: 6px; }
 
   /* Encabezado: se esconde al bajar y reaparece al subir un poco */
