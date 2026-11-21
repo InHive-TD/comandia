@@ -347,3 +347,6 @@
 /* Editar una línea con opciones y lista de lo agregado con "Agregar y pedir otro" */
 .linea-ctl .editar-linea { flex: none; width: 44px; padding: 4px 0; font-size: 1rem; display: inline-flex; align-items: center; justify-content: center; }   /* solo el lápiz, del tamaño de − y ＋ */
 .op-agregados { margin: 0; padding: 8px 12px; list-style: none; display: grid; gap: 4px; background: #eaf5ea; border-radius: 10px; color: #245c2c; font-weight: 600; font-size: .9rem; }
+
+/* Toma de pedidos: sin relleno extra sobre la franja fija; así el espacio al iniciar es el mismo que cuando se queda pegada al hacer scroll */
+main.contenedor:has(#vista-pedido:not([hidden])) { padding-top: 0; }
