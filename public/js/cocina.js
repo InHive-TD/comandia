@@ -774,9 +774,11 @@ function pintarPedido() {
   let platoVisto = 0;
   for (const i of o.items) {
     if (varios && i.plato !== platoVisto) { platoVisto = i.plato; caja.append(el('h4', 'plato-cab' + (i.llevar ? ' llevar' : ''), `Plato ${i.plato}` + (i.llevar ? ' · 🥡 LLEVAR' : ''))); }
+    // Un renglón compacto: nombre · cantidad (− n ＋) · estado (○ 🔥 ✓) · quitar. Todo en una línea; si no cabe, baja ordenado.
     const fila = el('div', 'dp-item');
-    fila.append(el('div', 'dp-nombre', `${i.cantidad}× ${detalleItem(i)}`));
-    if (i.notas) fila.append(el('div', 'dp-nota', `“${i.notas}”`));
+    const info = el('div', 'dp-info');
+    info.append(el('div', 'dp-nombre', detalleItem(i)));
+    if (i.notas) info.append(el('div', 'dp-nota', `“${i.notas}”`));
     const cant = el('div', 'dp-cant');
     const menos = el('button', 'btn paso', '−'); menos.type = 'button'; menos.disabled = i.cantidad <= 1;
     menos.setAttribute('aria-label', 'Una pieza menos');
@@ -786,19 +788,17 @@ function pintarPedido() {
     menos.addEventListener('click', () => cambiarCantidad(i, i.cantidad - 1));
     mas.addEventListener('click', () => cambiarCantidad(i, i.cantidad + 1));
     cant.append(menos, num, mas);
-    fila.append(cant);
     const botones = el('div', 'dp-botones');
     for (const est of ['pendiente', 'preparando', 'listo']) {
-      const b = el('button', 'btn' + (i.estado === est ? ' principal' : ''), ETIQUETA[est]);
-      b.type = 'button';
+      const b = el('button', 'btn' + (i.estado === est ? ' principal' : ''), { pendiente: 'Pend.', preparando: 'Prep.', listo: 'Listo' }[est]);
+      b.type = 'button'; b.title = ETIQUETA[est]; b.setAttribute('aria-label', ETIQUETA[est]);
       b.addEventListener('click', () => { if (i.estado !== est) cambiarDesdeDialogo(o, i, est); });
       botones.append(b);
     }
-    const q = el('button', 'btn peligro', 'Quitar');
-    q.type = 'button';
+    const q = el('button', 'btn peligro dp-quitar', '🗑');
+    q.type = 'button'; q.title = 'Quitar del pedido'; q.setAttribute('aria-label', 'Quitar del pedido');
     q.addEventListener('click', () => quitarItem(o, i));
-    botones.append(q);
-    fila.append(botones);
+    fila.append(info, cant, botones, q);
     caja.append(fila);
   }
 }

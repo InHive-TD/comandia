@@ -462,3 +462,18 @@ body.barra-auto main.contenedor { padding-top: 8px; min-height: 100vh; }
 .com-modificado strong { flex: 1 1 0; min-width: 0; white-space: nowrap; }
 .com-modificado .com-mod-x { flex: none; }
 .com-modificado .com-mod-x { display: inline; }
+
+/* ---------- Editar pedido (ventana): renglones compactos de una sola línea ---------- */
+.dp-items { gap: 6px; }
+.dp-item { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 10px; padding: 6px 10px; }
+.dp-info { flex: 1 1 140px; min-width: 0; }
+.dp-nombre { font-size: .95rem; line-height: 1.2; }
+.dp-nota { font-size: .8rem; }
+.dp-cant { margin-top: 0; gap: 4px; }
+.dp-cant .btn { min-height: 38px; min-width: 38px; font-size: 1.2rem; }
+.dp-num { font-size: 1.1rem; min-width: 24px; }
+.dp-botones { margin-top: 0; flex-wrap: nowrap; gap: 4px; }
+.dp-botones .btn { min-height: 38px; padding: 4px 10px; font-size: .85rem; }
+.dp-quitar { min-height: 38px; min-width: 38px; padding: 0; }
+#dlg-pedido .plato-cab { margin: 4px 0 0; padding: 2px 8px; font-size: .85rem; }
+#dlg-pedido h2 { font-size: 1.2rem; margin: 0; }
