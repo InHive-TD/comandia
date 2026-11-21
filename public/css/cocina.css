@@ -1,7 +1,7 @@
 /* Tablero de cocina: pensado para tablet, leído de lejos y tocado con las
    manos engrasadas (objetivos táctiles grandes, letra grande, colores claros). */
 
-.barra-botones { display: flex; gap: 8px; flex-wrap: wrap; justify-content: flex-end; }
+.barra-botones { display: flex; gap: 8px; flex-wrap: nowrap; justify-content: flex-end; align-items: center; }
 .barra-botones .btn[aria-pressed="true"] { background: var(--color-amarillo); color: var(--color-oscuro); border-color: var(--color-amarillo); }
 .barra-botones .btn.apagado { opacity: .75; }
 
@@ -491,3 +491,21 @@ body.barra-auto main.contenedor { padding-top: 8px; min-height: 100vh; }
 .tablero.horizontal .carril .carril-cuerpo { display: flex !important; flex-wrap: nowrap; align-items: flex-start; gap: 8px; overflow-x: auto; overflow-y: hidden; padding: 5px 5px 10px; -webkit-overflow-scrolling: touch; scroll-snap-type: x proximity; }
 .tablero.horizontal .carril .carril-cuerpo > .comanda { flex: 0 0 210px; width: 210px; max-width: none !important; grid-row-end: auto !important; scroll-snap-align: start; }
 .tablero.horizontal .carril .carril-cuerpo > .vacio { flex: none; }
+
+
+/* ---- Encabezado compacto (celular, tablet y computadora) ----
+   Una sola fila: logo + título/rol/sucursal a la izquierda y botones a la derecha. El sonido es solo icono. */
+#barra-cocina .btn { white-space: nowrap; }
+#barra-cocina .btn-icono { min-width: 48px; padding-left: 10px; padding-right: 10px; font-size: 1.2rem; }
+.encabezado.barra.con-menu { flex-wrap: nowrap; }
+.con-menu .marca { min-width: 0; }
+@media (min-width: 641px) { .encabezado.barra.con-menu .barra-botones .btn { padding: 8px 12px; min-height: 44px; font-size: .95rem; } .encabezado.barra.con-menu .barra-botones .btn-icono { font-size: 1.25rem; } }
+/* El ☰ no debe verse sin sesión */
+.con-menu .solo-celu[hidden] { display: none; }
+/* En el tablero el encabezado es fijo y se esconde solo: esto gana a la regla "sticky" de menu-barra.css en celular */
+@media (max-width: 640px) {
+  body.barra-auto .encabezado.barra.con-menu { position: fixed; top: 0; left: 0; right: 0; z-index: 30; padding: 8px 12px; transform: translateY(-110%); }
+  body.barra-auto.barra-visible .encabezado.barra.con-menu { transform: translateY(0); }
+  /* En el menú desplegable el botón de sonido ocupa el ancho completo con su icono centrado */
+  .barra.con-menu .barra-botones .btn-icono { justify-content: center; }
+}

@@ -84,7 +84,11 @@ function campanaEdicion() {
 function etiquetaSonido() {
   const b = $('btn-sonido');
   const activo = audio && audio.state === 'running';
-  b.textContent = silenciado ? '🔕 Silenciado' : activo ? '🔔 Sonido activo' : '🔇 Toca para activar sonido';
+  // Solo el icono en el botón; el texto queda como etiqueta accesible y como tooltip
+  const texto = silenciado ? 'Silenciado · toca para reactivar' : activo ? 'Sonido activo · toca para silenciar' : 'Toca para activar el sonido';
+  b.textContent = silenciado ? '🔕' : activo ? '🔔' : '🔇';
+  b.setAttribute('aria-label', texto);
+  b.title = texto;
   b.classList.toggle('apagado', silenciado || !activo);
   // Con la barra escondida, un avisito flotante si el sonido no está listo
   const f = $('sonido-flotante');
@@ -118,7 +122,9 @@ document.addEventListener('visibilitychange', () => { if (document.visibilitySta
 /* ------------------------------------------------------------------ */
 function mostrar(vista) {
   for (const id of ['vista-login', 'vista-aviso', 'vista-tablero']) $(id).hidden = id !== vista;
-  $('barra-cocina').hidden = vista === 'vista-login' || vista === 'vista-aviso';
+  const sinBarra = vista === 'vista-login' || vista === 'vista-aviso';
+  $('barra-cocina').hidden = sinBarra;
+  $('btn-menu').hidden = sinBarra;   // el ☰ (solo celular) tampoco se muestra sin sesión
   // En el tablero, la barra superior se esconde para dar espacio; se muestra al tocar un lugar vacío.
   document.body.classList.toggle('barra-auto', vista === 'vista-tablero');
   if (vista !== 'vista-tablero') mostrarBarra(false);
@@ -640,6 +646,8 @@ function filaItem(o, i) {
 $('btn-nombres').addEventListener('click', () => {
   nombresCompletos = !nombresCompletos;
   $('btn-nombres').setAttribute('aria-pressed', String(nombresCompletos));
+  // El botón dice a qué vista se cambia al tocarlo
+  $('btn-nombres').textContent = nombresCompletos ? 'Ver por código' : 'Ver por nombre';
   if (datos) { pintar(); avanzarReloj(); }
 });
 

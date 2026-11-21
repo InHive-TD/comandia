@@ -8,12 +8,13 @@
   <link rel="icon" type="image/png" href="../img/favicon.png">
   <link rel="stylesheet" href="../css/estilos.css?v=202611210800">
   <link rel="stylesheet" href="../css/admin.css?v=202611210950">
-  <link rel="stylesheet" href="../css/cocina.css?v=202611211220">
+  <link rel="stylesheet" href="../css/menu-barra.css?v=202611192050">
+  <link rel="stylesheet" href="../css/cocina.css?v=202611212010">
   <link rel="stylesheet" href="../api/tema.php">
 </head>
 <body>
 
-  <header class="encabezado barra">
+  <header class="encabezado barra con-menu">
     <div class="marca">
       <img class="logo" src="../api/logo.php" alt="Comandia" width="52" height="52">
       <div>
@@ -21,9 +22,12 @@
         <p id="quien"></p>
       </div>
     </div>
+    <!-- Celular: ☰ abre el menú; tablet y computadora: una sola fila compacta (ver menu-barra.css) -->
+    <button id="btn-menu" class="btn claro solo-celu" type="button" aria-label="Menú" aria-expanded="false" aria-controls="barra-cocina" hidden>☰</button>
     <div class="barra-botones" id="barra-cocina" hidden>
-      <button id="btn-sonido" class="btn claro" type="button">🔔 Sonido</button>
-      <button id="btn-nombres" class="btn claro" type="button" aria-pressed="false">Nombres completos</button>
+      <!-- Sonido: solo el icono (el texto cambia por JS en aria-label/title) -->
+      <button id="btn-sonido" class="btn claro btn-icono" type="button" aria-label="Sonido" title="Sonido">🔔</button>
+      <button id="btn-nombres" class="btn claro" type="button" aria-pressed="false">Ver por nombre</button>
       <button id="btn-salir" class="btn claro" type="button">Salir</button>
     </div>
   </header>
@@ -95,6 +99,6 @@
   </div>
 
   <script src="../js/comun.js?v=202611211180"></script>
-  <script src="../js/cocina.js?v=202611211210"></script>
+  <script src="../js/cocina.js?v=202611212010"></script>
 </body>
 </html>
