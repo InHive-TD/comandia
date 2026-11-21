@@ -349,6 +349,10 @@ function iconoAncho(expandido) {
 
 function pintar() {
   const caja = $('tablero');
+  // Al redibujar, las comandas se miden una por una (ajustarHuecos) y por un instante la página queda más corta;
+  // el navegador entonces "recorta" el scroll y manda la pantalla hasta arriba. Se congela el alto y se restaura la posición.
+  const scrollAntes = window.scrollY;
+  caja.style.minHeight = caja.offsetHeight + 'px';
   caja.replaceChildren();
   caja.classList.add('carriles');
   for (const [id, c] of cancelAvisos) {
@@ -409,6 +413,8 @@ function pintar() {
   }
   pintarHamburguesas();
   ajustarHuecos();
+  caja.style.minHeight = '';
+  if (window.scrollY !== scrollAntes) window.scrollTo(0, scrollAntes);
 
   const pendientes = datos.ordenes.filter((o) => o.puntaje !== null).length;
   $('resumen-texto').textContent = estacionId === 0
