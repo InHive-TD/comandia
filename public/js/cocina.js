@@ -534,19 +534,19 @@ function comanda(o, carril = '') {
   c.append(cab);
   if (modificados.has(o.id)) {
     c.classList.add('modificado');
-    const m = el('div', 'com-modificado');
-    m.append(el('strong', '', '✎ PEDIDO MODIFICADO' + (modificados.get(o.id) ? ' · ' + hora12(modificados.get(o.id)) : '')), el('span', '', 'Revisa los renglones'));
-    const ok = el('button', 'btn', 'Entendido');
-    ok.type = 'button';
-    ok.addEventListener('click', () => { modificados.delete(o.id); firma = ''; pintar(); avanzarReloj(); });
-    m.append(ok);
+    // Franja de una línea: "✎ Modificado · 7:05 pm". Tocarla la quita (equivale al antiguo botón "Entendido").
+    const m = el('button', 'com-modificado');
+    m.type = 'button';
+    m.title = 'Toca para quitar este aviso';
+    m.append(el('strong', '', '✎ Modificado' + (modificados.get(o.id) ? ' · ' + hora12(modificados.get(o.id)) : '')), el('span', 'com-mod-x', '✕'));
+    m.addEventListener('click', () => { modificados.delete(o.id); firma = ''; pintar(); avanzarReloj(); });
     c.append(m);
   }
   if (o.notas) c.append(el('div', 'com-notas', o.notas));
 
   const varios = new Set(o.items.map((i) => i.plato)).size > 1;
   const rotular = varios || o.items.some((i) => i.llevar);   // con platos para llevar siempre se rotula el plato
-  if (varios) c.append(resumenTotal(o));
+  if (varios && o.items.some((i) => i.mio && i.estado !== 'listo')) c.append(resumenTotal(o));   // sin pendientes no se muestra "nada, todo listo"
 
   const nListos = o.items.filter((i) => i.estado === 'listo').length;
   const verTodos = expandidos.has(o.id);
