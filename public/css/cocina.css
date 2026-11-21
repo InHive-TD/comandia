@@ -477,3 +477,8 @@ body.barra-auto main.contenedor { padding-top: 8px; min-height: 100vh; }
 .dp-quitar { min-height: 38px; min-width: 38px; padding: 0; }
 #dlg-pedido .plato-cab { margin: 4px 0 0; padding: 2px 8px; font-size: .85rem; }
 #dlg-pedido h2 { font-size: 1.2rem; margin: 0; }
+
+/* Cinta de prioridad/reabierto: texto fijo y centrado (sin repetirse ni correr), mismo alto de antes */
+.cinta-agregado { text-align: center; }
+.cinta-pista { display: block; width: auto; animation: none; }
+.cinta-pista span { padding-right: 0; }

@@ -350,3 +350,8 @@
 
 /* Toma de pedidos: sin relleno extra sobre la franja fija; así el espacio al iniciar es el mismo que cuando se queda pegada al hacer scroll */
 main.contenedor:has(#vista-pedido:not([hidden])) { padding-top: 0; }
+
+/* Cinta de prioridad/reabierto: texto fijo y centrado (sin repetirse ni correr), mismo alto de antes */
+.cinta-agregado { text-align: center; }
+.cinta-pista { display: block; width: auto; animation: none; }
+.cinta-pista span { padding-right: 0; }

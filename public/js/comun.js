@@ -224,19 +224,17 @@ function montarEspera(caja, ruta, datosFn, { detalle = false } = {}) {
   };
 }
 
-/** Banner rojo que se desliza hacia la izquierda y se cicla: "★ PRIORIDAD · REABIERTO". */
+/** Banner rojo fijo con el texto centrado (sin animación): "★ PRIORIDAD · REABIERTO". */
 function cintaPrioridad(texto = '★ PRIORIDAD · REABIERTO', clase = '') {
   const cinta = document.createElement('div');
   cinta.className = 'cinta-agregado' + (clase ? ' ' + clase : '');
   cinta.setAttribute('aria-label', texto.replace(/^[^\wÁ-ú]+/, ''));
   const pista = document.createElement('div');
   pista.className = 'cinta-pista';
-  for (let n = 0; n < 4; n++) {
-    const t = document.createElement('span');
-    t.textContent = texto;
-    t.setAttribute('aria-hidden', 'true');
-    pista.append(t);
-  }
+  const t = document.createElement('span');
+  t.textContent = texto;
+  t.setAttribute('aria-hidden', 'true');
+  pista.append(t);
   cinta.append(pista);
   return cinta;
 }
