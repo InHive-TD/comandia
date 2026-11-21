@@ -370,8 +370,8 @@ function pintar() {
     const carril = el('section', 'carril urgentes');
     carril.append(el('h3', 'carril-titulo', `⏰ POR ENTREGAR · menos de 5 min · atrasados · prioridad (${urg.length + prio.length})`));
     const cuerpo = el('div', 'carril-cuerpo');
-    for (const o of prio) cuerpo.append(comanda(o));
-    for (const o of urg) cuerpo.append(comanda(o));
+    for (const o of prio) cuerpo.append(comanda(o, 'urgentes'));
+    for (const o of urg) cuerpo.append(comanda(o, 'urgentes'));
     carril.append(cuerpo);
     caja.append(carril);
   }
@@ -399,7 +399,7 @@ function pintar() {
     carril.append(encab);
     const cuerpo = el('div', 'carril-cuerpo');
     if (lista.length === 0) cuerpo.append(el('p', 'vacio', vacio));
-    for (const o of lista) cuerpo.append(comanda(o));
+    for (const o of lista) cuerpo.append(comanda(o, clase));
     carril.append(cuerpo);
     caja.append(carril);
   }
@@ -494,7 +494,20 @@ async function cambiarVarios(lineas, nuevo) {
   cargar();
 }
 
-function comanda(o) {
+/** Logos que van bajo los minutos de la comanda. No se repite lo que ya dice el carril donde está:
+ *  - en "Comer aquí": nada, salvo 🥡 si algún plato va para llevar;
+ *  - en "Para llevar": nada para llevar (ya lo dice el carril), solo 🛍 si es para recoger;
+ *  - en "Por entregar" (mezcla de todo): el logo del tipo de pedido y, si aplica, 🥡 de platos para llevar. */
+function logosComanda(o, carril) {
+  const logos = [];
+  const platoLlevar = o.modalidad === 'aqui' && o.items.some((i) => i.llevar);
+  if (carril === 'urgentes') logos.push(o.modalidad === 'aqui' ? '🍽' : o.modalidad === 'recoger' ? '🛍' : '🥡');
+  else if (carril === 'llevar' && o.modalidad === 'recoger') logos.push('🛍');
+  if (platoLlevar) logos.push('🥡');
+  return logos.join(' ');
+}
+
+function comanda(o, carril = '') {
   const c = el('article', 'comanda' + (o.puntaje === null ? ' sin-trabajo' : '') + (recientes.has(o.id) ? ' recien' : ''));
   c.dataset.id = String(o.id);
   c.classList.add(o.modalidad === 'aqui' ? 'aqui' : 'llevar');
@@ -506,13 +519,16 @@ function comanda(o) {
   const cab = el('div', 'com-cab');
   const quien = el('div', 'com-cliente', o.cliente);
   const datosLinea = el('div', 'com-datos');
-  datosLinea.append(el('span', 'com-turno', '#' + o.turno.slice(-3)), el('span', 'chip-mod ' + infoMod(o.modalidad).clase, infoMod(o.modalidad).chip), ...(o.mesa ? [el('span', 'chip-mesa', '🪑 ' + o.mesa)] : []), el('span', 'com-hora', 'Levantado ' + hora12(o.hora)), el('span', 'com-trans', '⏱ 0:00'));
+  datosLinea.append(el('span', 'com-turno', '#' + o.turno.slice(-3)), ...(o.mesa ? [el('span', 'chip-mesa', '🪑 ' + o.mesa)] : []));
   if (o.para) datosLinea.append(el('span', 'chip-para' + (o.faltan !== null && o.faltan < 0 ? ' tarde' : ''), '🕒 Para las ' + hora12(o.para)));
   const izq = el('div', 'com-izq');
   izq.append(quien, datosLinea);
   const espera = el('div', 'com-espera');
-  espera.append(el('span', 'com-min', '—'), el('span', 'com-lbl', 'faltan'));
-  if (o.restante != null) { espera.dataset.rest = String(o.restante); pintarRestante(espera, o.restante, '.com-min', '.com-lbl'); }
+  // Solo los minutos (sin "faltan"), y debajo el logo del tipo de pedido cuando aporta algo (ver logosComanda)
+  espera.append(el('span', 'com-min', '—'));
+  const logos = logosComanda(o, carril);
+  if (logos) espera.append(el('span', 'com-logo', logos));
+  if (o.restante != null) { espera.dataset.rest = String(o.restante); pintarRestante(espera, o.restante, '.com-min', '.sin-etiqueta'); }
   if (o.urgente) c.classList.add('urgente');
   cab.append(izq, espera);
   cab.title = o.turno;
@@ -682,18 +698,8 @@ function pintarListas() {
 function avanzarReloj() {
   if (!datos) return;
   const extra = Math.floor((performance.now() - recibidoEn) / 1000);
-  // La base sale de la última respuesta del servidor (no de cuando se dibujó la tarjeta):
-  // así el cronómetro nunca retrocede al refrescar.
-  const base = new Map(datos.ordenes.map((o) => [o.id, o.espera]));
-  for (const c of document.querySelectorAll('.comanda')) {
-    const b = base.has(Number(c.dataset.id)) ? base.get(Number(c.dataset.id)) : Number(c.dataset.espera);
-    const seg = Number(b) + extra;
-    const min = Math.floor(seg / 60);
-    const t = c.querySelector('.com-trans');
-    if (t) t.textContent = `⏱ ${min}:${String(seg % 60).padStart(2, '0')}`;
-  }
   for (const e of document.querySelectorAll('.com-espera[data-rest]')) {
-    pintarRestante(e, Number(e.dataset.rest) - extra, '.com-min', '.com-lbl');
+    pintarRestante(e, Number(e.dataset.rest) - extra, '.com-min', '.sin-etiqueta');
   }
 }
 setInterval(avanzarReloj, 1000);
