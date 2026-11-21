@@ -92,7 +92,7 @@
 
 /* ---------- Detalle del pedido ---------- */
 .chip-lista { font: inherit; cursor: pointer; min-height: 48px; }
-.dp-items { display: grid; gap: 10px; max-height: 55vh; overflow: auto; }
+.dp-items { display: grid; gap: 10px; }
 .dp-item { padding: 10px; border: 1px solid var(--color-borde); border-radius: 10px; background: #fff; }
 .dp-nombre { font-weight: 700; overflow-wrap: anywhere; }
 .dp-nota { font-style: italic; color: #6b4e00; }

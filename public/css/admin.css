@@ -355,7 +355,7 @@ fieldset.extras-campo { border: 1px solid #d9c690; border-radius: 10px; padding:
 [hidden] { display: none !important; }
 
 /* ---------- Prioridades ---------- */
-.prioridades { display: grid; gap: 4px; max-height: 55vh; overflow: auto; }
+.prioridades { display: grid; gap: 4px; }
 .prio-fila { display: grid; grid-template-columns: minmax(0, 1.6fr) repeat(var(--n-est, 2), minmax(90px, 1fr)); gap: 6px; align-items: center; }
 .prio-fila select { min-height: 44px; width: 100%; }
 .prio-cab { position: sticky; top: 0; background: var(--color-tarjeta, #fff); font-weight: 700; z-index: 1; }

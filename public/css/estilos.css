@@ -1,3 +1,6 @@
+/* REGLA DEL SISTEMA (obligatoria): en toda pantalla solo se desplaza la página. Ninguna sección, panel o lista
+   lleva scroll propio (nada de max-height + overflow:auto). Excepción: ventanas emergentes que no caben en la
+   pantalla y el carrito de pedido a pantalla completa en celular, que son capas encima de la página. */
 /* Estilos base. Paleta tomada del logo y del menú de "Los Tacos D'La Vale".
    Los colores viven en variables: cambiándolos aquí cambian en toda la app. */
 
