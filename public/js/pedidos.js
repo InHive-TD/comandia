@@ -463,7 +463,7 @@ function pintarCarrito() {
     ctl.append(menos, num, mas);
     // Editar: solo para platillos con opciones; reabre la hoja con lo elegido para cambiarlo sin quitar y volver a agregar
     if (l.producto.extras && l.producto.extras.length) {
-      const editar = el('button', 'btn editar-linea', '✏️ Editar'); editar.type = 'button';
+      const editar = el('button', 'btn editar-linea', '✏️'); editar.type = 'button'; editar.title = 'Editar opciones'; editar.setAttribute('aria-label', 'Editar opciones');
       editar.addEventListener('click', () => abrirOpciones(l.producto, l));
       ctl.append(editar);
     }

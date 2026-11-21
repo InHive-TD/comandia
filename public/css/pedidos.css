@@ -344,5 +344,5 @@
 .codigo-rapido[hidden] { display: none; }
 
 /* Editar una línea con opciones y lista de lo agregado con "Agregar y pedir otro" */
-.linea-ctl .editar-linea { min-height: 40px; padding: 4px 12px; }
+.linea-ctl .editar-linea { flex: none; width: 44px; padding: 4px 0; font-size: 1rem; display: inline-flex; align-items: center; justify-content: center; }   /* solo el lápiz, del tamaño de − y ＋ */
 .op-agregados { margin: 0; padding: 8px 12px; list-style: none; display: grid; gap: 4px; background: #eaf5ea; border-radius: 10px; color: #245c2c; font-weight: 600; font-size: .9rem; }
