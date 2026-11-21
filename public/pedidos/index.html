@@ -6,10 +6,10 @@
   <meta name="robots" content="noindex">
   <title>Tomar pedidos · Comandia</title>
   <link rel="icon" type="image/png" href="../img/favicon.png">
-  <link rel="stylesheet" href="../css/estilos.css?v=202611210950">
-  <link rel="stylesheet" href="../css/admin.css?v=202611210950">
+  <link rel="stylesheet" href="../css/estilos.css?v=202611210960">
+  <link rel="stylesheet" href="../css/admin.css?v=202611210960">
   <link rel="stylesheet" href="../css/menu-barra.css?v=202611192050">
-  <link rel="stylesheet" href="../css/pedidos.css?v=202611210950">
+  <link rel="stylesheet" href="../css/pedidos.css?v=202611210960">
   <link rel="stylesheet" href="../api/tema.php">
 </head>
 <body>
@@ -154,6 +154,8 @@
   <!-- Elegir extras y cantidad -->
   <dialog id="dlg-opciones">
     <form id="form-opciones" class="formulario dialogo">
+      <!-- Lo ya agregado en esta ventana: va arriba (justo bajo la barra) para que se vea sin hacer scroll -->
+      <ul id="op-agregados" class="op-agregados" hidden></ul>
       <h2 id="op-titulo"></h2>
       <p id="op-desc" class="ayuda" hidden></p>
       <p id="op-precio" class="ayuda"></p>
@@ -172,9 +174,6 @@
       <label>Nota para este producto (opcional)
         <input id="op-notas" type="text" maxlength="255" autocomplete="off">
       </label>
-
-      <!-- Lo ya agregado en esta misma ventana (al usar "Agregar y pedir otro") -->
-      <ul id="op-agregados" class="op-agregados" hidden></ul>
 
       <div class="acciones-dialogo">
         <button id="op-agregar" class="btn principal grande" type="submit">Agregar</button>
@@ -228,7 +227,7 @@
 
   <div id="toast" class="toast" role="status" hidden></div>
 
-  <script src="../js/comun.js?v=202611210950"></script>
+  <script src="../js/comun.js?v=202611210960"></script>
   <script src="../js/codigos.js?v=202611192050"></script>
   <script src="../js/pedidos.js?v=202611201400"></script>
 </body>
