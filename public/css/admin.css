@@ -595,3 +595,25 @@ dialog.pagina .acciones-dialogo { position: sticky; bottom: 0; z-index: 5; backg
 /* Ventana de opciones: Agregar compacto (la ventana no se cierra al agregar; solo con la ✕) */
 #dlg-opciones .dlg-barra .btn { min-height: 40px; }
 #dlg-opciones .dlg-barra .dlg-ok { padding: 4px 18px; max-width: 180px; }
+
+
+/* ---- Carga masiva de platillos ---- */
+.cm-pasos { margin: 8px 0 14px; padding-left: 20px; display: grid; gap: 10px; }
+.cm-pasos code { background: #f3e8d0; border-radius: 6px; padding: 0 5px; font-size: .9em; }
+.cm-titulo { margin: 18px 0 6px; color: var(--color-vino); }
+.cm-resumen { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 8px; }
+.cm-chip { border-radius: 14px; padding: 4px 12px; font-weight: 700; font-size: .9rem; }
+.cm-chip.cm-ok { background: #dff2e1; color: #2f6a38; }
+.cm-chip.cm-mal { background: #fde3df; color: #9a2a1d; }
+.cm-filas { display: grid; gap: 6px; margin: 10px 0 14px; }
+.cm-fila { border: 1px solid var(--color-borde); border-left-width: 5px; border-radius: 10px; padding: 6px 10px; background: #fff; }
+.cm-fila.cm-crear { border-left-color: #5aa469; }
+.cm-fila.cm-actualizar { border-left-color: #d9a400; }
+.cm-fila.cm-error { border-left-color: #c8261a; background: #fff6f4; }
+.cm-cab { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 10px; }
+.cm-est { font-size: .8rem; font-weight: 700; color: #5a4636; }
+.cm-fn { margin-left: auto; font-size: .78rem; color: #6f5f52; }
+.cm-det { font-size: .85rem; color: #5a4636; }
+.cm-msg { font-size: .85rem; margin-top: 2px; }
+.cm-msg-error { color: #9a2a1d; font-weight: 600; }
+.cm-msg-aviso { color: #7a5b00; }

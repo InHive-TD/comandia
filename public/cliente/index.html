@@ -9,7 +9,7 @@
   <link rel="stylesheet" href="css/estilos.css?v=202611210500">
   <link rel="stylesheet" href="css/admin.css?v=202611210500">
   <link rel="stylesheet" href="css/pedidos.css?v=202611211200">
-  <link rel="stylesheet" href="css/cliente.css?v=202611210500">
+  <link rel="stylesheet" href="css/cliente.css?v=202611212100">
   <link rel="stylesheet" href="api/tema.php">
 </head>
 <body>
@@ -162,6 +162,21 @@
   </main>
 
   <!-- Elegir extras y cantidad -->
+  <!-- Detalle del platillo: foto grande y descripción completa (con o sin pedidos activos) -->
+  <dialog id="dlg-detalle">
+    <div class="formulario dialogo detalle-plato">
+      <img id="dt-foto" class="dt-foto" alt="" hidden>
+      <h2 id="dt-titulo"></h2>
+      <p id="dt-meta" class="ayuda"></p>
+      <p id="dt-desc" class="dt-desc"></p>
+      <p id="dt-precio" class="dt-precio"></p>
+      <div class="acciones-dialogo">
+        <button id="dt-agregar" class="btn principal grande" type="button" hidden>Agregar al pedido</button>
+        <button id="dt-cerrar" class="btn" type="button">Cerrar</button>
+      </div>
+    </div>
+  </dialog>
+
   <dialog id="dlg-opciones">
     <form id="form-opciones" class="formulario dialogo">
       <h2 id="op-titulo"></h2>
@@ -202,6 +217,6 @@
   <div id="toast" class="toast" role="status" hidden></div>
 
   <script src="js/comun.js?v=202611211180"></script>
-  <script src="js/cliente.js?v=202611202050"></script>
+  <script src="js/cliente.js?v=202611212100"></script>
 </body>
 </html>

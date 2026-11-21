@@ -6,6 +6,7 @@ import { ErrorHttp } from '../errores.js';
 import { sucursalesActivas } from '../negocio.js';
 import { efectivo, estadoPedidosCliente, pestanasCliente, pestanasDe } from '../pedidosClientes.js';
 import { rutasAdminProductos } from './admin/productos.js';
+import { rutasAdminImportar } from './admin/importar.js';
 import { rutasCategorias } from './admin/categorias.js';
 import { rutasEstaciones } from './admin/estaciones.js';
 import { rutasExtras } from './admin/extras.js';
@@ -30,7 +31,7 @@ const esperar = (ms: number): Promise<void> => new Promise((r) => setTimeout(r, 
 
 export async function rutasEmpresa(app: FastifyInstance): Promise<void> {
   // Menú y administración del catálogo (cada archivo documenta sus reglas y permisos)
-  for (const grupo of [rutasMenu, rutasCategorias, rutasEstaciones, rutasExtras, rutasAdminProductos, rutasSucursales, rutasAdminMesas, rutasUsuarios, rutasOrdenes, rutasCocina, rutasCaja, rutasPrioridades, rutasTiempos, rutasMarca, rutasReportes, rutasCliente, rutasTema, rutasClientePedidos]) {
+  for (const grupo of [rutasMenu, rutasCategorias, rutasEstaciones, rutasExtras, rutasAdminProductos, rutasAdminImportar, rutasSucursales, rutasAdminMesas, rutasUsuarios, rutasOrdenes, rutasCocina, rutasCaja, rutasPrioridades, rutasTiempos, rutasMarca, rutasReportes, rutasCliente, rutasTema, rutasClientePedidos]) {
     await app.register(grupo);
   }
 

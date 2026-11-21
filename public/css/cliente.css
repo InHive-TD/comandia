@@ -169,3 +169,12 @@ main.contenedor:has(#vista-pedido:not([hidden])) { padding-top: 0; }
 
 /* Aire entre la franja de categorías y las tarjetas de los platillos (en pantallas grandes estaban pegadas) */
 #vista-pedido .menu-col > .productos { margin-top: 14px; }
+
+
+/* Detalle del platillo y "Ver más ›" en la tarjeta */
+.pr-ver-mas { justify-self: start; background: none; border: 0; padding: 0; margin: -1px 0 1px; font: inherit; font-size: .78rem; font-weight: 700; color: var(--color-principal); cursor: pointer; text-decoration: underline; }
+.solo-menu .pr { cursor: pointer; }
+.detalle-plato { gap: 6px; }
+.dt-foto { width: 100%; max-height: 42vh; object-fit: cover; border-radius: 12px; display: block; }
+.dt-desc { margin: 4px 0; font-size: 1.05rem; line-height: 1.4; white-space: pre-line; }
+.dt-precio { margin: 2px 0 6px; font-size: 1.3rem; font-weight: 800; }

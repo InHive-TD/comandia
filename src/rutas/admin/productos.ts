@@ -25,7 +25,7 @@ import { listarGruposExtras, listarVariantesPropias } from './extras.js';
 import { entero, esDuplicado, largo, mayusculas } from '../../util.js';
 
 /** Campos de un producto ya validados, listos para guardar. */
-interface CamposProducto {
+export interface CamposProducto {
   codigo: string | null;
   porcion: string | null;
   estacionId: number | null;
@@ -41,7 +41,7 @@ interface CamposProducto {
 }
 
 /** Lee y valida todos los campos del formulario de un producto. Lanza un error legible si algo no cuadra. */
-async function leerCampos(nid: number, alcance: number | null, f: Formulario, idActual = 0): Promise<CamposProducto> {
+export async function leerCampos(nid: number, alcance: number | null, f: Formulario, idActual = 0, categoriaPorCrear = false): Promise<CamposProducto> {
   const nombre = f.texto('nombre').trim();
   const descripcion = f.texto('descripcion').trim();
   const categoriaId = entero(f.texto('categoria_id'));
@@ -51,8 +51,11 @@ async function leerCampos(nid: number, alcance: number | null, f: Formulario, id
   if (largo(descripcion) > 255) throw fallo('La descripción no puede pasar de 255 caracteres.');
   if (!/^\d{1,5}(\.\d{1,2})?$/.test(precio) || Number(precio) <= 0) throw fallo('El precio debe ser un número mayor que cero, por ejemplo 25 o 25.50.');
 
-  const cat = await fila('SELECT COUNT(*) AS n FROM categorias WHERE id = ? AND negocio_id = ?', [categoriaId, nid]);
-  if (Number(cat?.['n']) === 0) throw fallo('Elige una categoría.');
+  // `categoriaPorCrear`: la carga masiva valida filas cuya categoría todavía no existe (se crea al confirmar).
+  if (!categoriaPorCrear) {
+    const cat = await fila('SELECT COUNT(*) AS n FROM categorias WHERE id = ? AND negocio_id = ?', [categoriaId, nid]);
+    if (Number(cat?.['n']) === 0) throw fallo('Elige una categoría.');
+  }
 
   // Código corto (opcional y único en la empresa). Se guarda en mayúsculas.
   const codigo = mayusculas(f.texto('codigo').trim());
@@ -119,7 +122,7 @@ async function leerCampos(nid: number, alcance: number | null, f: Formulario, id
  * Comprueba que el usuario pueda EDITAR este producto. El dueño, cualquiera de su empresa; el gerente, solo
  * los propios de su sucursal (los de la carta general solo se ajustan con "ajuste_sucursal").
  */
-async function exigirProductoEditable(nid: number, alcance: number | null, id: number): Promise<void> {
+export async function exigirProductoEditable(nid: number, alcance: number | null, id: number): Promise<void> {
   const p = await fila('SELECT sucursal_id FROM productos WHERE id = ? AND negocio_id = ?', [id, nid]);
   const de = p ? (p['sucursal_id'] === null ? null : Number(p['sucursal_id'])) : undefined;
   // No existe, o es propio de OTRA sucursal: para el gerente "ya no existe".
@@ -137,7 +140,7 @@ async function fotoActual(nid: number, id: number): Promise<string | null> {
 }
 
 /** Deja en producto_extras exactamente los extras indicados (dentro de una transacción). */
-async function guardarExtras(tx: { ejecutar: (sql: string, p?: unknown[]) => Promise<unknown> }, productoId: number, extras: number[], precios: Map<number, number>): Promise<void> {
+export async function guardarExtras(tx: { ejecutar: (sql: string, p?: unknown[]) => Promise<unknown> }, productoId: number, extras: number[], precios: Map<number, number>): Promise<void> {
   await tx.ejecutar('DELETE FROM producto_extras WHERE producto_id = ?', [productoId]);
   for (const extraId of extras) await tx.ejecutar('INSERT INTO producto_extras (producto_id, extra_id, precio) VALUES (?, ?, ?)', [productoId, extraId, precios.get(extraId) ?? null]);
 }

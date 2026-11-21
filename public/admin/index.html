@@ -7,7 +7,7 @@
   <title>Administración · Comandia</title>
   <link rel="icon" type="image/png" href="../img/favicon.png">
   <link rel="stylesheet" href="../css/estilos.css?v=202611210600">
-  <link rel="stylesheet" href="../css/admin.css?v=202611210950">
+  <link rel="stylesheet" href="../css/admin.css?v=202611212110">
   <link rel="stylesheet" href="../api/tema.php">
 </head>
 <body>
@@ -63,6 +63,7 @@
         <p class="menu-sub">Menú</p>
         <button id="btn-productos" class="btn nav-ico" data-ico="🌮" type="button">Platillos</button>
         <button id="btn-extras" class="btn nav-ico" data-ico="➕" type="button">Extras</button>
+        <button id="btn-carga" class="btn nav-ico" data-ico="📥" type="button">Carga masiva</button>
         <p class="menu-sub">Cocina y pedidos</p>
         <button id="btn-prioridades" class="btn nav-ico" data-ico="🍳" type="button">Cocina</button>
         <button id="btn-toma-pedidos" class="btn nav-ico" data-ico="🧾" type="button">Tomar pedidos</button>
@@ -485,6 +486,53 @@
     </div>
   </dialog>
 
+  <!-- Carga masiva de platillos: plantilla de Excel + ZIP de fotos, con vista previa antes de guardar -->
+  <dialog id="dlg-carga" class="pagina">
+    <div class="formulario dialogo">
+      <h2>Carga masiva de platillos</h2>
+      <p class="ayuda">Sube muchos platillos de una vez, con su descripción y su foto. Primero verás una <strong>vista previa</strong>; no se guarda nada hasta que confirmes.</p>
+
+      <ol class="cm-pasos">
+        <li>
+          <strong>Descarga la plantilla</strong> y llénala (un platillo por fila). Ya trae como listas tus categorías, parrillas y extras.
+          <div><a id="cm-plantilla" class="btn chico" href="../api/admin/productos-plantilla.php" download>📄 Descargar plantilla (Excel)</a></div>
+        </li>
+        <li>
+          <strong>Junta las fotos en un ZIP.</strong> En la columna <em>Foto</em> escribe el nombre del archivo (ej. <code>taco-arrachera.jpg</code>); así cada foto queda ligada a su platillo. Si dejas <em>Foto</em> vacía pero el platillo tiene <em>Código</em>, se usa <code>CÓDIGO.jpg</code>.
+        </li>
+        <li>
+          <strong>Sube los archivos</strong> y revisa la vista previa.
+        </li>
+      </ol>
+
+      <form id="cm-form" class="formulario">
+        <label>Planilla (Excel .xlsx)
+          <input id="cm-planilla" type="file" accept=".xlsx" required>
+        </label>
+        <label>Fotos (ZIP, opcional)
+          <input id="cm-zip" type="file" accept=".zip">
+        </label>
+        <button id="cm-revisar" class="btn principal" type="submit">Revisar planilla</button>
+      </form>
+
+      <div id="cm-resultado" hidden>
+        <h3 id="cm-titulo" class="cm-titulo"></h3>
+        <div id="cm-resumen" class="cm-resumen"></div>
+        <p id="cm-extra" class="ayuda" hidden></p>
+        <div id="cm-filas" class="cm-filas"></div>
+        <div class="acciones-dialogo">
+          <button id="cm-importar" class="btn principal grande" type="button" hidden>Importar</button>
+          <button id="cm-ver" class="btn principal" type="button" hidden>Ver platillos</button>
+        </div>
+      </div>
+
+      <p id="cm-error" class="msg-error" role="alert"></p>
+      <div class="acciones-dialogo">
+        <button id="cm-cerrar" class="btn" type="button">Cerrar</button>
+      </div>
+    </div>
+  </dialog>
+
   <dialog id="dlg-pedidos-qr" class="pagina">
     <div class="formulario dialogo">
       <h2>Ajustes de pedidos por QR</h2>
@@ -513,6 +561,6 @@
 
   <script src="../js/comun.js?v=202611211180"></script>
   <script src="../js/vendor/qrcode.js"></script>
-  <script src="../js/admin.js?v=202611211210"></script>
+  <script src="../js/admin.js?v=202611212110"></script>
 </body>
 </html>

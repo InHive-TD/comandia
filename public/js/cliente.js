@@ -224,20 +224,48 @@ function pintarProductos() {
     const info = el('div', 'pr-info');
     info.append(el('span', 'pr-nombre', p.nombre));
     if (p.porcion) info.append(el('span', 'pr-meta', p.porcion));
-    if (p.descripcion) info.append(el('span', 'pr-desc', p.descripcion));
+    // Descripción (2 líneas); si no cabe completa aparece "Ver más ›", que abre el detalle del platillo
+    const desc = p.descripcion ? el('span', 'pr-desc', p.descripcion) : null;
+    if (desc) info.append(desc);
+    const verMas = desc ? el('button', 'pr-ver-mas', 'Ver más ›') : null;
+    if (verMas) { verMas.type = 'button'; verMas.hidden = true; info.append(verMas); verMas.addEventListener('click', (ev) => { ev.stopPropagation(); abrirDetalle(p); }); }
     info.append(el('span', 'pr-precio', dinero.format(p.precio)));
     if (p.agotado) info.append(el('span', 'pr-agotado', 'Agotado por hoy'));
     else if (p.extras.length) info.append(el('span', 'pr-mas', 'con opciones ›'));
     b.append(foto, info);
     b.addEventListener('click', (ev) => {
-      if (!pedidosActivos) return;     // solo se puede ver el menú
+      if (!pedidosActivos) { abrirDetalle(p); return; }     // solo se puede ver el menú: un toque muestra el detalle del platillo
       const desdeFoto = !!ev.target.closest('.pr-foto');
       if (p.extras.length && (!desdeFoto || p.pedir_opciones)) abrirOpciones(p);
       else { agregarLinea(p, [], 1, ''); avisar(`${p.nombre} agregado`); }
     });
     caja.append(b);
+    // ¿La descripción quedó cortada? Entonces se muestra "Ver más ›" (se mide ya con la tarjeta en pantalla)
+    if (desc) requestAnimationFrame(() => { verMas.hidden = !(desc.scrollHeight > desc.clientHeight + 1); });
   }
 }
+
+/* Detalle del platillo: foto grande, descripción completa y, si hay pedidos activos, botón para agregarlo */
+const dlgDetalle = $('dlg-detalle');
+function abrirDetalle(p) {
+  $('dt-titulo').textContent = p.nombre;
+  $('dt-meta').textContent = p.porcion || '';
+  $('dt-meta').hidden = !p.porcion;
+  $('dt-desc').textContent = p.descripcion || '';
+  $('dt-desc').hidden = !p.descripcion;
+  $('dt-precio').textContent = dinero.format(p.precio);
+  const img = $('dt-foto');
+  if (p.foto) { img.src = p.foto; img.hidden = false; } else { img.removeAttribute('src'); img.hidden = true; }
+  const puede = pedidosActivos && !p.agotado;
+  $('dt-agregar').hidden = !puede;
+  $('dt-agregar').onclick = () => {
+    dlgDetalle.close();
+    if (p.extras.length) abrirOpciones(p);
+    else { agregarLinea(p, [], 1, ''); avisar(`${p.nombre} agregado`); }
+  };
+  dlgDetalle.showModal();
+}
+$('dt-cerrar').addEventListener('click', () => dlgDetalle.close());
 
 /* Hoja de opciones */
 const dlgOpciones = $('dlg-opciones');

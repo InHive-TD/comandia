@@ -383,7 +383,7 @@ function marcarMenu(idBoton) {
 /** Muestra una sección como página: cierra la que estuviera abierta y oculta la lista de productos. */
 /* Cada sección tiene su propia dirección: /<empresa>/admin/usuarios, /extras… (Inicio es solo /<empresa>/admin/).
    Se puede recargar, guardar en favoritos y usar "atrás". Las direcciones no llevan "#". */
-const RUTAS = { inicio: 'btn-reportes', platillos: 'btn-productos', categorias: 'btn-categorias', extras: 'btn-extras', sucursales: 'btn-sucursales', usuarios: 'btn-usuarios', 'ajustes-cocina': 'btn-prioridades', 'ajustes-pedidos': 'btn-pedidos-qr', 'ajustes-toma': 'btn-toma-pedidos', apariencia: 'btn-apariencia' };
+const RUTAS = { inicio: 'btn-reportes', platillos: 'btn-productos', categorias: 'btn-categorias', extras: 'btn-extras', 'carga-masiva': 'btn-carga', sucursales: 'btn-sucursales', usuarios: 'btn-usuarios', 'ajustes-cocina': 'btn-prioridades', 'ajustes-pedidos': 'btn-pedidos-qr', 'ajustes-toma': 'btn-toma-pedidos', apariencia: 'btn-apariencia' };
 const BASE_ADMIN = location.pathname.replace(/\/admin(\/.*)?$/, '/admin/');   // "/lavale/admin/"
 const seccionDeLaDireccion = () => {
   const n = (location.pathname.startsWith(BASE_ADMIN) ? location.pathname.slice(BASE_ADMIN.length).replace(/\/+$/, '') : '') || 'inicio';
@@ -1567,6 +1567,90 @@ $('btn-pedidos-qr').addEventListener('click', async () => {
   abrirPagina(dlgPedidosQr, 'btn-pedidos-qr');
 });
 $('cp-cerrar').addEventListener('click', () => dlgPedidosQr.close());
+
+
+/* ------------------------------------------------------------------ */
+/*  Carga masiva de platillos (plantilla de Excel + ZIP de fotos)      */
+/* ------------------------------------------------------------------ */
+const dlgCarga = $('dlg-carga');
+const ETIQUETA_CARGA = { crear: '➕ Nuevo', actualizar: '✏️ Actualiza', error: '⛔ Error' };
+const ETIQUETA_FOTO = { nueva: '🖼 Foto nueva', conserva: '🖼 Conserva la actual', ninguna: 'Sin foto', falta: '⚠️ Foto no encontrada' };
+let cargaListaParaImportar = false;   // ya se revisó la planilla actual y se puede confirmar
+
+/** Pinta la vista previa (o el resultado final, cuando ya se importó). */
+function pintarCarga(r) {
+  const caja = $('cm-resultado');
+  caja.hidden = false;
+  $('cm-titulo').textContent = r.confirmado ? '✅ Carga terminada' : 'Vista previa (todavía no se guardó nada)';
+  const chips = [
+    ['cm-ok', `${r.nuevos} ${r.confirmado ? 'creados' : 'nuevos'}`],
+    ['cm-ok', `${r.actualizados} ${r.confirmado ? 'actualizados' : 'se actualizan'}`],
+    [r.con_error ? 'cm-mal' : 'cm-ok', `${r.con_error} con error${r.con_error ? (r.confirmado ? ' (no se guardaron)' : ' (se omiten)') : ''}`],
+  ];
+  $('cm-resumen').replaceChildren(...chips.map(([c, t]) => el('span', 'cm-chip ' + c, t)));
+  const notas = [];
+  if (r.categorias_nuevas.length) notas.push(`${r.confirmado ? 'Categorías creadas' : 'Se crearán las categorías'}: ${r.categorias_nuevas.join(', ')}.`);
+  if (r.fotos_sin_usar.length) notas.push(`Fotos del ZIP que ningún platillo usa: ${r.fotos_sin_usar.slice(0, 12).join(', ')}${r.fotos_sin_usar.length > 12 ? ` y ${r.fotos_sin_usar.length - 12} más` : ''}.`);
+  $('cm-extra').textContent = notas.join(' ');
+  $('cm-extra').hidden = notas.length === 0;
+
+  const lista = $('cm-filas');
+  lista.replaceChildren();
+  for (const f of r.filas) {
+    const fila = el('div', 'cm-fila cm-' + f.accion);
+    const cab = el('div', 'cm-cab');
+    cab.append(el('span', 'cm-est', ETIQUETA_CARGA[f.accion]), el('strong', 'cm-nombre', f.nombre || '(sin nombre)'), el('span', 'cm-fn', `fila ${f.fila}`));
+    const det = el('div', 'cm-det', [f.categoria, f.precio ? dinero.format(Number(f.precio)) : '', f.codigo ? `código ${f.codigo}` : '', ETIQUETA_FOTO[f.foto]].filter(Boolean).join(' · '));
+    fila.append(cab, det);
+    for (const e of f.errores) fila.append(el('div', 'cm-msg cm-msg-error', '⛔ ' + e));
+    for (const a of f.avisos) fila.append(el('div', 'cm-msg cm-msg-aviso', '⚠️ ' + a));
+    lista.append(fila);
+  }
+  const buenos = r.nuevos + r.actualizados;
+  $('cm-importar').hidden = r.confirmado || buenos === 0;
+  $('cm-importar').textContent = `Importar ${buenos} platillo${buenos === 1 ? '' : 's'}`;
+  $('cm-ver').hidden = !r.confirmado;
+  caja.scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+
+/** Envía la planilla (y el ZIP) al servidor. confirmar = false → solo vista previa. */
+async function enviarCarga(confirmar) {
+  const datos = new FormData();
+  datos.append('planilla', $('cm-planilla').files[0]);
+  if ($('cm-zip').files[0]) datos.append('fotos', $('cm-zip').files[0]);
+  datos.append('confirmar', confirmar ? '1' : '0');
+  return pedir(API + 'admin/productos-importar.php', { method: 'POST', body: datos });
+}
+
+$('btn-carga').addEventListener('click', () => {
+  $('cm-error').textContent = '';
+  abrirPagina(dlgCarga, 'btn-carga');
+});
+$('cm-form').addEventListener('submit', async (ev) => {
+  ev.preventDefault();
+  $('cm-error').textContent = '';
+  const b = $('cm-revisar');
+  b.disabled = true; b.textContent = 'Revisando…';
+  try { pintarCarga(await enviarCarga(false)); }
+  catch (err) { $('cm-error').textContent = err.message; $('cm-resultado').hidden = true; }
+  finally { b.disabled = false; b.textContent = 'Revisar planilla'; }
+});
+// Si cambian los archivos, la vista previa anterior ya no vale
+for (const id of ['cm-planilla', 'cm-zip']) $(id).addEventListener('change', () => { $('cm-resultado').hidden = true; });
+$('cm-importar').addEventListener('click', async () => {
+  $('cm-error').textContent = '';
+  const b = $('cm-importar');
+  b.disabled = true; b.textContent = 'Importando… (puede tardar con muchas fotos)';
+  try {
+    const r = await enviarCarga(true);
+    pintarCarga(r);
+    await cargarCatalogo();
+    avisar(`Listo: ${r.nuevos} creados, ${r.actualizados} actualizados`);
+  } catch (err) { $('cm-error').textContent = err.message; }
+  finally { b.disabled = false; }
+});
+$('cm-ver').addEventListener('click', () => { dlgCarga.close(); });
+$('cm-cerrar').addEventListener('click', () => dlgCarga.close());
 
 /* ------------------------------------------------------------------ */
 /*  Extras                                                             */
