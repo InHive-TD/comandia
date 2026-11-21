@@ -452,4 +452,4 @@ body.barra-auto main.contenedor { padding-top: 8px; min-height: 100vh; }
 .com-espera .com-logo { margin-top: 3px; font-size: .95rem; line-height: 1; letter-spacing: 2px; }
 
 /* "Nombres completos": en lugar del código se ve el nombre del platillo, en letra más chica */
-.it .cod.nombre-completo { font-size: .76rem; font-weight: 700; line-height: 1.15; overflow-wrap: normal; word-break: normal; hyphens: manual; }
+.it .cod.nombre-completo { font-size: .68rem; font-weight: 700; line-height: 1.1; white-space: normal; overflow-wrap: normal; word-break: normal; min-width: 0; }   /* letra chica: cabe en el espacio del código (si no, baja a 2 líneas por palabras, sin cortarse) */   /* una sola línea, en el mismo espacio del código */
