@@ -435,6 +435,8 @@ async function montarSucursal() {
     const etq = document.createElement('span');
     etq.textContent = 'Sucursal';
     fila.append(etq, sel);
-    quien.after(fila);
+    // Va en la MISMA línea que el rol ("Administrador · Sucursal [Centro ▾]"), no debajo, para que el encabezado no se ensanche
+    quien.classList.add('quien-linea');
+    quien.append(fila);
   } catch { /* sin sucursal no se muestra nada */ }
 }

@@ -90,9 +90,11 @@ body {
 
 /* Mesa del pedido (mesero) */
 .chip-mesa { padding: 1px 8px; border-radius: 10px; font-size: .78rem; font-weight: 800; background: #fff3c4; color: #5a4636; border: 1px solid #e3c25a; }
-.sel-sucursal { margin-top: 2px; max-width: 100%; padding: 1px 6px; border-radius: 8px; font-weight: 700; font-size: .9rem; line-height: 1.4; }
+.sel-sucursal { margin-top: 0; width: auto; min-height: 0; max-width: 100%; padding: 1px 6px; border-radius: 8px; font-weight: 700; font-size: .9rem; line-height: 1.4; }
 
 /* Selector de sucursal del personal: texto "Menú sucursal" + selector compacto con solo el nombre */
-.fila-sucursal { display: flex; align-items: center; gap: 8px; margin-top: 2px; }
+.fila-sucursal { display: inline-flex; align-items: center; gap: 6px; margin: 0; }
+/* Rol y selector de sucursal en una sola línea (comun.js agrega la clase) */
+.quien-linea { display: flex; align-items: center; flex-wrap: nowrap; gap: 8px; }
 .fila-sucursal > span { font-size: .9rem; opacity: .85; white-space: nowrap; flex: none; }
 .fila-sucursal .sel-sucursal { margin-top: 0; }
