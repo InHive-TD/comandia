@@ -1,6 +1,7 @@
 import bcrypt from 'bcryptjs';
 import type { FastifyInstance } from 'fastify';
 import { contextoNegocio, csrfToken, cuerpoJson, requerirRol, resolverSucursal, sesionDeNegocio, usuarioActual, verificarCsrf } from '../auth.js';
+import { config } from '../config.js';
 import { ejecutar, fila } from '../db.js';
 import { ErrorHttp } from '../errores.js';
 import { sucursalesActivas } from '../negocio.js';
@@ -27,6 +28,8 @@ import { rutasOrdenes } from './ordenes.js';
 
 /** Hash falso para tardar lo mismo cuando el usuario no existe (no delatar qué usuarios hay). */
 const HASH_RELLENO = bcrypt.hashSync('relleno-para-igualar-tiempos', 10);
+/** Minutos sin actividad después de los cuales una sesión abandonada deja de bloquear al usuario. */
+const MINUTOS_SESION_ACTIVA = 15;
 const esperar = (ms: number): Promise<void> => new Promise((r) => setTimeout(r, ms));
 
 export async function rutasEmpresa(app: FastifyInstance): Promise<void> {
@@ -100,6 +103,19 @@ export async function rutasEmpresa(app: FastifyInstance): Promise<void> {
       throw new ErrorHttp(401, 'credenciales', 'Usuario o contraseña incorrectos.');
     }
     await ejecutar('DELETE FROM intentos_login WHERE negocio_id = ? AND ip = ? AND usuario = ?', [nid, ip, usuario]);
+
+    // Un usuario solo puede estar en UN dispositivo a la vez. Se considera "abierta" otra sesión del mismo usuario
+    // si tuvo actividad en los últimos MINUTOS_SESION_ACTIVA minutos (cada petición renueva su caducidad).
+    // Al cerrar sesión se libera al instante; si el otro dispositivo solo se abandonó, se libera solo al pasar ese tiempo.
+    const otra = await fila(
+      `SELECT COUNT(*) AS n FROM sesiones
+        WHERE contexto = ? AND id <> ? AND JSON_EXTRACT(datos, '$.usuario_id') = ?
+          AND expira_en > DATE_ADD(NOW(), INTERVAL ? SECOND)`,
+      [contextoNegocio(req).cookie, ses.id, Number(f['id']), config.sesionSegundos - MINUTOS_SESION_ACTIVA * 60],
+    );
+    if (Number(otra?.['n']) > 0) {
+      throw new ErrorHttp(409, 'sesion_activa', 'Este usuario ya tiene una sesión abierta en otro dispositivo. Cierra esa sesión o pide al administrador que cree un usuario nuevo para este dispositivo.');
+    }
 
     ses.regenerar();
     ses.poner('usuario_id', Number(f['id']));
