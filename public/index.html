@@ -3,21 +3,129 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Comandia · Pedidos para taquerías, fondas y restaurantes</title>
-  <meta name="description" content="Comandia: toma de pedidos, cocina, caja y menú por QR para taquerías, fondas y restaurantes con una o varias sucursales.">
+  <title>Comandia · Pedidos, cocina y caja para taquerías, fondas y restaurantes</title>
+  <meta name="description" content="Comandia: menú con QR, pedidos en tiempo real, tablero de cocina y caja para taquerías, fondas y restaurantes con una o varias sucursales.">
   <link rel="icon" type="image/png" href="img/favicon.png">
-  <link rel="stylesheet" href="css/estilos.css?v=202611201100">
+  <style>
+    :root { --vino:#601020; --oro:#f8c000; --verde:#2f7d3a; --crema:#fff7e0; --texto:#2a1015; --azul:#3f8fcb; }
+    * { box-sizing: border-box; }
+    html { scroll-behavior: smooth; }
+    body { margin:0; font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; color:var(--texto); background:var(--crema); line-height:1.55; }
+    a { color:inherit; }
+    .ancho { max-width:1080px; margin:0 auto; padding:0 20px; }
+    header.top { background:var(--vino); color:#fff; border-bottom:4px solid var(--oro); }
+    header.top .ancho { display:flex; align-items:center; justify-content:space-between; gap:12px; padding-top:12px; padding-bottom:12px; }
+    .logo { display:flex; align-items:center; gap:10px; font-weight:800; font-size:1.35rem; letter-spacing:.3px; text-decoration:none; }
+    .logo img { width:40px; height:40px; border-radius:10px; }
+    nav a { color:#fff; text-decoration:none; margin-left:18px; font-size:.95rem; opacity:.92; }
+    nav a:hover { opacity:1; text-decoration:underline; }
+    .btn { display:inline-block; background:var(--verde); color:#fff; text-decoration:none; font-weight:700; padding:13px 24px; border-radius:10px; border:0; font-size:1rem; }
+    .btn:hover { filter:brightness(1.08); }
+    .btn.claro { background:#fff; color:var(--vino); border:2px solid var(--vino); }
+    .hero { padding:64px 0 56px; text-align:center; background:linear-gradient(180deg,#fff 0%,var(--crema) 100%); }
+    .hero h1 { font-size:clamp(2rem,5vw,3.2rem); line-height:1.12; margin:0 0 16px; color:var(--vino); }
+    .hero p.sub { font-size:1.2rem; max-width:680px; margin:0 auto 28px; }
+    .hero .acciones { display:flex; gap:12px; justify-content:center; flex-wrap:wrap; }
+    section { padding:56px 0; }
+    section h2 { font-size:clamp(1.5rem,3.5vw,2.1rem); color:var(--vino); margin:0 0 8px; text-align:center; }
+    section p.lead { text-align:center; max-width:640px; margin:0 auto 32px; opacity:.85; }
+    .rejilla { display:grid; grid-template-columns:repeat(auto-fit,minmax(240px,1fr)); gap:18px; }
+    .tarjeta { background:#fff; border-radius:14px; padding:22px; box-shadow:0 1px 4px rgba(96,16,32,.12); border-top:4px solid var(--oro); }
+    .tarjeta .ico { font-size:2rem; }
+    .tarjeta h3 { margin:8px 0 6px; font-size:1.1rem; color:var(--vino); }
+    .tarjeta p { margin:0; font-size:.97rem; }
+    .pasos { counter-reset:p; display:grid; grid-template-columns:repeat(auto-fit,minmax(200px,1fr)); gap:18px; }
+    .paso { background:#fff; border-radius:14px; padding:22px 18px 18px; position:relative; }
+    .paso::before { counter-increment:p; content:counter(p); position:absolute; top:-14px; left:18px; background:var(--vino); color:var(--oro); font-weight:800; width:32px; height:32px; border-radius:50%; display:grid; place-items:center; }
+    .paso h3 { margin:6px 0 4px; font-size:1.05rem; }
+    .paso p { margin:0; font-size:.95rem; }
+    .banda { background:var(--vino); color:#fff; }
+    .banda h2 { color:var(--oro); }
+    .banda p.lead { color:#fff; }
+    .ejemplo { background:#fff; color:var(--texto); border-radius:16px; padding:28px; text-align:center; max-width:640px; margin:0 auto; }
+    .ejemplo h3 { margin:0 0 6px; color:var(--vino); font-size:1.3rem; }
+    .precios { background:#fff; border:2px dashed var(--oro); border-radius:16px; padding:28px; text-align:center; max-width:680px; margin:0 auto; }
+    .precios strong { color:var(--vino); }
+    footer { background:#2a1015; color:#e8d9c0; padding:28px 0; font-size:.9rem; text-align:center; }
+    @media (max-width:640px) { nav a { margin-left:10px; font-size:.85rem; } .hero { padding:44px 0 40px; } }
+  </style>
 </head>
 <body>
-  <header class="encabezado barra">
-    <div class="marca"><div><h1>Comandia</h1><p>Pedidos, cocina y caja para tu negocio</p></div></div>
+  <header class="top">
+    <div class="ancho">
+      <a class="logo" href="/"><img src="img/comandia.png" alt=""><span>Comandia</span></a>
+      <nav>
+        <a href="#funciones">Funciones</a>
+        <a href="#como">Cómo funciona</a>
+        <a href="#precios">Suscripción</a>
+      </nav>
+    </div>
   </header>
-  <main class="contenedor">
-    <section class="tarjeta angosta">
-      <h2>Bienvenido</h2>
-      <p>Si eres cliente de un negocio, entra con el enlace o el QR que ellos te dieron.</p>
-      <p>Si tienes un negocio con Comandia, tu dirección es <strong>este-sitio/<em>tu-negocio</em>/</strong>.</p>
-    </section>
-  </main>
+
+  <div class="hero">
+    <div class="ancho">
+      <h1>Los pedidos de tu negocio, en orden</h1>
+      <p class="sub">Tus clientes piden desde su celular con un código QR. Tu cocina ve cada pedido al instante y tu caja cobra sin enredos. Hecho para taquerías, fondas y restaurantes.</p>
+      <div class="acciones">
+        <a class="btn" href="/lavale/">Ver un negocio real usando Comandia</a>
+        <a class="btn claro" href="#precios">Quiero Comandia</a>
+      </div>
+    </div>
+  </div>
+
+  <section id="funciones">
+    <div class="ancho">
+      <h2>Todo lo que necesitas para recibir pedidos</h2>
+      <p class="lead">Un solo sistema para el cliente, la cocina y la caja.</p>
+      <div class="rejilla">
+        <div class="tarjeta"><div class="ico">📱</div><h3>Menú con QR</h3><p>El cliente escanea, ve tu menú con fotos, elige sus platillos, sus extras y deja su nombre y teléfono. No necesita instalar nada.</p></div>
+        <div class="tarjeta"><div class="ico">🔥</div><h3>Tablero de cocina</h3><p>Los pedidos llegan a la cocina con su hora y el tiempo que llevan esperando, para atender primero al más atrasado.</p></div>
+        <div class="tarjeta"><div class="ico">💵</div><h3>Caja y cobro</h3><p>Entrega y cobra en el mismo lugar. Pagos en efectivo, tarjeta o transferencia, divididos en partes y con propina aparte.</p></div>
+        <div class="tarjeta"><div class="ico">⏱️</div><h3>Tiempos estimados</h3><p>El cliente ve cuánto tarda su pedido y sigue su avance hasta que está listo, sin preguntar en el mostrador.</p></div>
+        <div class="tarjeta"><div class="ico">🏪</div><h3>Una o varias sucursales</h3><p>Cada sucursal tiene su propio QR, su cocina y su caja. Tu menú se administra desde un solo lugar.</p></div>
+        <div class="tarjeta"><div class="ico">🎨</div><h3>Con tu marca</h3><p>Tu logo y tus colores en todas las pantallas. Tu menú, tus fotos y tus precios son solo tuyos.</p></div>
+      </div>
+    </div>
+  </section>
+
+  <section id="como" style="background:#fff3cc">
+    <div class="ancho">
+      <h2>Así funciona</h2>
+      <p class="lead">De la mesa a la cocina a la caja, en cuatro pasos.</p>
+      <div class="pasos">
+        <div class="paso"><h3>El cliente pide</h3><p>Escanea el QR, arma su pedido y elige si es para comer aquí o para llevar.</p></div>
+        <div class="paso"><h3>La cocina prepara</h3><p>El pedido aparece en el tablero. Cocina lo marca como listo con un toque.</p></div>
+        <div class="paso"><h3>Se entrega</h3><p>Quien atiende marca la entrega. El cliente lo ve en su celular.</p></div>
+        <div class="paso"><h3>Se cobra</h3><p>Caja registra el pago y queda todo guardado para tus cuentas.</p></div>
+      </div>
+    </div>
+  </section>
+
+  <section class="banda">
+    <div class="ancho">
+      <h2>Míralo funcionando</h2>
+      <p class="lead">Este es el menú de un negocio que ya usa Comandia.</p>
+      <div class="ejemplo">
+        <h3>Los Tacos D'La Vale</h3>
+        <p>Entra a su pantalla de pedidos y mira cómo ve el menú un cliente.</p>
+        <p><a class="btn" href="/lavale/">Abrir el menú de ejemplo</a></p>
+      </div>
+    </div>
+  </section>
+
+  <section id="precios">
+    <div class="ancho">
+      <h2>Suscripción</h2>
+      <p class="lead">Tu negocio con su propia dirección: <strong>comandia.mx/tu-negocio</strong></p>
+      <div class="precios">
+        <p><strong>Muy pronto podrás contratar Comandia en línea.</strong></p>
+        <p>Estamos preparando los planes y el pago de la suscripción. Mientras tanto, si quieres tener Comandia en tu negocio, ponte en contacto y te damos de alta.</p>
+      </div>
+    </div>
+  </section>
+
+  <footer>
+    <div class="ancho">Comandia · Pedidos, cocina y caja para tu negocio</div>
+  </footer>
 </body>
 </html>
