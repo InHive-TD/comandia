@@ -849,13 +849,14 @@ $('dlg-editar').addEventListener('close', () => { if (!$('vista-seguimiento').hi
 
 let segDatos = null, segRecibido = 0, segTimer = null, segCargando = false, segFirma = '', segEstados = new Map();
 
-function detenerSeguimiento() { clearInterval(segTimer); segTimer = null; }
+function detenerSeguimiento() { if (segTimer) segTimer.detener(); segTimer = null; }
 
 function abrirSeguimiento() {
   mostrar('vista-seguimiento');
   segDatos = null; segFirma = ''; segEstados = new Map();
   cargarSeguimiento();
-  segTimer = setInterval(cargarSeguimiento, 3000);
+  detenerSeguimiento();
+  segTimer = suscribirCambios(cargarSeguimiento, { respaldoMs: 3000, url: API + 'eventos' });
 }
 $('btn-seguimiento').addEventListener('click', abrirSeguimiento);
 $('btn-tomar').addEventListener('click', () => mostrar('vista-pedido'));

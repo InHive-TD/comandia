@@ -479,8 +479,8 @@ const TEXTOS = {
   cancelada: ['Pedido cancelado', 'Si fue un error, acércate a caja.'],
 };
 
-function iniciarSondeo() { detenerSondeo(); temporizador = setInterval(() => { if (!document.hidden) refrescar(); }, 4000); }
-function detenerSondeo() { clearInterval(temporizador); temporizador = null; }
+function iniciarSondeo() { detenerSondeo(); temporizador = suscribirCambios(refrescar, { respaldoMs: 4000, url: API + 'eventos' }); }
+function detenerSondeo() { if (temporizador) temporizador.detener(); temporizador = null; }
 document.addEventListener('visibilitychange', () => { if (!document.hidden && !$('vista-mis').hidden) refrescar(); });
 
 /* Pedidos consultados por número + nombre (solo lectura): se vuelven a consultar en cada ciclo */

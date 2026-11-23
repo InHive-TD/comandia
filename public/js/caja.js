@@ -67,7 +67,8 @@ async function entrar(usuario) {
   $('fecha').value = fecha;
   mostrar('vista-caja');
   await cargar();
-  temporizador = setInterval(() => { if (!$('dlg-cobro').open) cargar(); }, 5000);
+  if (temporizador) temporizador.detener();
+  temporizador = suscribirCambios(() => { if (!$('dlg-cobro').open) cargar(); }, { respaldoMs: 5000, url: API + 'eventos' });
 }
 
 $('form-login').addEventListener('submit', async (ev) => {

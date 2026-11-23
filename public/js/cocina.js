@@ -224,11 +224,12 @@ function elegirParrilla(id) {
   $('tablero').replaceChildren();
   mostrar('vista-tablero');
   cargar();
-  temporizadorPeticion = setInterval(cargar, 2500);
+  detenerPeticiones();
+  temporizadorPeticion = suscribirCambios(cargar, { respaldoMs: 2500, seguridadMs: 30000, url: API + 'eventos' });
 }
 
 function detenerPeticiones() {
-  clearInterval(temporizadorPeticion);
+  if (temporizadorPeticion) temporizadorPeticion.detener();
   temporizadorPeticion = null;
 }
 
