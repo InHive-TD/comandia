@@ -26,7 +26,7 @@ export async function rutasManifiesto(app: FastifyInstance): Promise<void> {
     return reply
       .type('application/manifest+json; charset=utf-8')
       .header('Cache-Control', 'public, max-age=3600')
-      .send({
+      .send(JSON.stringify({
         id: inicio,
         name: `${nombre} · ${PANTALLAS[pantalla]}`,
         short_name: pantalla === 'cliente' ? nombre.slice(0, 12) : PANTALLAS[pantalla]!.slice(0, 12),
@@ -43,6 +43,6 @@ export async function rutasManifiesto(app: FastifyInstance): Promise<void> {
           { src: '/img/icon-512.png', sizes: '512x512', type: 'image/png', purpose: 'any' },
           { src: '/img/icon-512.png', sizes: '512x512', type: 'image/png', purpose: 'maskable' },
         ],
-      });
+      }));
   });
 }
