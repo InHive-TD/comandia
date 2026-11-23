@@ -5,7 +5,7 @@
 import { randomBytes } from 'node:crypto';
 import { mkdir, unlink, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
-import sharp from 'sharp';
+import { cargarSharp } from './sharpPerezoso.js';
 import { config } from './config.js';
 import { filas } from './db.js';
 import { fallo } from './errores.js';
@@ -102,6 +102,7 @@ const PIXELES_MAX = 40_000_000;
 /** Guarda el logo conservando la transparencia (PNG, máx. 512 px). Devuelve el nombre del archivo. */
 export async function procesarLogo(buffer: Buffer, negocioId: number): Promise<string> {
   if (buffer.length > PESO_LOGO_MAX) throw fallo('El logo debe pesar menos de 5 MB.');
+  const sharp = await cargarSharp();
   let meta;
   try {
     meta = await sharp(buffer, { limitInputPixels: PIXELES_MAX }).metadata();

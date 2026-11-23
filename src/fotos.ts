@@ -1,7 +1,7 @@
 import { randomBytes } from 'node:crypto';
 import { mkdir, unlink, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
-import sharp from 'sharp';
+import { cargarSharp } from './sharpPerezoso.js';
 import { config } from './config.js';
 import { fallo } from './errores.js';
 
@@ -16,6 +16,7 @@ const PIXELES_MAX = 40_000_000;
 
 /** Valida y guarda una foto. Devuelve "<id de la empresa>/p_xxxxxxxxxxxxxxxx.jpg". */
 export async function procesarFoto(buffer: Buffer, negocioId: number): Promise<string> {
+  const sharp = await cargarSharp();
   let meta;
   try {
     meta = await sharp(buffer, { limitInputPixels: PIXELES_MAX }).metadata();

@@ -17,9 +17,9 @@
  *  - Toda fila se valida con las MISMAS reglas que el formulario de "Nuevo platillo" (`leerCampos`).
  *  - El dueño crea en la carta general; el gerente, en los productos propios de su sucursal.
  */
-import ExcelJS from 'exceljs';
+import type ExcelJS from 'exceljs';
 import { unzipSync } from 'fflate';
-import sharp from 'sharp';
+import { cargarSharp } from './sharpPerezoso.js';
 import { ejecutar, fila, filas, transaccion } from './db.js';
 import { ErrorHttp, fallo } from './errores.js';
 import { Formulario } from './formulario.js';
@@ -135,7 +135,8 @@ export async function listasDeLaEmpresa(nid: number): Promise<ListasPlantilla> {
 
 /** Genera el .xlsx de la plantilla (hojas: Instrucciones, Productos, Ejemplo, Listas). */
 export async function generarPlantilla(listas: ListasPlantilla): Promise<Buffer> {
-  const libro = new ExcelJS.Workbook();
+  const { default: ExcelJSLib } = await import('exceljs');
+  const libro = new ExcelJSLib.Workbook();
   libro.creator = 'Comandia';
   const colorEncabezado = 'FF7A1F2B';
 
@@ -272,7 +273,8 @@ export async function analizarCarga(ctx: Contexto, planilla: Buffer, zip: Buffer
   const esDueno = alcance === null;
 
   /* --- Abrir el Excel --- */
-  const libro = new ExcelJS.Workbook();
+  const { default: ExcelJSLib } = await import('exceljs');
+  const libro = new ExcelJSLib.Workbook();
   try {
     await libro.xlsx.load(planilla as unknown as ExcelJS.Buffer);
   } catch {
@@ -417,7 +419,7 @@ export async function analizarCarga(ctx: Contexto, planilla: Buffer, zip: Buffer
       if (clave !== '') {
         const bytes = fotos.get(clave);
         try {
-          const m = await sharp(bytes, { limitInputPixels: 40_000_000 }).metadata();
+          const m = await (await cargarSharp())(bytes, { limitInputPixels: 40_000_000 }).metadata();
           if (!m.width || !m.height) throw new Error('sin tamaño');
           p.bytesFoto = bytes; p.foto = 'nueva'; fotosUsadas.add(clave);
         } catch {

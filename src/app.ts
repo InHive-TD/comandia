@@ -56,7 +56,8 @@ function paginaCliente(slugEmpresa: string, slugSucursal: string): string {
 
 export async function crearApp(): Promise<FastifyInstance> {
   const app = Fastify({
-    logger: { level: process.env['LOG_LEVEL'] ?? 'info' },
+    // 'warn': solo avisos y errores. Registrar cada petición (info) llenaba el log y gastaba disco y CPU sin aportar nada.
+    logger: { level: process.env['LOG_LEVEL'] ?? 'warn' },
     trustProxy: config.confiarProxy,
     // La pantalla llama a /api/login.php, /api/ordenes.php... Aceptamos esos nombres tal cual (sin el ".php" internamente).
     rewriteUrl: (req) => (req.url ?? '/').replace(/\.php(?=\?|$)/, ''),
