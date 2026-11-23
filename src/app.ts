@@ -51,7 +51,9 @@ async function sucursalDeEmpresa(slugEmpresa: string, slugSucursal: string | nul
  */
 function paginaCliente(slugEmpresa: string, slugSucursal: string): string {
   const html = readFileSync(join(RAIZ_PUBLICA, 'cliente', 'index.html'), 'utf8');
-  return html.replace('<head>', `<head>\n  <base href="/${slugEmpresa}/">\n  <meta name="comandia-sucursal" content="${slugSucursal}">`);
+  return html
+    .replace('api/manifest?p=cliente"', `api/manifest?p=cliente&s=${slugSucursal}"`)
+    .replace('<head>', `<head>\n  <base href="/${slugEmpresa}/">\n  <meta name="comandia-sucursal" content="${slugSucursal}">`);
 }
 
 export async function crearApp(): Promise<FastifyInstance> {

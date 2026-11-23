@@ -1,3 +1,4 @@
+import { rutasManifiesto } from './manifiesto.js';
 import { avisarAlGuardar, rutasEventos } from '../eventos.js';
 import bcrypt from 'bcryptjs';
 import type { FastifyInstance } from 'fastify';
@@ -36,6 +37,7 @@ const esperar = (ms: number): Promise<void> => new Promise((r) => setTimeout(r, 
 export async function rutasEmpresa(app: FastifyInstance): Promise<void> {
   app.addHook('onResponse', avisarAlGuardar);
   await app.register(rutasEventos);
+  await app.register(rutasManifiesto);
   // Menú y administración del catálogo (cada archivo documenta sus reglas y permisos)
   for (const grupo of [rutasMenu, rutasCategorias, rutasEstaciones, rutasExtras, rutasAdminProductos, rutasAdminImportar, rutasSucursales, rutasAdminMesas, rutasUsuarios, rutasOrdenes, rutasCocina, rutasCaja, rutasPrioridades, rutasTiempos, rutasMarca, rutasReportes, rutasCliente, rutasTema, rutasClientePedidos]) {
     await app.register(grupo);
