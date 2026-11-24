@@ -790,3 +790,8 @@ body.en-panel .panel-lateral { min-height: 100vh; grid-template-columns: 240px m
 .ep-lista input[type="checkbox"] { width: 22px; height: 22px; flex: none; }
 .ep-lista label { cursor: pointer; flex: 1; }
 .ex-cat.ex-elegir { background: #fff; border-color: var(--color-vino, #8a2a2a); color: var(--color-vino, #8a2a2a); }
+
+.ex-resumen { display: flex; flex-wrap: wrap; align-items: center; gap: 4px; }
+.chip.ex-res { font-size: .78rem; padding: 2px 8px; }
+.chip.ex-res.todos { background: #dff2e1; color: #1f5c2b; }
+.chip.ex-res.algunos { background: #fff0b3; color: #6b4b00; }

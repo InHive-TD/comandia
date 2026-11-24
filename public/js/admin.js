@@ -2074,7 +2074,7 @@ function pintarExtras() {
     caja.append(el('p', 'ayuda ex-vacio', 'Todavía no hay extras. Toca “＋ Nuevo extra” para crear el primero (por ejemplo, Sin cebolla).'));
     return;
   }
-  if (categorias.length) caja.append(el('p', 'ayuda ex-leyenda', 'Toca una categoría para poner el extra (o quitarlo) en todos sus platillos, o usa «☑ Elegir platillos…» para ver y marcar platillo por platillo. Verde = en todos · amarillo = en algunos (ej. 1/11) · gris = en ninguno.'));
+  if (categorias.length) caja.append(el('p', 'ayuda ex-leyenda', 'Cada tarjeta muestra en qué categorías aparece el extra (verde = en todos sus platillos, amarillo = en algunos, ej. 1/11). Para cambiarlo, toca «Editar» y elige los platillos.'));
 
   // Secciones en el orden elegido (las vacías también se muestran); los extras sin sección van al final, en "Otros"
   const grupos = new Map(gruposExtras.map((g) => [g, []]));
@@ -2105,47 +2105,8 @@ function tarjetaExtra(x) {
   cab.append(titulo, el('span', 'ex-precio' + (x.precio > 0 ? ' paga' : ''), x.precio > 0 ? `+${dinero.format(x.precio)}` : 'Gratis'));
   tarjeta.append(cab);
 
-  // Disponibilidad por categoría
-  if (categorias.length) {
-    const disp = el('div', 'ex-disp');
-    disp.append(el('span', 'ex-etq', 'Disponible en:'));
-    // Atajo: ponerlo (o quitarlo) en TODOS los platillos de golpe; luego se afina platillo por platillo
-    const totalProd = productos.length;
-    const conTodos = productos.filter((p) => p.extras.includes(x.id)).length;
-    const todosOk = totalProd > 0 && conTodos === totalProd;
-    const btnTodos = el('button', 'ex-cat ex-todos ' + (todosOk ? 'todos' : 'ninguno'), todosOk ? '✓ Todos los platillos' : '★ Todos los platillos');
-    btnTodos.type = 'button';
-    btnTodos.title = todosOk ? 'Toca para quitarlo de todos los platillos.' : 'Toca para ponerlo en todos los platillos (después puedes quitarlo en los que no).';
-    btnTodos.addEventListener('click', () => accionExtra({ accion: 'asignar_todos', id: x.id, asignar: !todosOk }, todosOk ? 'Quitado de todos los platillos' : 'Agregado a todos los platillos'));
-    disp.append(btnTodos);
-    if (productos.some((p) => p.extras_precios && p.extras_precios[x.id] !== undefined)) {
-      const igualar = el('button', 'ex-cat algunos', '↺ Igualar precio en todos');
-      igualar.type = 'button';
-      igualar.title = 'Algunos platillos cobran este extra con precio propio. Toca para que todos cobren el precio general.';
-      igualar.addEventListener('click', () => accionExtra({ accion: 'precio_general', id: x.id }, 'Precio general aplicado a todos'));
-      disp.append(igualar);
-    }
-    const btnElegir = el('button', 'ex-cat ex-elegir', '☑ Elegir platillos…');
-    btnElegir.type = 'button';
-    btnElegir.title = 'Marca categorías completas o platillo por platillo.';
-    btnElegir.addEventListener('click', () => abrirExtraPlatillos(x));
-    disp.append(btnElegir);
-    for (const c of categorias) {
-      const deCat = productos.filter((p) => p.categoria_id === c.id);
-      if (deCat.length === 0) continue;
-      const con = deCat.filter((p) => p.extras.includes(x.id)).length;
-      const estado = con === 0 ? 'ninguno' : con === deCat.length ? 'todos' : 'algunos';
-      const chip = el('button', 'ex-cat ' + estado, `${estado === 'todos' ? '✓ ' : ''}${c.nombre}${estado === 'algunos' ? ` ${con}/${deCat.length}` : ''}`);
-      chip.type = 'button';
-      chip.title = estado === 'todos'
-        ? `Está en todos los platillos de ${c.nombre}. Toca para quitarlo de todos.`
-        : `Toca para ponerlo en todos los platillos de ${c.nombre}.`;
-      chip.addEventListener('click', () => accionExtra({ accion: 'asignar', id: x.id, categoria_id: c.id, asignar: estado !== 'todos' },
-        estado === 'todos' ? `Quitado de ${c.nombre}` : `Agregado a ${c.nombre}`));
-      disp.append(chip);
-    }
-    tarjeta.append(disp);
-  }
+  // Dónde aparece (solo informativo; se cambia desde «Editar»)
+  if (categorias.length) tarjeta.append(resumenDisponibilidad(x.id));
 
   // Pie: cuántos platillos lo llevan + editar / eliminar
   const usado = productos.filter((p) => p.extras.includes(x.id)).length;
@@ -2165,6 +2126,23 @@ function tarjetaExtra(x) {
   tarjeta.append(pie);
 
   return tarjeta;
+}
+
+/** Resumen de solo lectura: en qué categorías aparece el extra y en cuántos platillos de cada una. */
+function resumenDisponibilidad(extraId) {
+  const caja = el('div', 'ex-resumen');
+  const total = productos.length;
+  const con = productos.filter((p) => p.extras.includes(extraId)).length;
+  if (con === 0) { caja.append(el('span', 'ex-etq', 'Aún no está en ningún platillo')); return caja; }
+  caja.append(el('span', 'ex-etq', 'Aparece en:'));
+  if (con === total) { caja.append(el('span', 'chip ex-res todos', `Todos los platillos (${total})`)); return caja; }
+  for (const c of categorias) {
+    const deCat = productos.filter((p) => p.categoria_id === c.id);
+    const n = deCat.filter((p) => p.extras.includes(extraId)).length;
+    if (n === 0) continue;
+    caja.append(el('span', 'chip ex-res' + (n === deCat.length ? ' todos' : ' algunos'), n === deCat.length ? `${c.nombre} (${n})` : `${c.nombre} ${n}/${deCat.length}`));
+  }
+  return caja;
 }
 
 /* Elegir en qué platillos aparece un extra: categoría completa (casilla con ➖ si va a medias) o platillo por platillo */
@@ -2232,6 +2210,7 @@ $('ep-guardar').addEventListener('click', async () => {
     dlgEP.close();
     await cargarCatalogo();
     pintarExtras();
+    efDonde();
     avisar('Platillos del extra actualizados');
   } catch (err) { $('ep-error').textContent = err.message; }
 });
@@ -2470,6 +2449,23 @@ $('ef-grupo').addEventListener('change', () => {
   if (nueva) $('ef-grupo-nuevo').focus();
 });
 
+/** Sección «Disponible en» del formulario de edición: resumen + elegir platillos + igualar precio. */
+function efDonde() {
+  if (!efExtra) return;
+  $('ef-resumen').replaceChildren(resumenDisponibilidad(efExtra.id));
+  $('ef-igualar').hidden = !productos.some((p) => p.extras_precios && p.extras_precios[efExtra.id] !== undefined);
+}
+$('ef-elegir').addEventListener('click', () => { if (efExtra) abrirExtraPlatillos(efExtra); });
+$('ef-igualar').addEventListener('click', async () => {
+  if (!efExtra) return;
+  $('ef-error').textContent = '';
+  try {
+    await enviarJson(API + 'admin/extras.php', { accion: 'precio_general', id: efExtra.id });
+    await cargarCatalogo(); pintarExtras(); efDonde();
+    avisar('Precio general aplicado a todos');
+  } catch (err) { $('ef-error').textContent = err.message; }
+});
+
 function abrirFormExtra(x) {
   efExtra = x || null;
   $('ef-titulo').textContent = x ? 'Editar extra' : 'Nuevo extra';
@@ -2482,6 +2478,8 @@ function abrirFormExtra(x) {
   $('ef-activo').checked = x ? x.activo : true;
   $('ef-otro').hidden = !!x;
   $('ef-error').textContent = '';
+  $('ef-donde').hidden = !x;
+  efDonde();
   dlgExtraForm.showModal();
   $('ef-nombre').focus();
 }
