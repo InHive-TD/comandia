@@ -1236,36 +1236,30 @@ function fijarRango(r) {
   let a = new Date(hoy), b = new Date(hoy);
   if (r === 'ayer') { a.setDate(a.getDate() - 1); b = new Date(a); }
   else if (r === '7') { a.setDate(a.getDate() - 6); }
+  else if (r === '30') { a.setDate(a.getDate() - 29); }
   else if (r === 'mes') { a = new Date(hoy.getFullYear(), hoy.getMonth(), 1); }
+  else if (r === 'mesant') { a = new Date(hoy.getFullYear(), hoy.getMonth() - 1, 1); b = new Date(hoy.getFullYear(), hoy.getMonth(), 0); }
   $('rp-desde').value = isoLocal(a);
   $('rp-hasta').value = isoLocal(b);
 }
 
-function tablaRep(titulo, columnas, filas, vacio = 'Sin datos en este periodo.') {
-  const sec = el('section', 'rep-bloque');
-  sec.append(el('h3', '', titulo));
-  if (!filas.length) { sec.append(el('p', 'ayuda', vacio)); return sec; }
-  const t = document.createElement('table');
-  t.className = 'rep-tabla';
-  const cab = document.createElement('tr');
-  columnas.forEach((c, i) => { const th = document.createElement('th'); th.textContent = c; if (i) th.className = 'num'; cab.append(th); });
-  t.append(cab);
-  for (const f of filas) {
-    const tr = document.createElement('tr');
-    f.forEach((v, i) => { const td = document.createElement('td'); td.textContent = v; if (i) td.className = 'num'; tr.append(td); });
-    t.append(tr);
-  }
-  sec.append(t);
-  return sec;
-}
-
-async function cargarReporte() {
+let tablero = null;
+let rangoBase = null;          // rango elegido antes de entrar a un solo día
+let cargaRep = 0;
+async function cargarReporte(dia) {
+  if (!tablero) tablero = Tablero.montar($('rp-contenido'), { alCargar: (d) => {
+    if (d) { rangoBase = { desde: $('rp-desde').value, hasta: $('rp-hasta').value }; $('rp-desde').value = d; $('rp-hasta').value = d; }
+    else if (rangoBase) { $('rp-desde').value = rangoBase.desde; $('rp-hasta').value = rangoBase.hasta; rangoBase = null; }
+    cargarReporte(d || null);
+  } });
   $('rp-error').textContent = '';
+  tablero.cargando();
+  const mia = ++cargaRep;
   const q = new URLSearchParams({ desde: $('rp-desde').value, hasta: $('rp-hasta').value });
   if ($('rp-sucursal').value) q.set('sucursal', $('rp-sucursal').value);
   let r;
-  try { r = await pedir(API + 'admin/reportes.php?' + q); } catch (err) { $('rp-error').textContent = err.message; return; }
-
+  try { r = await pedir(API + 'admin/reportes.php?' + q); } catch (err) { if (mia === cargaRep) $('rp-error').textContent = err.message; return; }
+  if (mia !== cargaRep) return;
   const sel = $('rp-sucursal');
   if (sel.options.length !== r.sucursales.length + 1) {
     const actual = sel.value;
@@ -1274,39 +1268,20 @@ async function cargarReporte() {
     for (const s of r.sucursales) { const o = document.createElement('option'); o.value = String(s.id); o.textContent = s.nombre; sel.append(o); }
     sel.value = actual;
   }
-
-  const caja = $('rp-contenido');
-  caja.replaceChildren();
-  const m = r.resumen;
-  const tarjetas = el('div', 'rep-tarjetas');
-  for (const [t, v] of [['Pedidos', String(m.pedidos)], ['Vendido', dinero.format(m.vendido)], ['Ticket promedio', dinero.format(m.ticket)], ['Cobrado en caja', dinero.format(m.cobrado)], ['Propinas', dinero.format(m.propinas)], ['Comisión de terminal', dinero.format(m.comisiones)], ['Cancelados', String(m.cancelados)]]) {
-    const c = el('div', 'rep-tarjeta');
-    c.append(el('span', '', t), el('strong', '', v));
-    tarjetas.append(c);
-  }
-  caja.append(tarjetas);
-  caja.append(el('p', 'ayuda', '“Vendido” es el total de los pedidos (sin cancelados). “Cobrado” es lo que se registró en Caja.'));
-
-  if (!$('rp-sucursal').value && r.sucursales.length > 1) {
-    caja.append(tablaRep('Por sucursal', ['Sucursal', 'Pedidos', 'Vendido', 'Cobrado', 'Propinas'],
-      r.por_sucursal.map((s) => [s.nombre, s.pedidos, dinero.format(s.vendido), dinero.format(s.cobrado), dinero.format(s.propinas)])));
-  }
-  caja.append(tablaRep('Por día', ['Día', 'Pedidos', 'Vendido'], r.por_dia.map((d) => [d.fecha, d.pedidos, dinero.format(d.vendido)])));
-  caja.append(tablaRep('Formas de pago', ['Método', 'Pagos', 'Monto', 'Propinas'], r.por_metodo.map((x) => [NOMBRE_METODO[x.metodo] || x.metodo, x.pagos, dinero.format(x.monto), dinero.format(x.propinas)])));
-  caja.append(tablaRep('Comer aquí / llevar / recoger', ['Tipo', 'Pedidos', 'Vendido'], r.por_modalidad.map((x) => [NOMBRE_MODALIDAD[x.modalidad] || x.modalidad, x.pedidos, dinero.format(x.vendido)])));
-  caja.append(tablaRep('Por mesa', ['Mesa', 'Pedidos', 'Vendido'], r.por_mesa.map((x) => [x.mesa, x.pedidos, dinero.format(x.vendido)]), 'Aún no hay pedidos con mesa en este periodo.'));
-  caja.append(tablaRep('Lo que más se vende', ['Producto', 'Unidades', 'Importe'], r.productos.map((p) => [p.nombre, p.unidades, dinero.format(p.importe)])));
+  tablero.marcarDia(dia && typeof dia === 'string' ? dia : null);
+  tablero.poner(r);
 }
 
 $('btn-reportes').addEventListener('click', () => {
-  if (!$('rp-desde').value) fijarRango('hoy');
+  if (!$('rp-desde').value) fijarRango('7');
   abrirPagina(dlgReportes, 'btn-reportes');
-  if (document.activeElement && document.activeElement.blur) document.activeElement.blur();   // que no quede resaltado el campo de fecha
+  if (document.activeElement && document.activeElement.blur) document.activeElement.blur();
   cargarReporte();
 });
 $('rp-cerrar').addEventListener('click', () => dlgReportes.close());
-document.querySelectorAll('.rep-rapidos [data-rango]').forEach((b) => b.addEventListener('click', () => { fijarRango(b.dataset.rango); cargarReporte(); }));
-['rp-desde', 'rp-hasta', 'rp-sucursal'].forEach((id) => $(id).addEventListener('change', cargarReporte));
+document.querySelectorAll('.rep-rapidos [data-rango]').forEach((b) => b.addEventListener('click', () => { rangoBase = null; fijarRango(b.dataset.rango); cargarReporte(); }));
+['rp-desde', 'rp-hasta', 'rp-sucursal'].forEach((id) => $(id).addEventListener('change', () => { rangoBase = null; cargarReporte(); }));
+$('rp-actualizar').addEventListener('click', () => cargarReporte(rangoBase ? $('rp-desde').value : null));
 
 /* ------------------------------------------------------------------ */
 /*  Apariencia: logo y colores                                         */
