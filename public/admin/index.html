@@ -11,13 +11,13 @@
   <meta name="theme-color" content="#0a6b4e">
   <meta name="mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-capable" content="yes">
-  <script src="../js/pwa.js?v=1795493681" defer></script>
+  <script src="../js/pwa.js?v=1795493764" defer></script>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Outfit:wght@600;700;800&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="../css/estilos.css?v=1795493681">
-  <link rel="stylesheet" href="../css/admin.css?v=1795493681">
-  <link rel="stylesheet" href="../css/shell.css?v=1795493681">
+  <link rel="stylesheet" href="../css/estilos.css?v=1795493764">
+  <link rel="stylesheet" href="../css/admin.css?v=1795493764">
+  <link rel="stylesheet" href="../css/shell.css?v=1795493764">
   <link rel="stylesheet" href="../api/tema.php">
 </head>
 <body>
@@ -368,6 +368,11 @@
       <label>¿Para quién?
         <select id="pg-ambito"></select>
       </label>
+      <label class="switch" id="pg-activo-fila">
+        <input id="pg-activo" type="checkbox" checked><span class="slider"></span><span>Aceptar pagos por transferencia</span>
+      </label>
+      <p id="pg-activo-nota" class="ayuda" hidden></p>
+      <div id="pg-campos">
       <p id="pg-nota" class="ayuda" hidden></p>
       <label>Clave interbancaria (CLABE, 18 dígitos)
         <input id="pg-clabe" type="text" inputmode="numeric" maxlength="24" autocomplete="off" placeholder="18 dígitos">
@@ -378,6 +383,7 @@
       <label>Institución
         <input id="pg-inst" type="text" maxlength="80" autocomplete="off" placeholder="Ej. BBVA, Mercado Pago W">
       </label>
+      </div>
       <p id="pg-error" class="msg-error" role="alert"></p>
       <div class="acciones-dialogo">
         <button id="pg-guardar" class="btn principal" type="button">Guardar datos de pago</button>
@@ -741,9 +747,9 @@
 
   <div id="toast" class="toast" role="status" hidden></div>
 
-  <script src="../js/comun.js?v=1795493681"></script>
-  <script src="../js/shell.js?v=1795493681"></script>
+  <script src="../js/comun.js?v=1795493764"></script>
+  <script src="../js/shell.js?v=1795493764"></script>
   <script src="../js/vendor/qrcode.js"></script>
-  <script src="../js/admin.js?v=1795493681"></script>
+  <script src="../js/admin.js?v=1795493764"></script>
 </body>
 </html>

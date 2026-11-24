@@ -149,7 +149,9 @@ let verPedido = true, verPagar = true, verMenu = true;
 function aplicarPestanas(suc) {
   verMenu = suc.ver_menu !== false;
   verPedido = suc.ver_pedido !== false;
-  verPagar = suc.ver_pagar !== false;
+  verPagar = suc.ver_pagar !== false && suc.transferencia !== false;   // sin pago por transferencia, la pestaña «Pagar» no tiene nada que mostrar
+  const formas = $('formas-pago');
+  if (formas) formas.textContent = suc.transferencia === false ? 'efectivo y tarjeta' : 'efectivo, transferencia y tarjeta';
   if (!verMenu && !verPedido && !verPagar) verMenu = true;   // por seguridad, nunca queda la pantalla vacía
   $('nav-menu').hidden = !verMenu;
   $('nav-pedido').hidden = !verPedido;

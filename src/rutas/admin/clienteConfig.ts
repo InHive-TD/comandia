@@ -5,6 +5,7 @@
  *   GET  /admin/cliente-config → { puede_general, general: Nivel, sucursales: [{ id, nombre, propio: Nivel, efectivo: Config }] }
  *   POST { accion: 'tipos', ambito: 'general'|'sucursal', sucursal_id?, modalidades: [...], mixto }
  *   POST { accion: 'pago',  ambito, sucursal_id?, clabe, beneficiario, institucion }
+ *   POST { accion: 'transferencia', ambito, sucursal_id?, activo }   acepta o no pago por transferencia (si la empresa la apaga, el gerente no puede encenderla)
  *   POST { accion: 'pago_quitar', ambito, sucursal_id? }        borra lo propio (la sucursal vuelve a usar el de la empresa)
  *
  * El dueño cambia la empresa y cualquier sucursal; el gerente solo la suya (si manda otro id se ignora).
@@ -72,6 +73,15 @@ export async function rutasClienteConfig(app: FastifyInstance): Promise<void> {
           const institucion = String(d['institucion'] ?? '').trim();
           if (largo(beneficiario) > 80 || largo(institucion) > 80) throw fallo('El beneficiario y la institución no pueden pasar de 80 caracteres.');
           await guardar(`cliente_pago${suf}`, JSON.stringify({ clabe, beneficiario, institucion }));
+          return estado();
+        }
+        case 'transferencia': {
+          const suf = await sufijo();
+          const activo = noVacio(d['activo']);
+          if (activo && alcance !== null && !(nivelCliente(await cargarAjustesCliente(nid), null).transferencia ?? true)) {
+            throw fallo('El dueño desactivó el pago por transferencia en toda la empresa. Pídele que lo active para poder activarlo aquí.', 403);
+          }
+          await guardar(`cliente_transferencia${suf}`, activo ? '1' : '0');
           return estado();
         }
         case 'pago_quitar': {

@@ -4,6 +4,8 @@
  *   `cliente_modalidades`  / `cliente_modalidades@<sid>`  → JSON ["aqui","llevar","recoger"]: qué botones de tipo de pedido existen
  *   `cliente_mixto`        / `cliente_mixto@<sid>`        → "1"/"0": ¿puede elegir plato por plato (uno aquí y otro para llevar)?
  *   `cliente_pago`         / `cliente_pago@<sid>`         → JSON { clabe, beneficiario, institucion }: datos de la pestaña "Pagar"
+ *   `cliente_transferencia` / `cliente_transferencia@<sid>` → "1"/"0": ¿la empresa acepta pago por transferencia? Si el dueño la apaga
+ *                                                           para toda la empresa, ninguna sucursal puede encenderla.
  *
  * La sucursal manda si tiene su propio valor; si no, el de toda la empresa; si tampoco, el valor por defecto
  * (todos los tipos, mixto activado, y sin datos de pago).
@@ -18,6 +20,7 @@ export interface ConfigCliente {
   modalidades: string[];
   mixto: boolean;
   pago: PagoCliente | null;
+  transferencia: boolean;
 }
 
 /** Valores guardados, tal cual, de un solo nivel (empresa o una sucursal); null = sin valor propio. */
@@ -25,12 +28,13 @@ export interface NivelCliente {
   modalidades: string[] | null;
   mixto: boolean | null;
   pago: PagoCliente | null;
+  transferencia: boolean | null;
 }
 
 export type AjustesCliente = Map<string, string>;
 
 export async function cargarAjustesCliente(negocioId: number): Promise<AjustesCliente> {
-  const r = await filas("SELECT clave, valor FROM ajustes WHERE negocio_id = ? AND (clave LIKE 'cliente\\_modalidades%' OR clave LIKE 'cliente\\_mixto%' OR clave LIKE 'cliente\\_pago%')", [negocioId]);
+  const r = await filas("SELECT clave, valor FROM ajustes WHERE negocio_id = ? AND (clave LIKE 'cliente\\_modalidades%' OR clave LIKE 'cliente\\_mixto%' OR clave LIKE 'cliente\\_pago%' OR clave LIKE 'cliente\\_transferencia%')", [negocioId]);
   return new Map(r.map((f) => [String(f['clave']), String(f['valor'] ?? '')]));
 }
 
@@ -62,6 +66,7 @@ export function nivelCliente(a: AjustesCliente, sucursalId: number | null): Nive
     modalidades: leerModalidades(a.get(`cliente_modalidades${sufijo}`)),
     mixto: mixto === undefined ? null : mixto !== '0',
     pago: leerPago(a.get(`cliente_pago${sufijo}`)),
+    transferencia: a.get(`cliente_transferencia${sufijo}`) === undefined ? null : a.get(`cliente_transferencia${sufijo}`) !== '0',
   };
 }
 
@@ -72,7 +77,8 @@ export function configEfectiva(a: AjustesCliente, sucursalId: number): ConfigCli
   const modalidades = s.modalidades ?? g.modalidades ?? [...TIPOS_PEDIDO];
   // "Uno aquí y otro para llevar" necesita que existan los dos tipos
   const mixto = (s.mixto ?? g.mixto ?? true) && modalidades.includes('aqui') && modalidades.includes('llevar');
-  return { modalidades, mixto, pago: s.pago ?? g.pago };
+  // Transferencia: deben permitirla la empresa Y la sucursal (por defecto sí)
+  return { modalidades, mixto, pago: s.pago ?? g.pago, transferencia: (g.transferencia ?? true) && (s.transferencia ?? true) };
 }
 
 export async function configClienteDe(negocioId: number, sucursalId: number): Promise<ConfigCliente> {
