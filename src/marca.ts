@@ -10,14 +10,14 @@ import { config } from './config.js';
 import { filas } from './db.js';
 import { fallo } from './errores.js';
 
-/** Colores por defecto de Comandia (los del tema original). */
+/** Colores por defecto de Comandia (identidad Esmeralda). */
 export const MARCA_DEFECTO = {
-  encabezado: '#601020', // barra principal
-  acento: '#f8c000', // línea de la barra, detalles
-  boton: '#2f7d3a', // botones y acciones (verde amable; el rojo se reserva para alertas y eliminar)
-  fondo: '#fff7e0', // fondo de la página
-  texto: '#2a1015', // texto
-  llevar: '#3f8fcb', // "Para llevar": carril de cocina y platos para llevar dentro de un pedido para comer aquí
+  encabezado: '#0a6b4e', // barra principal
+  acento: '#ff7a30', // línea de la barra, detalles
+  boton: '#0a6b4e', // botones y acciones (el rojo se reserva para alertas y eliminar)
+  fondo: '#f3f7f4', // fondo de la página
+  texto: '#10241c', // texto
+  llevar: '#c2570f', // "Para llevar": carril de cocina y platos para llevar dentro de un pedido para comer aquí
 } as const;
 export type ClaveColor = keyof typeof MARCA_DEFECTO;
 export const CLAVES_COLOR = Object.keys(MARCA_DEFECTO) as ClaveColor[];

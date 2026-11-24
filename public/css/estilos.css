@@ -5,15 +5,18 @@
    Los colores viven en variables: cambiándolos aquí cambian en toda la app. */
 
 :root {
-  --color-principal: #2f7d3a;   /* verde amable de los botones (texto blanco encima: contraste 5.3); el rojo queda solo para alertas y eliminar */
-  --color-vino:      #601020;   /* vino del logo (encabezados, selección) */
-  --color-amarillo:  #f8c000;   /* amarillo del logo (acentos, borde del encabezado) */
-  --color-oscuro:    #2a1015;   /* texto */
-  --color-fondo:     #fff7e0;   /* crema */
+  /* Identidad Comandia (Esmeralda). Cada empresa puede sustituir estos valores con /tema. */
+  --color-principal: #0a6b4e;   /* esmeralda de botones y acciones (texto blanco encima: contraste 6.5); el rojo queda solo para alertas y eliminar */
+  --color-vino:      #0a6b4e;   /* barra principal, encabezados, selección (el nombre "vino" es histórico) */
+  --color-amarillo:  #ff7a30;   /* mandarina: acentos y línea del encabezado (el nombre "amarillo" es histórico) */
+  --color-oscuro:    #10241c;   /* tinta: texto */
+  --color-fondo:     #f3f7f4;
   --color-tarjeta:   #ffffff;
-  --color-borde:     #ecdcb4;
-  --color-suave:     #f7ebc3;   /* fondos suaves (sin foto, etiquetas) */
-  --color-ok:        #2f7d3a;
+  --color-borde:     #e1e8e3;
+  --color-suave:     #ddefe6;   /* menta: fondos suaves (sin foto, etiquetas) */
+  --color-ok:        #1e9e6a;
+  --fuente-texto:    Inter, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  --fuente-titulos:  Outfit, Inter, system-ui, -apple-system, "Segoe UI", sans-serif;
   --color-error:     #b3261e;
   --radio:           14px;
 }
@@ -25,11 +28,14 @@
 
 body {
   margin: 0;
-  font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  font-family: var(--fuente-texto);
   background: var(--color-fondo);
   color: var(--color-oscuro);
   line-height: 1.5;
 }
+
+h1, h2, h3 { font-family: var(--fuente-titulos); letter-spacing: -.02em; }
+button, input, select, textarea { font-family: inherit; }
 
 .encabezado {
   background: var(--color-vino);

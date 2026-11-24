@@ -36,8 +36,8 @@ export async function rutasManifiesto(app: FastifyInstance): Promise<void> {
         display: 'standalone',
         orientation: 'any',
         lang: 'es-MX',
-        background_color: '#fff7e0',
-        theme_color: '#601020',
+        background_color: '#f3f7f4',
+        theme_color: '#0a6b4e',
         icons: [
           { src: '/img/icon-192.png', sizes: '192x192', type: 'image/png', purpose: 'any' },
           { src: '/img/icon-512.png', sizes: '512x512', type: 'image/png', purpose: 'any' },
