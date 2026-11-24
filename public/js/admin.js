@@ -1721,13 +1721,13 @@ function crCargarAmbito() {
 
 function crPintar() {
   const editar = crEstado.puede_editar;
-  const hereda = !editar || $('cr-heredar').checked;     // el gerente solo ve las definiciones; el dueño edita si la sucursal no hereda
+  const hereda = !editar || $('cr-heredar').checked;     // se edita cuando el ámbito no usa los carriles heredados
   const suc = crEstado.sucursales.find((s) => String(s.id) === $('cr-ambito').value);
   $('cr-heredado').hidden = !editar || !$('cr-heredar').checked || $('cr-ambito').value === 'general';
   $('cr-acciones').hidden = hereda;
   $('cr-guardar').hidden = !editar;
   $('cr-heredar-fila').hidden = !editar;
-  $('cr-ambito').closest('label').hidden = !editar;
+  $('cr-ambito').closest('label').hidden = $('cr-ambito').options.length < 2;   // el gerente solo tiene su sucursal
   const caja = $('cr-lista');
   caja.replaceChildren();
   crLista.forEach((c, n) => {
@@ -1793,7 +1793,7 @@ async function abrirCarriles() {
   if (!crEstado) { avisar('No se pudieron cargar los carriles.', true); return; }
   const sel = $('cr-ambito');
   sel.replaceChildren();
-  if (crEstado.puede_editar) sel.append(new Option('Toda la empresa', 'general'));
+  if (crEstado.puede_general) sel.append(new Option('Toda la empresa', 'general'));
   for (const s of crEstado.sucursales) sel.append(new Option('Sucursal · ' + s.nombre, String(s.id)));
   crCargarAmbito();
   abrirPagina(dlgCarriles, 'btn-carriles');

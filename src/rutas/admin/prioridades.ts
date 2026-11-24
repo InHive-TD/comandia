@@ -126,7 +126,7 @@ async function estadoCarriles(nid: number, alcance: number | null) {
   });
   const estaciones = (await filas('SELECT id, nombre FROM estaciones WHERE negocio_id = ? ORDER BY orden, id', [nid])).map((e) => ({ id: Number(e['id']), nombre: e['nombre'] }));
   const categorias = (await filas('SELECT nombre FROM categorias WHERE negocio_id = ? ORDER BY orden, id', [nid])).map((k) => String(k['nombre']));
-  return { puede_editar: alcance === null, general: general ?? CARRILES_DEFECTO, general_propio: general !== null, defecto: CARRILES_DEFECTO, sucursales, estaciones, categorias };
+  return { puede_editar: true, puede_general: alcance === null, general: general ?? CARRILES_DEFECTO, general_propio: general !== null, defecto: CARRILES_DEFECTO, sucursales, estaciones, categorias };
 }
 
 /** Estado para el panel: interruptor general de Cocina horizontal y el efectivo de cada sucursal (el gerente solo ve la suya). */
@@ -180,7 +180,7 @@ export async function rutasPrioridades(app: FastifyInstance): Promise<void> {
       exigirMetodo(req, 'POST');
       const datos = cuerpoJson(req);
       const accion = String(datos['accion'] ?? '');
-      if (alcance !== null && !['lote', 'modalidad', 'codigo_rapido', 'cocina_horizontal', 'pedir_por_mesa', 'carril_activo'].includes(accion)) throw new ErrorHttp(403, 'validacion', 'Solo el dueño de la empresa puede cambiar esto.');
+      if (alcance !== null && !['lote', 'modalidad', 'codigo_rapido', 'cocina_horizontal', 'pedir_por_mesa', 'carril_activo', 'carriles'].includes(accion)) throw new ErrorHttp(403, 'validacion', 'Solo el dueño de la empresa puede cambiar esto.');
       const guardar = (clave: string, valor: string) =>
         c.ejecutar('INSERT INTO ajustes (negocio_id, clave, valor) VALUES (?, ?, ?) ON DUPLICATE KEY UPDATE valor = VALUES(valor)', [c.nid, clave, valor]);
 
@@ -215,11 +215,13 @@ export async function rutasPrioridades(app: FastifyInstance): Promise<void> {
         return { ok: true, carriles: await estadoCarriles(c.nid, alcance) };
       }
 
-      // Carriles de cocina: solo el dueño (el gerente no está en la lista de acciones permitidas de arriba).
+      // Carriles de cocina: el dueño los define para toda la empresa o para cualquier sucursal; el gerente, solo para la suya.
       if (accion === 'carriles') {
-        const clave = datos['ambito'] === 'general' ? 'cocina_carriles' : `cocina_carriles@${entero(datos['sucursal_id'])}`;
+        if (datos['ambito'] === 'general' && alcance !== null) throw new ErrorHttp(403, 'validacion', 'Solo el dueño de la empresa puede cambiar los carriles de toda la empresa.');
+        const sidAmbito = alcance ?? entero(datos['sucursal_id']);
+        const clave = datos['ambito'] === 'general' ? 'cocina_carriles' : `cocina_carriles@${sidAmbito}`;
         if (datos['ambito'] !== 'general') {
-          const sid = entero(datos['sucursal_id']);
+          const sid = sidAmbito;
           if ((await c.filas('SELECT id FROM sucursales WHERE id = ? AND negocio_id = ?', [sid, c.nid])).length === 0) throw new ErrorHttp(404, 'validacion', 'Esa sucursal no existe.');
         }
         if (noVacio(datos['heredar'])) {   // sucursal: volver a usar los de la empresa · empresa: volver a los de siempre
