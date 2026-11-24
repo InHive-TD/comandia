@@ -8,6 +8,7 @@
  * precio propio si lo cambió. "Agotado" vale solo por el día: al día siguiente todo vuelve a estar disponible
  * (agotado_fecha deja de ser hoy). Los agotados van al final de su categoría, atenuados y sin poder pedirse.
  */
+import { planoActivoEn, planoDe } from '../plano.js';
 import type { FastifyInstance } from 'fastify';
 import { exigirMetodo, fijarSucursalAuto, requerirRol } from '../auth.js';
 import { CARTA_AGOTADO, CARTA_PRECIO, cartaUnir, cartaVisible } from '../carta.js';
@@ -76,7 +77,9 @@ export async function rutasMenu(app: FastifyInstance): Promise<void> {
   app.get('/mesas', async (req) => {
     exigirMetodo(req, 'GET');
     await requerirRol(req, 'taquero', 'caja', 'admin', 'mesero', 'gerente');
-    const r = await filas('SELECT id, nombre FROM mesas WHERE sucursal_id = ? AND negocio_id = ? AND activa = 1 ORDER BY orden, id', [req.sucursalId, req.negocio.id]);
-    return { ok: true, mesas: r.map((m) => ({ id: Number(m['id']), nombre: m['nombre'] })) };
+    const plano = await planoDe(req.negocio.id, req.sucursalId, true);
+    // `plano`: ¿se elige la mesa en el plano visual? Solo si está activado y hay zonas con mesas ubicadas
+    const usarPlano = (await planoActivoEn(req.negocio.id, req.sucursalId)) && plano.zonas.length > 0 && plano.mesas.some((m) => m.zona_id !== null);
+    return { ok: true, mesas: plano.mesas, zonas: plano.zonas, plano: usarPlano };
   });
 }

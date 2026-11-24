@@ -67,8 +67,10 @@ async function iniciar() {
 
 /* Mesas de la sucursal: el mesero elige a cuál lleva el pedido (si la sucursal tiene mesas) */
 let mesas = [];
+let zonasPlano = [];
+let planoActivo = false; // el administrador activó el plano y hay mesas ubicadas
 async function cargarMesas() {
-  try { mesas = (await pedir(API + 'mesas.php')).mesas; } catch { mesas = []; }
+  try { const r = await pedir(API + 'mesas.php'); mesas = r.mesas; zonasPlano = r.zonas || []; planoActivo = r.plano === true; } catch { mesas = []; zonasPlano = []; planoActivo = false; }
   for (const id of ['mesa', 'ed-mesa']) {
     const sel = $(id);
     sel.replaceChildren();
@@ -86,6 +88,15 @@ function actualizarMesa() {
   const sinMesas = !mesas.length && modalidad === 'aqui' && !ordenDestino;
   $('mesa-aviso').hidden = !sinMesas;
   $('mesa-aviso').textContent = sinMesas ? 'Esta sucursal no tiene mesas todavía (se pide por nombre). ¿Estás en la sucursal correcta? Cámbiala arriba o crea las mesas en Ajustes → Sucursales y mesas.' : '';
+  // Con plano activo se elige tocando la mesa en el dibujo; el <select> sigue siendo el valor real
+  const usaPlano = planoActivo && !$('mesa-fila').hidden;
+  $('mesa').hidden = usaPlano;
+  $('mesa-plano-btn').hidden = !usaPlano;
+  if (usaPlano) {
+    const m = mesas.find((x) => String(x.id) === $('mesa').value);
+    const z = m && zonasPlano.find((q) => q.id === m.zona_id);
+    $('mesa-plano-btn').textContent = m ? `🪑 Mesa ${m.nombre}${z ? ' (' + z.nombre + ')' : ''} · cambiar` : 'Elegir mesa en el plano';
+  }
   const ob = mesaObligatoria();
   $('mesa-rotulo').textContent = ob ? 'Mesa (obligatoria)' : 'Mesa';
   $('cliente-rotulo').textContent = ob ? 'Nombre del cliente (opcional)' : 'Nombre del cliente';
@@ -1075,3 +1086,41 @@ iniciar();
 
 
 
+
+
+/* Selector visual de mesa (plano) */
+let mpZona = null;
+function mpElegir(m) { $('mesa').value = String(m.id); $('dlg-mesa-plano').close(); actualizarMesa(); }
+function mpPintar() {
+  const tabs = $('mp-zonas'); tabs.replaceChildren();
+  for (const z of zonasPlano) {
+    const b = el('button', 'btn', z.nombre); b.type = 'button';
+    b.setAttribute('aria-pressed', String(z.id === mpZona));
+    b.addEventListener('click', () => { mpZona = z.id; mpPintar(); });
+    tabs.append(b);
+  }
+  const lienzo = $('mp-lienzo'); lienzo.replaceChildren();
+  const aqui = mesas.filter((m) => m.zona_id === mpZona && m.x !== null && m.activa !== false);
+  if (!aqui.length) lienzo.append(el('div', 'plano-vacio', 'No hay mesas en esta zona.'));
+  for (const m of aqui) {
+    const b = el('button', 'plano-mesa ' + m.forma + (String(m.id) === $('mesa').value ? ' elegida' : ''), m.nombre);
+    b.type = 'button'; b.style.left = m.x + '%'; b.style.top = m.y + '%';
+    b.addEventListener('click', () => mpElegir(m));
+    lienzo.append(b);
+  }
+  const sin = $('mp-sin'); sin.replaceChildren();
+  const libres = mesas.filter((m) => (m.zona_id === null || m.x === null) && m.activa !== false);
+  if (!libres.length) sin.append(el('span', 'ayuda', 'Ninguna.'));
+  for (const m of libres) {
+    const b = el('button', 'btn chico', m.nombre); b.type = 'button';
+    b.addEventListener('click', () => mpElegir(m));
+    sin.append(b);
+  }
+}
+$('mesa-plano-btn').addEventListener('click', () => {
+  const m = mesas.find((x) => String(x.id) === $('mesa').value);
+  mpZona = (m && m.zona_id) || (zonasPlano[0] && zonasPlano[0].id) || null;
+  mpPintar();
+  $('dlg-mesa-plano').showModal();
+});
+$('mp-cancelar').addEventListener('click', () => $('dlg-mesa-plano').close());

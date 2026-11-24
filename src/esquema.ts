@@ -30,6 +30,19 @@ export async function asegurarEsquema(): Promise<void> {
   await asegurarColumna('productos', 'grupo_obligatorio', 'VARCHAR(40) NULL');
   // Foto de perfil de cada usuario (nombre del archivo en uploads, igual que las fotos de platillos)
   await asegurarColumna('usuarios', 'foto', 'VARCHAR(80) NULL');
+  // Plano de mesas: zonas de una sucursal (Piso 1, Patio…) y la posición de cada mesa dentro de su zona (en % del lienzo)
+  await ejecutar(`CREATE TABLE IF NOT EXISTS zonas (
+    id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+    negocio_id INT UNSIGNED NOT NULL,
+    sucursal_id INT UNSIGNED NOT NULL,
+    nombre VARCHAR(40) NOT NULL,
+    orden INT NOT NULL DEFAULT 0,
+    UNIQUE KEY uq_zona (sucursal_id, nombre)
+  ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4`);
+  await asegurarColumna('mesas', 'zona_id', 'INT UNSIGNED NULL');
+  await asegurarColumna('mesas', 'pos_x', 'DECIMAL(5,2) NULL');
+  await asegurarColumna('mesas', 'pos_y', 'DECIMAL(5,2) NULL');
+  await asegurarColumna('mesas', 'forma', "VARCHAR(12) NOT NULL DEFAULT 'cuadrada'");
   await ejecutar(`CREATE TABLE IF NOT EXISTS sesiones (
     id CHAR(64) NOT NULL PRIMARY KEY,
     contexto VARCHAR(60) NOT NULL,

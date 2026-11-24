@@ -506,7 +506,7 @@ function marcarMenu(idBoton) {
 /** Muestra una sección como página: cierra la que estuviera abierta y oculta la lista de productos. */
 /* Cada sección tiene su propia dirección: /<empresa>/admin/usuarios, /extras… (Inicio es solo /<empresa>/admin/).
    Se puede recargar, guardar en favoritos y usar "atrás". Las direcciones no llevan "#". */
-const RUTAS = { inicio: 'btn-reportes', platillos: 'btn-productos', categorias: 'btn-categorias', extras: 'btn-extras', 'carga-masiva': 'btn-carga', sucursales: 'btn-sucursales', usuarios: 'btn-usuarios', 'ajustes-cocina': 'btn-prioridades', 'ajustes-pedidos': 'btn-pedidos-qr', 'ajustes-pago': 'btn-pago', 'ajustes-caja': 'btn-caja-cfg', 'ajustes-toma': 'btn-toma-pedidos', 'ajustes-carriles': 'btn-carriles', apariencia: 'btn-apariencia' };
+const RUTAS = { inicio: 'btn-reportes', platillos: 'btn-productos', categorias: 'btn-categorias', extras: 'btn-extras', 'carga-masiva': 'btn-carga', sucursales: 'btn-sucursales', usuarios: 'btn-usuarios', 'ajustes-cocina': 'btn-prioridades', 'ajustes-pedidos': 'btn-pedidos-qr', 'ajustes-pago': 'btn-pago', 'ajustes-caja': 'btn-caja-cfg', 'ajustes-plano': 'btn-plano', 'ajustes-toma': 'btn-toma-pedidos', 'ajustes-carriles': 'btn-carriles', apariencia: 'btn-apariencia' };
 const BASE_ADMIN = location.pathname.replace(/\/admin(\/.*)?$/, '/admin/');   // "/lavale/admin/"
 const seccionDeLaDireccion = () => {
   const n = (location.pathname.startsWith(BASE_ADMIN) ? location.pathname.slice(BASE_ADMIN.length).replace(/\/+$/, '') : '') || 'inicio';
@@ -2578,3 +2578,208 @@ document.addEventListener('click', (ev) => { if (ev.target.closest && ev.target.
 const dlgCaja = $('dlg-caja');
 $('btn-caja-cfg').addEventListener('click', () => { abrirPagina(dlgCaja, 'btn-caja-cfg'); actualizarEnlacesPagina(); });
 $('caja-cerrar').addEventListener('click', () => dlgCaja.close());
+
+
+/* ------------------------------------------------------------------ */
+/*  Plano de mesas: zonas por sucursal y mesas arrastrables            */
+/* ------------------------------------------------------------------ */
+const dlgPlano = $('dlg-plano');
+let pl = null;                 // estado del servidor: { sucursal, sucursales, activo, activo_propio, general_activo, puede_general, zonas, mesas }
+let plMesas = [];              // copia local editable de las mesas (zona_id, x, y, forma)
+let plZona = null;             // id de la zona que se está viendo
+let plSel = null;              // id de la mesa seleccionada
+let plSucio = false;           // ¿hay posiciones sin guardar?
+
+function plMarcarSucio(v = true) { plSucio = v; $('pl-guardar').disabled = !v; $('pl-pendiente').hidden = !v; }
+
+/** Lee el estado del servidor; con `conservar` se mantienen los cambios locales de las mesas que siguen existiendo. */
+async function plCargar(sid, conservar = false) {
+  const r = await pedir(API + 'admin/plano.php' + (sid ? '?sucursal=' + sid : ''));
+  plAplicar(r, conservar);
+}
+function plAplicar(r, conservar) {
+  const locales = new Map(plMesas.map((m) => [m.id, m]));
+  const mismaSucursal = pl && pl.sucursal === r.sucursal;
+  pl = r;
+  plMesas = r.mesas.map((m) => {
+    const l = conservar && mismaSucursal ? locales.get(m.id) : null;
+    // lo que el usuario movió y aún no guardó se conserva, salvo que su zona ya no exista
+    return l && plSucio && (l.zona_id === null || r.zonas.some((z) => z.id === l.zona_id)) ? { ...m, zona_id: l.zona_id, x: l.x, y: l.y, forma: l.forma } : { ...m };
+  });
+  if (!conservar || !mismaSucursal) plMarcarSucio(false);
+  if (!r.zonas.some((z) => z.id === plZona)) plZona = r.zonas.length ? r.zonas[0].id : null;
+  if (!plMesas.some((m) => m.id === plSel)) plSel = null;
+  plPintar();
+}
+
+function plPintar() {
+  const sel = $('pl-suc');
+  sel.replaceChildren(...pl.sucursales.map((s) => new Option(s.nombre, String(s.id))));
+  sel.value = String(pl.sucursal);
+  $('pl-suc-fila').hidden = pl.sucursales.length < 2;
+  $('pl-activo').checked = pl.activo;
+  $('pl-general-fila').hidden = !pl.puede_general;
+  $('pl-general').checked = pl.general_activo;
+
+  // Pestañas de zonas
+  const tabs = $('pl-zonas');
+  tabs.replaceChildren();
+  for (const z of pl.zonas) {
+    const b = el('button', 'btn', z.nombre);
+    b.type = 'button'; b.setAttribute('aria-pressed', String(z.id === plZona));
+    b.addEventListener('click', () => { plZona = z.id; plSel = null; plPintar(); });
+    tabs.append(b);
+  }
+  const nueva = el('button', 'btn', '＋ Zona'); nueva.type = 'button';
+  nueva.addEventListener('click', plNuevaZona);
+  tabs.append(nueva);
+  $('pl-zona-acc').hidden = plZona === null;
+
+  // Lienzo
+  const lienzo = $('pl-lienzo');
+  lienzo.replaceChildren();
+  if (plZona === null) {
+    lienzo.append(el('div', 'plano-vacio', 'Crea tu primera zona con «＋ Zona» (por ejemplo: Piso 1, Patio o Comedor principal).'));
+  } else {
+    const aqui = plMesas.filter((m) => m.zona_id === plZona);
+    if (aqui.length === 0) lienzo.append(el('div', 'plano-vacio', 'Esta zona está vacía. Toca una mesa de «Mesas sin ubicar» para ponerla aquí.'));
+    for (const m of aqui) lienzo.append(plToken(m));
+  }
+
+  // Edición de la mesa seleccionada
+  const m = plMesas.find((x) => x.id === plSel);
+  $('pl-edicion').hidden = !m;
+  if (m) {
+    $('pl-sel-nombre').textContent = 'Mesa ' + m.nombre;
+    document.querySelectorAll('#pl-edicion [data-forma]').forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.forma === m.forma)));
+  }
+
+  // Mesas sin ubicar
+  const sin = $('pl-sin');
+  sin.replaceChildren();
+  const libres = plMesas.filter((x) => x.zona_id === null);
+  if (libres.length === 0) sin.append(el('span', 'ayuda', 'Todas las mesas están ubicadas.'));
+  for (const x of libres) {
+    const b = el('button', 'btn chico' + (x.activa ? '' : ' inactiva'), x.nombre + (x.activa ? '' : ' (inactiva)'));
+    b.type = 'button';
+    b.disabled = plZona === null;
+    b.title = plZona === null ? 'Primero crea una zona' : 'Ponerla en la zona de arriba';
+    b.addEventListener('click', () => {
+      const n = plMesas.filter((y) => y.zona_id === plZona).length;
+      x.zona_id = plZona; x.x = 15 + ((n * 13) % 70); x.y = 20 + ((n * 17) % 60);
+      plSel = x.id; plMarcarSucio(); plPintar();
+    });
+    sin.append(b);
+  }
+}
+
+/** Mesa arrastrable. Un toque sin mover la selecciona; arrastrar la reubica (con el dedo o el mouse). */
+function plToken(m) {
+  const b = el('button', 'plano-mesa editable ' + m.forma + (m.id === plSel ? ' sel' : '') + (m.activa ? '' : ' inactiva'), m.nombre);
+  b.type = 'button';
+  b.style.left = m.x + '%'; b.style.top = m.y + '%';
+  let inicio = null;
+  b.addEventListener('pointerdown', (ev) => {
+    ev.preventDefault();
+    b.setPointerCapture(ev.pointerId);
+    inicio = { x: ev.clientX, y: ev.clientY, movido: false };
+  });
+  b.addEventListener('pointermove', (ev) => {
+    if (!inicio) return;
+    if (!inicio.movido && Math.hypot(ev.clientX - inicio.x, ev.clientY - inicio.y) < 5) return;
+    inicio.movido = true;
+    const r = $('pl-lienzo').getBoundingClientRect();
+    m.x = Math.min(97, Math.max(3, ((ev.clientX - r.left) / r.width) * 100));
+    m.y = Math.min(95, Math.max(5, ((ev.clientY - r.top) / r.height) * 100));
+    b.style.left = m.x + '%'; b.style.top = m.y + '%';
+  });
+  const soltar = () => {
+    if (!inicio) return;
+    const movido = inicio.movido;
+    inicio = null;
+    if (movido) plMarcarSucio();
+    plSel = m.id;
+    plPintar();
+  };
+  b.addEventListener('pointerup', soltar);
+  b.addEventListener('pointercancel', () => { inicio = null; });
+  return b;
+}
+
+async function plConfirmarDescartar() {
+  return !plSucio || (await confirmar('Tienes cambios sin guardar en el plano. Si sigues, se pierden.', { si: 'Descartar cambios', peligro: true }));
+}
+async function plNuevaZona() {
+  const nombre = await pedirTexto('Nombre de la nueva zona (ej. Piso 1, Patio, Comedor principal):', { si: 'Crear zona' });
+  if (!nombre || !nombre.trim()) return;
+  try {
+    const r = await enviarJson(API + 'admin/plano.php', { accion: 'zona_crear', sucursal_id: pl.sucursal, nombre: nombre.trim() });
+    plZona = r.zonas[r.zonas.length - 1].id;
+    plAplicar(r, true);
+  } catch (err) { $('pl-error').textContent = err.message; }
+}
+$('pl-zona-renombrar').addEventListener('click', async () => {
+  const z = pl.zonas.find((x) => x.id === plZona);
+  const nombre = z && await pedirTexto(`Nuevo nombre para la zona «${z.nombre}»:`, { si: 'Guardar', valor: z.nombre });
+  if (!nombre || !nombre.trim() || nombre.trim() === z.nombre) return;
+  try { plAplicar(await enviarJson(API + 'admin/plano.php', { accion: 'zona_renombrar', id: plZona, nombre: nombre.trim() }), true); }
+  catch (err) { $('pl-error').textContent = err.message; }
+});
+$('pl-zona-eliminar').addEventListener('click', async () => {
+  const z = pl.zonas.find((x) => x.id === plZona);
+  if (!z) return;
+  const n = plMesas.filter((m) => m.zona_id === z.id).length;
+  if (!(await confirmar(`¿Quitar la zona «${z.nombre}»?${n ? ` Sus ${n} mesa${n === 1 ? '' : 's'} NO se borran: quedan «sin ubicar».` : ''}`, { si: 'Quitar zona', peligro: true }))) return;
+  try { plAplicar(await enviarJson(API + 'admin/plano.php', { accion: 'zona_eliminar', id: z.id }), true); }
+  catch (err) { $('pl-error').textContent = err.message; }
+});
+document.querySelectorAll('#pl-edicion [data-forma]').forEach((b) => b.addEventListener('click', () => {
+  const m = plMesas.find((x) => x.id === plSel);
+  if (m) { m.forma = b.dataset.forma; plMarcarSucio(); plPintar(); }
+}));
+$('pl-quitar').addEventListener('click', () => {
+  const m = plMesas.find((x) => x.id === plSel);
+  if (m) { m.zona_id = null; m.x = null; m.y = null; plSel = null; plMarcarSucio(); plPintar(); }
+});
+$('pl-nueva').addEventListener('submit', async (ev) => {
+  ev.preventDefault();
+  $('pl-error').textContent = '';
+  const nombre = $('pl-nueva-nombre').value.trim();
+  if (!nombre) return;
+  try {
+    await enviarJson(API + 'admin/mesas.php', { accion: 'crear', sucursal_id: pl.sucursal, nombre });
+    $('pl-nueva-nombre').value = '';
+    await plCargar(pl.sucursal, true);
+    avisar('Mesa creada: tócala en «Mesas sin ubicar» para ponerla en el plano');
+  } catch (err) { $('pl-error').textContent = err.message; }
+});
+$('pl-guardar').addEventListener('click', async () => {
+  $('pl-error').textContent = '';
+  try {
+    const r = await enviarJson(API + 'admin/plano.php', { accion: 'guardar', sucursal_id: pl.sucursal, mesas: plMesas.map((m) => ({ id: m.id, zona_id: m.zona_id, x: m.x, y: m.y, forma: m.forma })) });
+    plMarcarSucio(false);
+    plAplicar(r, false);
+    avisar('Plano guardado');
+  } catch (err) { $('pl-error').textContent = err.message; }
+});
+$('pl-suc').addEventListener('change', async () => {
+  if (!(await plConfirmarDescartar())) { $('pl-suc').value = String(pl.sucursal); return; }
+  plMarcarSucio(false); plZona = null; plSel = null;
+  try { await plCargar(Number($('pl-suc').value)); } catch (err) { $('pl-error').textContent = err.message; }
+});
+$('pl-activo').addEventListener('change', async () => {
+  try { plAplicar(await enviarJson(API + 'admin/plano.php', { accion: 'activar', ambito: 'sucursal', sucursal_id: pl.sucursal, activo: $('pl-activo').checked }), true); avisar($('pl-activo').checked ? 'Plano activado en esta sucursal' : 'Plano desactivado en esta sucursal'); }
+  catch (err) { $('pl-error').textContent = err.message; $('pl-activo').checked = pl.activo; }
+});
+$('pl-general').addEventListener('change', async () => {
+  try { plAplicar(await enviarJson(API + 'admin/plano.php', { accion: 'activar', ambito: 'general', sucursal_id: pl.sucursal, activo: $('pl-general').checked }), true); avisar('Valor por defecto de la empresa guardado'); }
+  catch (err) { $('pl-error').textContent = err.message; $('pl-general').checked = pl.general_activo; }
+});
+$('btn-plano').addEventListener('click', async () => {
+  $('pl-error').textContent = '';
+  plMarcarSucio(false); plMesas = []; pl = null; plZona = null; plSel = null;
+  try { await plCargar(0); } catch (err) { avisar(err.message, true); return; }
+  abrirPagina(dlgPlano, 'btn-plano');
+  actualizarEnlacesPagina();
+});
+$('pl-cerrar').addEventListener('click', async () => { if (await plConfirmarDescartar()) { plMarcarSucio(false); dlgPlano.close(); } });

@@ -47,6 +47,15 @@ CREATE TABLE IF NOT EXISTS sucursales (
 -- ---------------------------------------------------------------------
 -- MESAS: las mesas de cada sucursal (el mesero elige a cuál llevar el pedido).
 -- ---------------------------------------------------------------------
+CREATE TABLE IF NOT EXISTS zonas (
+    id          INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+    negocio_id  INT UNSIGNED NOT NULL,
+    sucursal_id INT UNSIGNED NOT NULL,
+    nombre      VARCHAR(40) NOT NULL,
+    orden       INT NOT NULL DEFAULT 0,
+    UNIQUE KEY uq_zona (sucursal_id, nombre)
+) ENGINE=InnoDB;
+
 CREATE TABLE IF NOT EXISTS mesas (
     id          INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
     negocio_id  INT UNSIGNED NOT NULL,
@@ -54,6 +63,10 @@ CREATE TABLE IF NOT EXISTS mesas (
     nombre      VARCHAR(30) NOT NULL,            -- "1", "2", "Terraza 3"...
     orden       INT NOT NULL DEFAULT 0,
     activa      TINYINT(1) NOT NULL DEFAULT 1,
+    zona_id     INT UNSIGNED NULL,                -- zona del plano (Piso 1, Patio…); NULL = sin ubicar
+    pos_x       DECIMAL(5,2) NULL,                -- posición en el plano, en % del lienzo
+    pos_y       DECIMAL(5,2) NULL,
+    forma       VARCHAR(12) NOT NULL DEFAULT 'cuadrada',
     UNIQUE KEY uq_mesa (sucursal_id, nombre),
     CONSTRAINT fk_mesa_sucursal FOREIGN KEY (sucursal_id) REFERENCES sucursales(id)
 ) ENGINE=InnoDB;

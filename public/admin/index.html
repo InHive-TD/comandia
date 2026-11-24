@@ -11,13 +11,14 @@
   <meta name="theme-color" content="#0a6b4e">
   <meta name="mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-capable" content="yes">
-  <script src="../js/pwa.js?v=1795543207" defer></script>
+  <script src="../js/pwa.js?v=1795547218" defer></script>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Outfit:wght@600;700;800&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="../css/estilos.css?v=1795543207">
-  <link rel="stylesheet" href="../css/admin.css?v=1795543207">
-  <link rel="stylesheet" href="../css/shell.css?v=1795543207">
+  <link rel="stylesheet" href="../css/estilos.css?v=1795547218">
+  <link rel="stylesheet" href="../css/plano.css?v=1795547218">
+  <link rel="stylesheet" href="../css/admin.css?v=1795547218">
+  <link rel="stylesheet" href="../css/shell.css?v=1795547218">
   <link rel="stylesheet" href="../api/tema.php">
 </head>
 <body>
@@ -86,6 +87,7 @@
           <button class="nav-sum" type="button" aria-expanded="false">Pedidos</button>
           <div class="menu-desp-items">
             <button id="btn-toma-pedidos" data-titulo="Ajustes de pedidos" class="btn nav-ico i-pedidos" type="button">Ajustes</button>
+            <button id="btn-plano" data-titulo="Plano de mesas" class="btn nav-ico i-plano" type="button">Plano de mesas</button>
           </div>
         </div>
         <div class="menu-desp" data-grupo="caja">
@@ -377,6 +379,53 @@
   </dialog>
 
   <!-- Carriles de cocina: cómo se acomodan los pedidos en la pantalla de Cocina (solo el dueño) -->
+  <dialog id="dlg-plano" class="pagina">
+    <div class="formulario dialogo pl-dialogo">
+      <div class="ver-pagina-fila"><a class="btn chico ver-pagina" data-pagina="pedidos" href="#" target="_blank" rel="noopener" title="Se abre en otra pestaña para ver los cambios">👁 Ver interfaz de pedidos ↗</a></div>
+      <h2>Plano de mesas</h2>
+      <p class="ayuda">Arma el plano de cada sucursal: crea <strong>zonas</strong> (Piso 1, Patio, Comedor…) y arrastra las mesas a su lugar. Al levantar un pedido, el mesero elige la zona y toca la mesa en el plano.</p>
+      <label id="pl-suc-fila" class="ct-fila">Sucursal
+        <select id="pl-suc"></select>
+      </label>
+      <label class="switch">
+        <input id="pl-activo" type="checkbox"><span class="slider"></span><span>Usar el plano al elegir la mesa en Tomar pedidos</span>
+      </label>
+      <label id="pl-general-fila" class="lote-op" hidden>
+        <input id="pl-general" type="checkbox"><span><strong>Toda la empresa</strong> (valor por defecto; cada sucursal puede cambiarlo arriba)</span>
+      </label>
+      <p class="ayuda">Si está apagado, el mesero sigue eligiendo la mesa de una lista sencilla.</p>
+
+      <div id="pl-zonas" class="plano-pestanas"></div>
+      <div id="pl-zona-acc" class="ex-botones" hidden>
+        <button id="pl-zona-renombrar" class="btn chico" type="button">✎ Renombrar zona</button>
+        <button id="pl-zona-eliminar" class="btn chico peligro" type="button">🗑 Quitar zona</button>
+      </div>
+      <div id="pl-lienzo" class="plano-lienzo" aria-label="Plano de la zona"></div>
+      <div id="pl-edicion" class="plano-edicion" hidden>
+        <strong id="pl-sel-nombre"></strong>
+        <span class="ayuda">Forma:</span>
+        <button class="btn chico" type="button" data-forma="cuadrada" aria-pressed="false">▢ Cuadrada</button>
+        <button class="btn chico" type="button" data-forma="redonda" aria-pressed="false">◯ Redonda</button>
+        <button class="btn chico" type="button" data-forma="larga" aria-pressed="false">▭ Larga</button>
+        <button id="pl-quitar" class="btn chico peligro" type="button">Quitar del plano</button>
+      </div>
+      <p class="ayuda">Arrastra cada mesa para acomodarla; toca una mesa para cambiar su forma o quitarla del plano.</p>
+
+      <h4 class="cp-sub">Mesas sin ubicar <small class="ayuda">(toca una para ponerla en la zona de arriba)</small></h4>
+      <div id="pl-sin" class="plano-sin"></div>
+      <form id="pl-nueva" class="fila-mesas" autocomplete="off">
+        <input id="pl-nueva-nombre" type="text" maxlength="30" placeholder="Nueva mesa (ej. 7, Terraza 2)" aria-label="Nombre de la nueva mesa" required>
+        <button class="btn" type="submit">＋ Crear mesa</button>
+      </form>
+      <p id="pl-error" class="msg-error" role="alert"></p>
+      <p id="pl-pendiente" class="ayuda" hidden>Tienes cambios sin guardar.</p>
+      <div class="acciones-dialogo">
+        <button id="pl-guardar" class="btn principal" type="button" disabled>Guardar plano</button>
+        <button id="pl-cerrar" class="btn" type="button">Cerrar</button>
+      </div>
+    </div>
+  </dialog>
+
   <dialog id="dlg-caja" class="pagina">
     <div class="formulario dialogo">
       <div class="ver-pagina-fila"><a class="btn chico ver-pagina" data-pagina="caja" href="#" target="_blank" rel="noopener" title="Se abre en otra pestaña para ver los cambios">👁 Ver interfaz de caja ↗</a></div>
@@ -785,9 +834,9 @@
 
   <div id="toast" class="toast" role="status" hidden></div>
 
-  <script src="../js/comun.js?v=1795543207"></script>
-  <script src="../js/shell.js?v=1795543207"></script>
+  <script src="../js/comun.js?v=1795547218"></script>
+  <script src="../js/shell.js?v=1795547218"></script>
   <script src="../js/vendor/qrcode.js"></script>
-  <script src="../js/admin.js?v=1795543207"></script>
+  <script src="../js/admin.js?v=1795547218"></script>
 </body>
 </html>
