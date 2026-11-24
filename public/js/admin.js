@@ -348,6 +348,22 @@ function interruptor(p) {
 /*  Formulario de producto                                             */
 /* ------------------------------------------------------------------ */
 
+/** Opción obligatoria: el interruptor muestra la lista de secciones (Carne, Quitar…) de la que hay que elegir; vacío = cualquier opción. */
+function pintarGrupoObligatorio(actual) {
+  const secciones = [...new Set([...gruposExtras, ...extras.map((x) => x.grupo).filter(Boolean)])];
+  const sel = $('f-grupo-oblig');
+  sel.replaceChildren(new Option('Cualquier opción', ''), ...secciones.map((g) => new Option(g, g)));
+  sel.value = secciones.includes(actual) ? actual : '';
+  alCambiarObligatoria();
+}
+function alCambiarObligatoria() {
+  const obligatoria = $('f-obligatoria').checked;
+  $('f-grupo-fila').hidden = !obligatoria;
+  if (obligatoria) $('f-pedir').checked = true;   // si es obligatoria, las opciones se abren siempre
+  $('f-pedir').disabled = obligatoria;
+}
+$('f-obligatoria').addEventListener('change', alCambiarObligatoria);
+
 /** Casillas con los extras (los desactivados se muestran solo si el producto los tiene). */
 function pintarExtrasProducto(marcados, precios = {}) {
   const caja = $('f-extras');
@@ -508,11 +524,15 @@ function abrirFormulario(p = null, categoriaId = null) {
     $('f-descripcion').value = p.descripcion || '';
     $('f-disponible').checked = p.disponible;
     $('f-pedir').checked = !!p.pedir_opciones;
+    $('f-obligatoria').checked = !!p.opciones_obligatorias;
+    pintarGrupoObligatorio(p.grupo_obligatorio || '');
     ponerVistaPrevia(p.foto ? RUTA_FOTOS + encodeURIComponent(p.foto) : null);
   } else {
     if (categoriaId !== null) select.value = String(categoriaId);
     $('f-disponible').checked = true;
     $('f-pedir').checked = false;
+    $('f-obligatoria').checked = false;
+    pintarGrupoObligatorio('');
     ponerVistaPrevia(null);
   }
 
@@ -584,6 +604,8 @@ formProducto.addEventListener('submit', async (ev) => {
     datos.append('descripcion', $('f-descripcion').value.trim());
     datos.append('disponible', $('f-disponible').checked ? '1' : '0');
     datos.append('pedir_opciones', $('f-pedir').checked ? '1' : '0');
+    datos.append('opciones_obligatorias', $('f-obligatoria').checked ? '1' : '0');
+    datos.append('grupo_obligatorio', $('f-obligatoria').checked ? $('f-grupo-oblig').value : '');
     datos.append('codigo', $('f-codigo').value.trim());
     datos.append('porcion', $('f-porcion').value.trim());
     datos.append('extras', [...$('f-extras').querySelectorAll('input[type=checkbox]:checked')].map((c) => c.value).join(','));

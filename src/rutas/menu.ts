@@ -23,7 +23,7 @@ export async function rutasMenu(app: FastifyInstance): Promise<void> {
 
     const prods = await filas(
       `SELECT c.id AS categoria_id, c.nombre AS categoria, p.id, p.nombre, p.descripcion, ${CARTA_PRECIO} AS precio, p.foto, p.codigo,
-              p.max_carnes, p.pedir_opciones, p.porcion, ${CARTA_AGOTADO} AS agotado
+              p.max_carnes, p.pedir_opciones, p.opciones_obligatorias, p.grupo_obligatorio, p.porcion, ${CARTA_AGOTADO} AS agotado
          FROM productos p
          JOIN categorias c ON c.id = p.categoria_id${cartaUnir(suc)}
         WHERE p.negocio_id = ? AND c.negocio_id = p.negocio_id AND p.disponible = 1${cartaVisible(suc)}
@@ -60,7 +60,9 @@ export async function rutasMenu(app: FastifyInstance): Promise<void> {
         foto: f['foto'] ? `uploads/${String(f['foto'])}` : null,
         codigo: f['codigo'],
         porcion: f['porcion'],
-        pedir_opciones: Boolean(Number(f['pedir_opciones'])),
+        pedir_opciones: Boolean(Number(f['pedir_opciones'])) || Boolean(Number(f['opciones_obligatorias'])),
+        obligatorias: Boolean(Number(f['opciones_obligatorias'])),
+        grupo_obligatorio: f['grupo_obligatorio'] ?? null,
         max_carnes: f['max_carnes'] === null ? null : Number(f['max_carnes']),
         agotado: Boolean(Number(f['agotado'] ?? 0)),
         extras: extras.get(Number(f['id'])) ?? [],

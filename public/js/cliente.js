@@ -271,8 +271,26 @@ $('dt-cerrar').addEventListener('click', () => dlgDetalle.close());
 const dlgOpciones = $('dlg-opciones');
 let opProducto = null, opCantidad = 1;
 
+/** Platillos con opción obligatoria (ej. burrito): texto de lo que falta elegir ('' si ya está completo). */
+function faltaOpcion(p, ids) {
+  if (!p.obligatorias || !p.extras.length) return '';
+  const g = p.grupo_obligatorio;
+  const validas = g ? p.extras.filter((x) => (x.grupo || 'Otros') === g) : p.extras;
+  if (!validas.length || ids.some((id) => validas.some((x) => x.id === id))) return '';
+  return g ? `Elige una opción de «${g}».` : 'Elige una opción.';
+}
+function pintarRequisito(p) {
+  const r = $('op-requisito');
+  r.textContent = p.obligatorias && p.extras.length ? (p.grupo_obligatorio ? `Obligatorio: elige una opción de «${p.grupo_obligatorio}».` : 'Obligatorio: elige una opción.') : '';
+  r.hidden = !r.textContent;
+  $('op-error').textContent = '';
+}
+$('op-extras').addEventListener('change', () => { $('op-error').textContent = ''; });
+
 function abrirOpciones(p) {
   opProducto = p; opCantidad = 1;
+  $('op-agregados').hidden = true; $('op-agregados').replaceChildren();
+  pintarRequisito(p);
   $('op-cantidad').textContent = '1';
   $('op-titulo').textContent = p.nombre;
   $('op-precio').textContent = dinero.format(p.precio) + (p.porcion ? ` · ${p.porcion}` : '');
@@ -307,9 +325,20 @@ $('op-cancelar').addEventListener('click', () => dlgOpciones.close());
 $('form-opciones').addEventListener('submit', (ev) => {
   ev.preventDefault();
   const ids = [...$('op-extras').querySelectorAll('input:checked')].map((c) => Number(c.value));
-  agregarLinea(opProducto, opProducto.extras.filter((x) => ids.includes(x.id)), opCantidad, $('op-notas').value.trim());
-  dlgOpciones.close();
-  avisar(`${opProducto.nombre} agregado`);
+  const falta = faltaOpcion(opProducto, ids);
+  if (falta) { $('op-error').textContent = falta; return; }
+  const elegidos = opProducto.extras.filter((x) => ids.includes(x.id));
+  const notas = $('op-notas').value.trim();
+  agregarLinea(opProducto, elegidos, opCantidad, notas);
+  // La ventana NO se cierra: se anota lo agregado arriba y se limpia todo para pedir otra variante (se sale con la ✕).
+  const lista = $('op-agregados');
+  lista.hidden = false;
+  lista.append(el('li', '', `✔ ${opCantidad} × ${opProducto.nombre}` + (elegidos.length ? ' · ' + elegidos.map((x) => x.nombre).join(', ') : '') + (notas ? ` · “${notas}”` : '') + ' agregado'));
+  opCantidad = 1; $('op-cantidad').textContent = '1';
+  $('op-notas').value = '';
+  $('op-error').textContent = '';
+  for (const c of $('op-extras').querySelectorAll('input[type=checkbox]')) { c.checked = false; c.disabled = false; }   // también rehabilita las bloqueadas por el máximo de carnes
+  dlgOpciones.scrollTop = 0;
 });
 
 /* ------------------------------------------------------------------ */

@@ -407,7 +407,7 @@ export async function validarLineas(c: Cx, entrada: unknown): Promise<[Linea[], 
 
     const p = await una(
       c,
-      `SELECT p.id, p.nombre, ${CARTA_PRECIO} AS precio, COALESCE(p.codigo_cocina, p.codigo) AS codigo, p.max_carnes, p.disponible,
+      `SELECT p.id, p.nombre, ${CARTA_PRECIO} AS precio, COALESCE(p.codigo_cocina, p.codigo) AS codigo, p.max_carnes, p.disponible, p.opciones_obligatorias, p.grupo_obligatorio,
               ${CARTA_AGOTADO} AS agotado_hoy, p.estacion_id, c.nombre AS categoria
          FROM productos p JOIN categorias c ON c.id = p.categoria_id${cartaUnir(c.sid)}
         WHERE p.id = ? AND p.negocio_id = ${c.nid} AND c.negocio_id = p.negocio_id${cartaVisible(c.sid)}`,
@@ -436,6 +436,19 @@ export async function validarLineas(c: Cx, entrada: unknown): Promise<[Linea[], 
       if (!n(x['activo'])) throw fallo(`El extra “${x['nombre']}” ya no está activo.`);
       extrasElegidos.push({ id: n(x['id']), nombre: String(x['nombre']), codigo: (x['codigo'] as string | null) ?? null, precio: String(x['precio']), grupo: (x['grupo'] as string | null) ?? null });
       sumaExtras += Number(x['precio']);
+    }
+
+    // Opción obligatoria (ej. burrito): debe venir al menos una (de la sección indicada, si la hay). Solo se exige si el platillo tiene opciones que elegir.
+    if (n(p['opciones_obligatorias']) === 1) {
+      const grupo = (p['grupo_obligatorio'] as string | null) ?? null;
+      const hay = await una(
+        c,
+        `SELECT COUNT(*) AS n FROM extras e JOIN producto_extras pe ON pe.extra_id = e.id WHERE pe.producto_id = ? AND e.negocio_id = ${c.nid} AND e.activo = 1${grupo === null ? '' : ' AND e.grupo = ?'}`,
+        grupo === null ? [productoId] : [productoId, grupo],
+      );
+      if (n(hay?.['n']) > 0 && !extrasElegidos.some((x) => grupo === null || x.grupo === grupo)) {
+        throw fallo(grupo === null ? `Elige una opción para “${p['nombre']}”.` : `Elige una opción de “${grupo}” para “${p['nombre']}”.`);
+      }
     }
 
     if (p['max_carnes'] !== null) {

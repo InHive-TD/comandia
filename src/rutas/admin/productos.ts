@@ -38,6 +38,8 @@ export interface CamposProducto {
   precio: string;
   disponible: 0 | 1;
   pedirOpciones: 0 | 1;
+  obligatorias: 0 | 1;
+  grupoObligatorio: string | null;
 }
 
 /** Lee y valida todos los campos del formulario de un producto. Lanza un error legible si algo no cuadra. */
@@ -103,7 +105,24 @@ export async function leerCampos(nid: number, alcance: number | null, f: Formula
     }
   }
 
+  // Opción obligatoria: hay que tener extras marcados y, si se elige una sección, que alguno sea de ella.
+  const obligatorias = f.texto('opciones_obligatorias', '0') === '1' ? 1 : 0;
+  let grupoObligatorio: string | null = null;
+  if (obligatorias === 1) {
+    if (extras.length === 0) throw fallo('Para pedir una opción obligatoria marca al menos un extra de este platillo (por ejemplo, las carnes del burrito).');
+    const g = f.texto('grupo_obligatorio').trim();
+    if (g !== '') {
+      if (largo(g) > 40) throw fallo('El nombre de la sección no es válido.');
+      const marcas = extras.map(() => '?').join(',');
+      const enGrupo = await fila(`SELECT COUNT(*) AS n FROM extras WHERE negocio_id = ? AND grupo = ? AND activo = 1 AND id IN (${marcas})`, [nid, g, ...extras]);
+      if (Number(enGrupo?.['n']) === 0) throw fallo(`Marca al menos un extra de la sección “${g}” para este platillo, o elige “Cualquier opción”.`);
+      grupoObligatorio = g;
+    }
+  }
+
   return {
+    obligatorias,
+    grupoObligatorio,
     codigo: codigo === '' ? null : codigo,
     porcion: porcion === '' ? null : porcion,
     estacionId: estacionId > 0 ? estacionId : null,
@@ -114,7 +133,7 @@ export async function leerCampos(nid: number, alcance: number | null, f: Formula
     categoriaId,
     precio,
     disponible: f.texto('disponible', '1') === '1' ? 1 : 0,
-    pedirOpciones: f.texto('pedir_opciones', '0') === '1' ? 1 : 0,
+    pedirOpciones: f.texto('pedir_opciones', '0') === '1' || obligatorias === 1 ? 1 : 0,   // obligatoria = la hoja de opciones se abre siempre
   };
 }
 
@@ -152,7 +171,7 @@ async function listar(nid: number, alcance: number | null): Promise<Record<strin
   const soloVisibles = alcance !== null ? ` AND (p.sucursal_id IS NULL OR p.sucursal_id = ${alcance})` : '';
   const prods = await filas(
     `SELECT p.id, p.categoria_id, c.nombre AS categoria, p.nombre, p.descripcion, p.precio, p.foto, p.disponible, p.codigo, p.porcion,
-            p.estacion_id, p.pedir_opciones, p.sucursal_id, sx.nombre AS sucursal, ps.oculto, ps.precio AS precio_sucursal
+            p.estacion_id, p.pedir_opciones, p.opciones_obligatorias, p.grupo_obligatorio, p.sucursal_id, sx.nombre AS sucursal, ps.oculto, ps.precio AS precio_sucursal
        FROM productos p
        JOIN categorias c ON c.id = p.categoria_id
        LEFT JOIN sucursales sx ON sx.id = p.sucursal_id${unirAjuste}
@@ -183,6 +202,8 @@ async function listar(nid: number, alcance: number | null): Promise<Record<strin
     porcion: f['porcion'],
     estacion_id: f['estacion_id'] === null ? null : Number(f['estacion_id']),
     pedir_opciones: Boolean(Number(f['pedir_opciones'])),
+    opciones_obligatorias: Boolean(Number(f['opciones_obligatorias'])),
+    grupo_obligatorio: f['grupo_obligatorio'] ?? null,
     extras: asignados.get(Number(f['id'])) ?? [],
     extras_precios: precios.get(Number(f['id'])) ?? {},
     sucursal_id: f['sucursal_id'] === null ? null : Number(f['sucursal_id']),
@@ -238,9 +259,9 @@ export async function rutasAdminProductos(app: FastifyInstance): Promise<void> {
             const sig = await fila('SELECT COALESCE(MAX(orden), 0) + 1 AS n FROM productos WHERE negocio_id = ? AND categoria_id = ?', [nid, c.categoriaId]);
             const nuevoId = await transaccion(async (tx) => {
               const r = await tx.ejecutar(
-                `INSERT INTO productos (negocio_id, sucursal_id, categoria_id, nombre, descripcion, precio, foto, disponible, codigo, porcion, estacion_id, pedir_opciones, orden)
-                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-                [nid, alcance, c.categoriaId, c.nombre, c.descripcion, c.precio, foto, c.disponible, c.codigo, c.porcion, c.estacionId, c.pedirOpciones, Number(sig?.['n'])],
+                `INSERT INTO productos (negocio_id, sucursal_id, categoria_id, nombre, descripcion, precio, foto, disponible, codigo, porcion, estacion_id, pedir_opciones, opciones_obligatorias, grupo_obligatorio, orden)
+                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+                [nid, alcance, c.categoriaId, c.nombre, c.descripcion, c.precio, foto, c.disponible, c.codigo, c.porcion, c.estacionId, c.pedirOpciones, c.obligatorias, c.grupoObligatorio, Number(sig?.['n'])],
               );
               await guardarExtras(tx, r.insertId, c.extras, c.preciosExtra);
               return r.insertId;
@@ -265,8 +286,8 @@ export async function rutasAdminProductos(app: FastifyInstance): Promise<void> {
             await transaccion(async (tx) => {
               await tx.ejecutar(
                 `UPDATE productos SET categoria_id = ?, nombre = ?, descripcion = ?, precio = ?, foto = ?, disponible = ?,
-                        codigo = ?, porcion = ?, estacion_id = ?, pedir_opciones = ? WHERE id = ? AND negocio_id = ?`,
-                [c.categoriaId, c.nombre, c.descripcion, c.precio, foto, c.disponible, c.codigo, c.porcion, c.estacionId, c.pedirOpciones, id, nid],
+                        codigo = ?, porcion = ?, estacion_id = ?, pedir_opciones = ?, opciones_obligatorias = ?, grupo_obligatorio = ? WHERE id = ? AND negocio_id = ?`,
+                [c.categoriaId, c.nombre, c.descripcion, c.precio, foto, c.disponible, c.codigo, c.porcion, c.estacionId, c.pedirOpciones, c.obligatorias, c.grupoObligatorio, id, nid],
               );
               await guardarExtras(tx, id, c.extras, c.preciosExtra);
             });

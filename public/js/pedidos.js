@@ -309,12 +309,28 @@ const dlgOpciones = $('dlg-opciones');
 let opProducto = null;
 let opCantidad = 1;
 
+/** Platillos con opción obligatoria (ej. burrito): texto de lo que falta elegir ('' si ya está completo). */
+function faltaOpcion(p, ids) {
+  if (!p.obligatorias || !p.extras.length) return '';
+  const g = p.grupo_obligatorio;
+  const validas = g ? p.extras.filter((x) => (x.grupo || 'Otros') === g) : p.extras;
+  if (!validas.length || ids.some((id) => validas.some((x) => x.id === id))) return '';
+  return g ? `Elige una opción de «${g}».` : 'Elige una opción.';
+}
+function pintarRequisito(p) {
+  const r = $('op-requisito');
+  r.textContent = p.obligatorias && p.extras.length ? (p.grupo_obligatorio ? `Obligatorio: elige una opción de «${p.grupo_obligatorio}».` : 'Obligatorio: elige una opción.') : '';
+  r.hidden = !r.textContent;
+  $('op-error').textContent = '';
+}
+$('op-extras').addEventListener('change', () => { $('op-error').textContent = ''; });
 let opEditando = null;   // línea del carrito que se está editando (null = se agrega una nueva)
 
 /** Abre la hoja de opciones. Con `linea` se edita esa línea del carrito: sale con sus extras, cantidad y nota ya marcados. */
 function abrirOpciones(p, linea = null) {
   opProducto = p;
   opEditando = linea;
+  pintarRequisito(p);
   opCantidad = linea ? linea.cantidad : 1;
   $('op-cantidad').textContent = String(opCantidad);
   $('op-agregar').textContent = linea ? 'Guardar cambios' : 'Agregar';
@@ -365,6 +381,8 @@ $('form-opciones').addEventListener('submit', (ev) => {
   ev.preventDefault();
   const extras = extrasElegidos();
   const notas = $('op-notas').value.trim();
+  const falta = faltaOpcion(opProducto, extras.map((x) => x.id));
+  if (falta) { $('op-error').textContent = falta; return; }
   if (opEditando) {
     // Editar: la línea cambia sus extras/cantidad/nota en el MISMO plato; si queda igual a otra línea, se juntan
     const l = opEditando;
@@ -626,6 +644,8 @@ $('form-codigo').addEventListener('submit', (ev) => {
   if (r.error) { msg.textContent = r.error; return; }
   const agotado = r.lineas.find((l) => l.producto.agotado);
   if (agotado) { msg.textContent = `${agotado.producto.nombre} está agotado hoy.`; return; }
+  const sinOpcion = r.lineas.find((l) => faltaOpcion(l.producto, l.extras.map((x) => x.id)));
+  if (sinOpcion) { msg.textContent = `${sinOpcion.producto.nombre} necesita una opción obligatoria: tócalo en el menú para elegirla.`; return; }
   const nuevas = r.lineas;
   for (const l of nuevas) agregarLinea(l.producto, l.extras, l.cantidad, '', l.plato);
   platoActual = r.plato;

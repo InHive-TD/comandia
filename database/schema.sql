@@ -133,6 +133,8 @@ CREATE TABLE IF NOT EXISTS productos (
     codigo        VARCHAR(20) NULL,
     codigo_cocina VARCHAR(20) NULL,         -- lo que ve el cocinero si es distinto de codigo (ej. HCh en la especial)
     pedir_opciones TINYINT(1) NOT NULL DEFAULT 0,   -- 1 = al tocar la foto también se piden las opciones
+    opciones_obligatorias TINYINT(1) NOT NULL DEFAULT 0,  -- 1 = hay que elegir una opción (siempre se abre la hoja de opciones)
+    grupo_obligatorio VARCHAR(40) NULL,     -- NULL = vale cualquier opción; con nombre = hay que elegir una de esa sección
     max_carnes    TINYINT UNSIGNED NULL,    -- máximo de carnes a elegir (NULL = sin límite)
     porcion       VARCHAR(40) NULL,
     estacion_id   INT UNSIGNED NULL,

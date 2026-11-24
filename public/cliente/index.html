@@ -11,14 +11,14 @@
   <meta name="theme-color" content="#0a6b4e">
   <meta name="mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-capable" content="yes">
-  <script src="js/pwa.js?v=20261123200401" defer></script>
+  <script src="js/pwa.js?v=20261123201254" defer></script>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Outfit:wght@600;700;800&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="css/estilos.css?v=20261123200401">
-  <link rel="stylesheet" href="css/admin.css?v=20261123200401">
-  <link rel="stylesheet" href="css/pedidos.css?v=20261123200401">
-  <link rel="stylesheet" href="css/cliente.css?v=20261123200401">
+  <link rel="stylesheet" href="css/estilos.css?v=20261123201254">
+  <link rel="stylesheet" href="css/admin.css?v=20261123201254">
+  <link rel="stylesheet" href="css/pedidos.css?v=20261123201254">
+  <link rel="stylesheet" href="css/cliente.css?v=20261123201254">
   <link rel="stylesheet" href="api/tema.php">
 </head>
 <body>
@@ -190,6 +190,8 @@
 
   <dialog id="dlg-opciones">
     <form id="form-opciones" class="formulario dialogo">
+      <!-- Lo ya agregado en esta ventana: va arriba (bajo la barra) para verlo sin hacer scroll -->
+      <ul id="op-agregados" class="op-agregados" hidden></ul>
       <h2 id="op-titulo"></h2>
       <p id="op-desc" class="ayuda" hidden></p>
       <p id="op-precio" class="ayuda"></p>
@@ -202,6 +204,7 @@
 
       <fieldset class="extras-campo" id="op-extras-caja">
         <legend>Opciones</legend>
+        <p id="op-requisito" class="requisito" hidden></p>
         <div id="op-extras" class="opciones-extras"></div>
       </fieldset>
 
@@ -209,9 +212,10 @@
         <input id="op-notas" type="text" maxlength="255" autocomplete="off">
       </label>
 
+      <p id="op-error" class="msg-error" role="alert"></p>
       <div class="acciones-dialogo">
         <button id="op-agregar" class="btn principal grande" type="submit">Agregar</button>
-        <button id="op-cancelar" class="btn" type="button">Cancelar</button>
+        <button id="op-cancelar" class="btn" type="button">Cerrar</button>
       </div>
     </form>
   </dialog>
@@ -227,8 +231,8 @@
 
   <div id="toast" class="toast" role="status" hidden></div>
 
-  <script src="js/comun.js?v=20261123200401"></script>
-  <script src="js/eventos.js?v=20261123200401"></script>
-  <script src="js/cliente.js?v=20261123200401"></script>
+  <script src="js/comun.js?v=20261123201254"></script>
+  <script src="js/eventos.js?v=20261123201254"></script>
+  <script src="js/cliente.js?v=20261123201254"></script>
 </body>
 </html>
