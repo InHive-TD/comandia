@@ -774,3 +774,8 @@ body.en-panel .panel-lateral { min-height: 100vh; grid-template-columns: 240px m
 
 .i-pago { --ico: url("data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 24 24%22 fill=%22none%22 stroke=%22black%22 stroke-width=%222%22 stroke-linecap=%22round%22 stroke-linejoin=%22round%22%3E%3Crect x=%222%22 y=%225%22 width=%2220%22 height=%2214%22 rx=%222%22/%3E%3Cpath d=%22M2 10h20M6 15h4%22/%3E%3C/svg%3E"); }
 .ct-fila { display: block; margin-bottom: 8px; }
+
+.ex-panel { position: relative; padding-right: 52px; }
+.ex-cerrar-x { position: absolute; top: 8px; right: 8px; min-width: 36px; min-height: 36px; font-weight: 800; line-height: 1; }
+.var-seccion { display: flex; flex-direction: column; gap: 4px; min-width: 0; }
+.var-seccion select, .var-seccion input { width: 100%; min-width: 0; }

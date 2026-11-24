@@ -2196,6 +2196,7 @@ function pintarSeccionesExtras() {
 
 $('ex-sec-abrir').addEventListener('click', () => { const abrir = $('ex-secciones').hidden; cerrarPanelesExtras(); $('ex-secciones').hidden = !abrir; });
 $('ex-sec-cerrar').addEventListener('click', () => { $('ex-secciones').hidden = true; });
+$('ex-sec-x').addEventListener('click', () => { $('ex-secciones').hidden = true; });
 $('ex-sec-form').addEventListener('submit', async (ev) => {
   ev.preventDefault();
   await accionExtra({ accion: 'grupo_crear', nombre: $('ex-sec-nueva').value.trim() }, 'Sección creada');
@@ -2257,11 +2258,19 @@ function pintarVariantesTipos() {
     const fila = el('div', 'var-tipo' + (v.activo ? '' : ' apagado'));
     const marca = document.createElement('input'); marca.type = 'checkbox'; marca.checked = v.activo; marca.setAttribute('aria-label', 'Crear esta variante');
     const texto = document.createElement('input'); texto.type = 'text'; texto.maxLength = 50; texto.value = v.texto; texto.setAttribute('aria-label', 'Texto de la variante ({x} es el ingrediente)');
-    const seccion = document.createElement('input'); seccion.type = 'text'; seccion.maxLength = 40; seccion.value = v.seccion; seccion.setAttribute('list', 'lista-grupos'); seccion.setAttribute('aria-label', 'Sección'); seccion.placeholder = 'Sección';
+    // Sección: desplegable con las que ya existen (y las de las variantes base); «＋ Otra…» permite escribir una nueva
+    const seccionSel = document.createElement('select'); seccionSel.setAttribute('aria-label', 'Sección');
+    const seccionTxt = document.createElement('input'); seccionTxt.type = 'text'; seccionTxt.maxLength = 40; seccionTxt.placeholder = 'Nombre de la sección'; seccionTxt.setAttribute('aria-label', 'Nueva sección'); seccionTxt.hidden = true;
+    const nombresSec = [...new Set([...gruposExtras, ...VARIANTES_BASE.map((b) => b.seccion), ...variantesEstado.map((o) => o.seccion), v.seccion].map((n) => (n || '').trim()).filter(Boolean))];
+    seccionSel.append(new Option('Sin sección (Otros)', ''), ...nombresSec.map((n) => new Option(n, n)), new Option('＋ Otra…', '__otra'));
+    seccionSel.value = (v.seccion || '').trim();
+    const seccion = { get value() { return seccionSel.value === '__otra' ? seccionTxt.value : seccionSel.value; } };
+    seccionSel.addEventListener('change', () => { seccionTxt.hidden = seccionSel.value !== '__otra'; if (!seccionTxt.hidden) seccionTxt.focus(); });
     const precio = document.createElement('input'); precio.type = 'text'; precio.inputMode = 'decimal'; precio.value = v.precio; precio.placeholder = 'Gratis'; precio.setAttribute('aria-label', 'Costo (vacío = gratis)');
     const cambio = () => { v.activo = marca.checked; v.texto = texto.value; v.seccion = seccion.value; v.precio = precio.value; fila.classList.toggle('apagado', !v.activo); pintarVistaVariantes(); };
-    for (const c of [marca, texto, seccion, precio]) c.addEventListener('input', cambio);
-    fila.append(marca, texto, seccion, precio);
+    for (const c of [marca, texto, seccionSel, seccionTxt, precio]) { c.addEventListener('input', cambio); c.addEventListener('change', cambio); }
+    const seccionCaja = el('div', 'var-seccion'); seccionCaja.append(seccionSel, seccionTxt);
+    fila.append(marca, texto, seccionCaja, precio);
     if (v.propia) {
       // Las variantes propias se pueden quitar de la lista guardada del negocio
       const quitar = el('button', 'btn chico peligro', '✕');
@@ -2309,6 +2318,7 @@ $('ex-var-abrir').addEventListener('click', () => {
   if (abrir) { pintarVariantesTipos(); $('var-ingredientes').focus(); }
 });
 $('var-cancelar').addEventListener('click', () => { $('form-variantes').hidden = true; });
+$('var-x').addEventListener('click', () => { $('form-variantes').hidden = true; });
 $('form-variantes').addEventListener('submit', async (ev) => {
   ev.preventDefault();
   const nuevos = variantesPorCrear().filter((x) => !x.existe);

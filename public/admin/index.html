@@ -11,13 +11,13 @@
   <meta name="theme-color" content="#0a6b4e">
   <meta name="mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-capable" content="yes">
-  <script src="../js/pwa.js?v=1795492879" defer></script>
+  <script src="../js/pwa.js?v=1795493266" defer></script>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Outfit:wght@600;700;800&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="../css/estilos.css?v=1795492879">
-  <link rel="stylesheet" href="../css/admin.css?v=1795492879">
-  <link rel="stylesheet" href="../css/shell.css?v=1795492879">
+  <link rel="stylesheet" href="../css/estilos.css?v=1795493266">
+  <link rel="stylesheet" href="../css/admin.css?v=1795493266">
+  <link rel="stylesheet" href="../css/shell.css?v=1795493266">
   <link rel="stylesheet" href="../api/tema.php">
 </head>
 <body>
@@ -229,11 +229,12 @@
 
       <div class="ex-botones">
         <button id="ex-nuevo-abrir" class="btn principal ex-abrir" type="button">＋ Nuevo extra</button>
-        <button id="ex-var-abrir" class="btn" type="button" title="Crea de golpe Sin X, X aparte, Solo X... para uno o varios ingredientes">✨ Variantes de un ingrediente</button>
-        <button id="ex-sec-abrir" class="btn" type="button" title="Crear, renombrar, ordenar o quitar las secciones (Quitar, Aparte, Solo...)">🗂 Secciones</button>
+        <button id="ex-var-abrir" class="btn" type="button" title="Crea de golpe Sin X, X aparte, Solo X... para uno o varios ingredientes">✨ Crear variantes en bloque</button>
+        <button id="ex-sec-abrir" class="btn" type="button" title="Crear, renombrar, ordenar o quitar los títulos con que se agrupan los extras (Quitar, Aparte, Solo...)">🗂 Secciones (títulos)</button>
       </div>
 
-      <section id="ex-secciones" class="ex-nuevo" hidden>
+      <section id="ex-secciones" class="ex-nuevo ex-panel" hidden>
+        <button id="ex-sec-x" class="btn chico ex-cerrar-x" type="button" aria-label="Cerrar y volver a los extras" title="Cerrar">✕</button>
         <h3 class="ex-subtitulo">Secciones de extras</h3>
         <p class="ayuda">Son los títulos con los que se acomodan los extras al editar un platillo (Quitar, Aparte, Solo…). Crea las que necesites, cámbiales el nombre o el orden. Al quitar una sección <strong>sus extras no se borran</strong>: pasan a “Otros”.</p>
         <div id="ex-sec-lista" class="ex-sec-lista"></div>
@@ -244,8 +245,10 @@
         <div class="ex-acciones"><button id="ex-sec-cerrar" class="btn" type="button">Listo</button></div>
       </section>
 
-      <form id="form-variantes" class="ex-nuevo" hidden autocomplete="off">
-        <h3 class="ex-subtitulo">Variantes de un ingrediente</h3>
+      <form id="form-variantes" class="ex-nuevo ex-panel" hidden autocomplete="off">
+        <button id="var-x" class="btn chico ex-cerrar-x" type="button" aria-label="Cerrar y volver a los extras" title="Cerrar">✕</button>
+        <h3 class="ex-subtitulo">Crear variantes en bloque</h3>
+        <p class="ayuda">Crea de una vez varios extras de un ingrediente (por ejemplo «Sin cebolla», «Cebolla aparte», «Solo cebolla»). Son extras normales: después los puedes editar uno por uno.</p>
         <label>¿De qué ingrediente? <small>Puedes escribir varios separados por coma.</small>
           <input id="var-ingredientes" type="text" maxlength="200" placeholder="Ej. Mayonesa, Tomate, Queso panela" required>
         </label>
@@ -707,9 +710,9 @@
 
   <div id="toast" class="toast" role="status" hidden></div>
 
-  <script src="../js/comun.js?v=1795492879"></script>
-  <script src="../js/shell.js?v=1795492879"></script>
+  <script src="../js/comun.js?v=1795493266"></script>
+  <script src="../js/shell.js?v=1795493266"></script>
   <script src="../js/vendor/qrcode.js"></script>
-  <script src="../js/admin.js?v=1795492879"></script>
+  <script src="../js/admin.js?v=1795493266"></script>
 </body>
 </html>
