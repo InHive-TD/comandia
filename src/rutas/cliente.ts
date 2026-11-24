@@ -222,7 +222,7 @@ export async function rutasCliente(app: FastifyInstance): Promise<void> {
         const mesa = pideMesa ? await leerMesa(c, datos['mesa_id']) : null;
         if (pideMesa && cfg.mesa === 'obligatoria' && !mesa) throw fallo('Elige tu mesa.');
         if (nombre === '') {
-          if (!(pideMesa && cfg.mesa === 'obligatoria')) throw fallo('Escribe tu nombre (máximo 80 caracteres) para entregarte tu pedido.');
+          if (!(pideMesa && mesa)) throw fallo('Escribe tu nombre (máximo 80 caracteres) para entregarte tu pedido.');
           nombre = mesa ? (/mesa/i.test(mesa.nombre) ? mesa.nombre : `Mesa ${mesa.nombre}`) : 'Mesa';
         }
         const ip = sha(`${req.ip}|taqueria|${nid}`);

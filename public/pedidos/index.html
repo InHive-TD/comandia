@@ -11,16 +11,16 @@
   <meta name="theme-color" content="#0a6b4e">
   <meta name="mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-capable" content="yes">
-  <script src="../js/pwa.js?v=1795547218" defer></script>
+  <script src="../js/pwa.js?v=1795547468" defer></script>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Outfit:wght@600;700;800&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="../css/estilos.css?v=1795547218">
-  <link rel="stylesheet" href="../css/admin.css?v=1795547218">
-  <link rel="stylesheet" href="../css/menu-barra.css?v=1795547218">
-  <link rel="stylesheet" href="../css/pedidos.css?v=1795547218">
-  <link rel="stylesheet" href="../css/shell.css?v=1795547218">
-  <link rel="stylesheet" href="../css/plano.css?v=1795547218">
+  <link rel="stylesheet" href="../css/estilos.css?v=1795547468">
+  <link rel="stylesheet" href="../css/admin.css?v=1795547468">
+  <link rel="stylesheet" href="../css/menu-barra.css?v=1795547468">
+  <link rel="stylesheet" href="../css/pedidos.css?v=1795547468">
+  <link rel="stylesheet" href="../css/shell.css?v=1795547468">
+  <link rel="stylesheet" href="../css/plano.css?v=1795547468">
   <link rel="stylesheet" href="../api/tema.php">
 </head>
 <body data-shell="pedidos">
@@ -88,26 +88,35 @@
           <span id="destino-texto"></span>
           <button id="destino-quitar" class="btn" type="button">Cancelar</button>
         </div>
+        <div id="datos-pedido" class="formulario carrito-form">
+          <div class="fila-mesa-nombre">
+            <div id="mesa-fila" class="etiqueta" hidden><span id="mesa-rotulo">Mesa</span>
+              <select id="mesa"></select>
+              <button type="button" id="mesa-plano-btn" class="btn" style="display:none"></button>
+            </div>
+            <label><span id="cliente-rotulo">Nombre</span>
+              <input id="cliente" type="text" maxlength="80" autocomplete="off" placeholder="Obligatorio">
+            </label>
+          </div>
+          <p id="mesa-aviso" class="ayuda" hidden></p>
+          <label id="tel-fila" hidden>Teléfono (opcional)
+            <input id="telefono" type="tel" inputmode="tel" maxlength="16" autocomplete="off" placeholder="10 dígitos, ej. 322 123 4567">
+          </label>
+        </div>
+
+        <div id="tipo-bloque" class="tipo-bloque">
+          <p id="tipo-plato" class="ayuda tipo-plato" hidden></p>
+          <div class="modalidad" role="group" aria-label="Tipo de pedido">
+            <button type="button" class="btn mod-btn" data-mod="aqui" aria-pressed="true">🍽 Aquí</button>
+            <button type="button" class="btn mod-btn" data-mod="llevar" aria-pressed="false">🥡 Llevar</button>
+            <button type="button" class="btn mod-btn" data-mod="recoger" aria-pressed="false">🛍 Recoger</button>
+          </div>
+        </div>
+
         <div id="platos" class="platos" aria-label="Plato al que se agrega"></div>
         <div id="lineas" class="lineas"></div>
 
         <div id="campos-cliente" class="formulario carrito-form">
-        <div class="modalidad" role="group" aria-label="Tipo de pedido">
-          <button type="button" class="btn mod-btn" data-mod="aqui" aria-pressed="true">🍽 Aquí</button>
-          <button type="button" class="btn mod-btn" data-mod="llevar" aria-pressed="false">🥡 Llevar</button>
-          <button type="button" class="btn mod-btn" data-mod="recoger" aria-pressed="false">🛍 Recoger</button>
-        </div>
-          <label id="mesa-fila" hidden><span id="mesa-rotulo">Mesa</span>
-            <select id="mesa"></select>
-            <button type="button" id="mesa-plano-btn" class="btn" hidden></button>
-          </label>
-          <p id="mesa-aviso" class="ayuda" hidden></p>
-          <label><span id="cliente-rotulo">Nombre del cliente</span>
-            <input id="cliente" type="text" maxlength="80" autocomplete="off" placeholder="Obligatorio">
-          </label>
-          <label id="tel-fila" hidden>Teléfono (opcional)
-            <input id="telefono" type="tel" inputmode="tel" maxlength="16" autocomplete="off" placeholder="10 dígitos, ej. 322 123 4567">
-          </label>
           <div class="cuando-caja">
             <div id="cuando"></div>
           </div>
@@ -268,18 +277,11 @@
 
   <div id="toast" class="toast" role="status" hidden></div>
 
-  <script src="../js/comun.js?v=1795547218"></script>
-  <script src="../js/shell.js?v=1795547218"></script>
-  <script src="../js/eventos.js?v=1795547218"></script>
-  <script src="../js/codigos.js?v=1795547218"></script>
-  <script src="../js/pedidos.js?v=1795547218"></script>
-<dialog id="dlg-mesa-plano" class="pagina-dialogo">
-  <div class="cabecera-dlg"><h3>Elige la mesa</h3></div>
-  <div id="mp-zonas" class="plano-pestanas"></div>
-  <div id="mp-lienzo" class="plano-lienzo"></div>
-  <p class="ayuda">Mesas sin ubicar en el plano:</p>
-  <div id="mp-sin" class="plano-sin"></div>
-  <div class="acciones"><button type="button" class="btn" id="mp-cancelar">Cancelar</button></div>
-</dialog>
+  <script src="../js/comun.js?v=1795547468"></script>
+  <script src="../js/shell.js?v=1795547468"></script>
+  <script src="../js/eventos.js?v=1795547468"></script>
+  <script src="../js/codigos.js?v=1795547468"></script>
+  <script src="../js/selectorMesa.js?v=1795547468"></script>
+  <script src="../js/pedidos.js?v=1795547468"></script>
 </body>
 </html>

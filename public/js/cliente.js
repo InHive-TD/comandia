@@ -43,30 +43,30 @@ let mesasSuc = [];                                    // mesas activas de esta s
 let modoMesa = 'opcional';                            // 'no' | 'opcional' | 'obligatoria' (lo decide el negocio)
 const mesaVisible = () => modalidad === 'aqui' && !destino && mesasSuc.length > 0 && modoMesa !== 'no';
 const mesaObligatoria = () => mesaVisible() && modoMesa === 'obligatoria';
+const campoMesa = crearCampoMesa($('mesa'), $('mesa-plano-btn'), () => actualizarMesaCliente());
+/* El nombre es opcional si ya se eligió mesa; para llevar o recoger siempre se pide (la orden se entrega por nombre). */
+const nombreOpcional = () => mesaVisible() && ($('mesa').value !== '' || modoMesa === 'obligatoria');
 function actualizarMesaCliente() {
   const ver = mesaVisible();
   $('mesa-fila').hidden = !ver;
   if (!ver) $('mesa').value = '';
-  const ob = mesaObligatoria();
-  $('mesa-rotulo').textContent = ob ? 'Tu mesa (obligatoria)' : 'Tu mesa';
-  $('cliente-rotulo').textContent = ob ? 'Tu nombre (opcional)' : 'Tu nombre (para entregarte tu pedido)';
-  $('cliente').placeholder = ob ? 'Opcional' : 'Obligatorio';
+  campoMesa.refrescar();
+  const op = nombreOpcional();
+  $('mesa-rotulo').textContent = mesaObligatoria() ? 'Mesa (obligatoria)' : 'Mesa';
+  $('cliente-rotulo').textContent = op ? 'Nombre (opcional)' : 'Nombre';
+  $('cliente').placeholder = op ? 'Opcional' : 'Obligatorio';
 }
 function aplicarMesas(suc) {
   mesasSuc = Array.isArray(suc.mesas) ? suc.mesas : [];
   modoMesa = suc.mesa || 'opcional';
-  const sel = $('mesa');
-  sel.replaceChildren(new Option('Elige tu mesa…', ''), ...mesasSuc.map((m) => new Option(m.nombre, String(m.id))));
+  campoMesa.poner({ mesas: mesasSuc, zonas: suc.zonas, plano: suc.plano }, 'Elige tu mesa…');
   const deLaDireccion = new URLSearchParams(location.search).get('mesa');   // QR de una mesa: /…?mesa=ID
-  if (deLaDireccion && mesasSuc.some((m) => String(m.id) === deLaDireccion)) sel.value = deLaDireccion;
+  if (deLaDireccion && mesasSuc.some((m) => String(m.id) === deLaDireccion)) { $('mesa').value = deLaDireccion; campoMesa.refrescar(); }
   actualizarMesaCliente();
 }
 function aplicarTipos(suc) {
   modalidadesOk = Array.isArray(suc.modalidades) && suc.modalidades.length ? suc.modalidades : ['aqui', 'llevar', 'recoger'];
   mixtoOk = suc.mixto === true;
-  document.querySelectorAll('#campos-cliente .mod-btn').forEach((b) => { b.hidden = !modalidadesOk.includes(b.dataset.mod); });
-  document.querySelector('#campos-cliente .modalidad').hidden = modalidadesOk.length < 2;   // con un solo tipo no hay nada que elegir
-  document.querySelector('#campos-cliente .modalidad').style.gridTemplateColumns = `repeat(${modalidadesOk.length}, minmax(0, 1fr))`;
   fijarModalidad(modalidadesOk.includes(modalidad) ? modalidad : modalidadesOk[0]);
   aplicarMesas(suc);
 }
@@ -84,13 +84,64 @@ function aplicarPago(suc) {
 }
 function fijarModalidad(m) {
   modalidad = m;
-  document.querySelectorAll('#campos-cliente .mod-btn').forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.mod === m)));
   $('tel-nota').textContent = m === 'recoger' ? '(obligatorio para recoger)' : '(opcional)';
   $('telefono').placeholder = m === 'recoger' ? 'Obligatorio · 10 dígitos, ej. 322 123 4567' : '10 dígitos, ej. 322 123 4567';
   if (typeof actualizarEspera === 'function') actualizarEspera();
   if (typeof actualizarMesaCliente === 'function') actualizarMesaCliente();
+  if (typeof pintarTipo === 'function') pintarTipo();
 }
-document.querySelectorAll('#campos-cliente .mod-btn').forEach((b) => b.addEventListener('click', () => fijarModalidad(b.dataset.mod)));
+
+/* Tipo de pedido por plato: los tres botones se aplican al PLATO seleccionado.
+   - Si todos los platos son iguales, el pedido entero es de ese tipo.
+   - Si hay unos para comer aquí y otros para llevar, el pedido va en «comer aquí» (cocina) y esos platos se marcan «para llevar».
+   - «Recoger» es de todo el pedido: se bloquea cuando hay mezcla. */
+const baseMod = () => (destino ? destino.modalidad : modalidad);
+const modDePlato = (n) => (mixtoOk && baseMod() === 'aqui' && platosLlevar.has(n) ? 'llevar' : baseMod());
+const platosEnUso = () => [...new Set([...carrito.map((l) => l.plato), platoActual])].sort((a, b) => a - b);
+const hayMezcla = () => !destino && modalidad === 'aqui' && platosLlevar.size > 0;
+function normalizarTipo() {
+  if (destino) return;
+  const con = new Set(carrito.map((l) => l.plato));
+  for (const n of [...platosLlevar]) if (!con.has(n) && n !== platoActual) platosLlevar.delete(n);
+  if (modalidad === 'aqui' && con.size > 0 && [...con].every((n) => platosLlevar.has(n))) { platosLlevar.clear(); fijarModalidad('llevar'); }
+}
+function elegirTipo(m) {
+  const n = platoActual;
+  if (destino) {   // pedido ya levantado: solo se decide por plato entre «aquí» y «para llevar»
+    if (!mixtoPosible() || m === 'recoger') return;
+    if (m === 'llevar') platosLlevar.add(n); else platosLlevar.delete(n);
+    pintarCarrito();
+    return;
+  }
+  if (m === 'recoger') { if (hayMezcla()) return; platosLlevar.clear(); fijarModalidad('recoger'); pintarCarrito(); return; }
+  const platos = platosEnUso();
+  if (!mixtoOk || platos.length === 1 || modalidad === 'recoger') { platosLlevar.clear(); fijarModalidad(m); pintarCarrito(); return; }
+  const mods = platos.map((x) => (x === n ? m : modDePlato(x)));
+  platosLlevar.clear();
+  if (mods.every((x) => x === 'aqui')) fijarModalidad('aqui');
+  else if (mods.every((x) => x === 'llevar')) fijarModalidad('llevar');
+  else { platos.forEach((x, i) => { if (mods[i] === 'llevar') platosLlevar.add(x); }); fijarModalidad('aqui'); }
+  pintarCarrito();
+}
+function pintarTipo() {
+  const bloque = $('tipo-bloque');
+  const botones = [...bloque.querySelectorAll('.mod-btn')];
+  const ver = destino ? mixtoPosible() : modalidadesOk.length > 1;
+  bloque.hidden = !ver;
+  const visibles = botones.filter((b) => (destino ? b.dataset.mod !== 'recoger' : modalidadesOk.includes(b.dataset.mod)));
+  for (const b of botones) {
+    b.hidden = !visibles.includes(b);
+    b.setAttribute('aria-pressed', String(b.dataset.mod === modDePlato(platoActual)));
+    b.disabled = b.dataset.mod === 'recoger' && hayMezcla();
+    b.title = b.disabled ? 'No se puede recoger si unos platos son para comer aquí y otros para llevar' : '';
+  }
+  bloque.querySelector('.modalidad').style.gridTemplateColumns = `repeat(${Math.max(1, visibles.length)}, minmax(0, 1fr))`;
+  const varios = platosEnUso().length > 1;
+  $('tipo-plato').hidden = !varios;
+  $('tipo-plato').textContent = `Tipo del plato ${platoActual} (elige el plato en «Plato:» más abajo)`;
+}
+bloqueTipoListo();
+function bloqueTipoListo() { document.querySelectorAll('#tipo-bloque .mod-btn').forEach((b) => b.addEventListener('click', () => elegirTipo(b.dataset.mod))); }
 let platoActual = 1;
 let enviando = false;
 let temporizador = null;
@@ -434,15 +485,6 @@ function pintarPlatos() {
     mas.addEventListener('click', () => { platoActual = maxPlato() + 1; pintarCarrito(); });
     caja.append(mas);
   }
-  // Interruptor del plato activo: 🍽 Aquí / 🥡 Para llevar (solo en pedidos para comer aquí y si la sucursal lo permite)
-  if (mixtoPosible()) {
-    const llevar = esLlevar(platoActual);
-    const t = el('button', 'btn plato-llevar' + (llevar ? ' activo' : ''), llevar ? `🥡 Plato ${platoActual} es para llevar ✓ (quitar)` : `🥡 Poner plato ${platoActual} para llevar`);
-    t.type = 'button';
-    t.setAttribute('aria-pressed', String(llevar));
-    t.addEventListener('click', () => { if (platosLlevar.has(platoActual)) platosLlevar.delete(platoActual); else platosLlevar.add(platoActual); pintarCarrito(); });
-    caja.append(t);
-  }
 }
 
 /* Cierra la hoja del pedido (celular) y lleva al inicio del menú */
@@ -452,6 +494,7 @@ function irAlMenu() {
 }
 
 function pintarCarrito() {
+  normalizarTipo();
   const caja = $('lineas');
   caja.replaceChildren();
   pintarPlatos();
@@ -464,11 +507,12 @@ function pintarCarrito() {
     caja.append(vacio);
   }
   const hayVarios = maxPlato() > 1;
+  const mezcla = (destino ? destino.modalidad === 'aqui' && mixtoOk : modalidad === 'aqui') && platosLlevar.size > 0;
   let ultimo = 0;
   for (const l of [...carrito].sort((a, b) => a.plato - b.plato)) {
     if (hayVarios && l.plato !== ultimo) {
       const piezas = carrito.filter((x) => x.plato === l.plato).reduce((n, x) => n + x.cantidad, 0);
-      caja.append(el('h3', 'plato-titulo' + (esLlevar(l.plato) ? ' llevar' : ''), `Plato ${l.plato} · ${piezas} pza` + (esLlevar(l.plato) ? ' · 🥡 PARA LLEVAR' : '')));
+      caja.append(el('h3', 'plato-titulo' + (esLlevar(l.plato) ? ' llevar' : ''), `Plato ${l.plato} · ${piezas} pza` + (esLlevar(l.plato) ? ' · 🥡 PARA LLEVAR' : (mezcla ? ' · 🍽 PARA COMER AQUÍ' : ''))));
     }
     ultimo = l.plato;
     const fila = el('div', 'linea');
@@ -493,7 +537,9 @@ function pintarCarrito() {
   actualizarEspera();
   $('barra-total').textContent = total;
   $('barra-texto').textContent = piezas ? `Ver tu pedido (${piezas})` : 'Ver tu pedido';
+  $('datos-pedido').hidden = !!destino;
   $('campos-cliente').hidden = !!destino;
+  pintarTipo();
   $('agregando').hidden = !destino;
   $('ver-mis').hidden = !!destino || ordenes.length === 0;
   $('ver-mis-n').textContent = String(ordenes.length);
@@ -531,7 +577,7 @@ $('btn-levantar').addEventListener('click', async () => {
   if (!destino && modalidad === 'recoger' && !telefono) { error.textContent = 'Para recoger tu pedido escribe tu teléfono de 10 dígitos (te avisamos cuando esté listo).'; $('telefono').focus(); return; }
   if (!destino && telefono && !/^(\+?52)?\D*(\d\D*){10}$/.test(telefono)) { error.textContent = 'El teléfono debe tener 10 dígitos' + (modalidad === 'recoger' ? '.' : ' (o déjalo vacío).'); $('telefono').focus(); return; }
   if (!destino && mesaObligatoria() && !$('mesa').value) { error.textContent = 'Elige tu mesa.'; $('mesa').focus(); return; }
-  if (!destino && !nombre && !mesaObligatoria()) { error.textContent = 'Escribe tu nombre para entregarte tu pedido.'; $('cliente').focus(); return; }
+  if (!destino && !nombre && !nombreOpcional()) { error.textContent = modalidad === 'aqui' ? 'Elige tu mesa o escribe tu nombre.' : 'Escribe tu nombre para entregarte tu pedido.'; $('cliente').focus(); return; }
 
   enviando = true;
   const boton = $('btn-levantar');

@@ -28,3 +28,10 @@ export async function planoDe(nid: number, sid: number, soloActivas: boolean) {
     })),
   };
 }
+
+/** Lo que necesita una pantalla para elegir mesa: mesas activas, zonas y si se usa el plano visual (activado + hay mesas ubicadas). */
+export async function mesasParaElegir(nid: number, sid: number) {
+  const plano = await planoDe(nid, sid, true);
+  const usar = (await planoActivoEn(nid, sid)) && plano.zonas.length > 0 && plano.mesas.some((m) => m.zona_id !== null);
+  return { mesas: plano.mesas, zonas: plano.zonas, plano: usar };
+}

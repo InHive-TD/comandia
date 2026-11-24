@@ -65,42 +65,36 @@ async function iniciar() {
   }
 }
 
-/* Mesas de la sucursal: el mesero elige a cuál lleva el pedido (si la sucursal tiene mesas) */
+/* Mesas de la sucursal: el mesero elige a cuál lleva el pedido (si la sucursal tiene mesas).
+   Con el plano activado se elige tocando la mesa en el dibujo (zonas: piso 1, patio…). */
 let mesas = [];
-let zonasPlano = [];
-let planoActivo = false; // el administrador activó el plano y hay mesas ubicadas
+let planoActivo = false;
+const campoMesa = crearCampoMesa($('mesa'), $('mesa-plano-btn'), () => actualizarMesa());
 async function cargarMesas() {
-  try { const r = await pedir(API + 'mesas.php'); mesas = r.mesas; zonasPlano = r.zonas || []; planoActivo = r.plano === true; } catch { mesas = []; zonasPlano = []; planoActivo = false; }
-  for (const id of ['mesa', 'ed-mesa']) {
-    const sel = $(id);
-    sel.replaceChildren();
-    const o0 = document.createElement('option'); o0.value = ''; o0.textContent = id === 'mesa' ? 'Elige la mesa…' : 'Sin mesa'; sel.append(o0);
-    for (const m of mesas) { const o = document.createElement('option'); o.value = String(m.id); o.textContent = m.nombre; sel.append(o); }
-  }
+  let r = { mesas: [], zonas: [], plano: false };
+  try { r = await pedir(API + 'mesas.php'); } catch { /* sin mesas */ }
+  mesas = r.mesas || []; planoActivo = r.plano === true;
+  campoMesa.poner(r, 'Elige la mesa…');
+  const ed = $('ed-mesa');
+  ed.replaceChildren(new Option('Sin mesa', ''), ...mesas.map((m) => new Option(m.nombre, String(m.id))));
   actualizarMesa();
 }
 let pedirPorMesa = false; // ajuste del administrador: en pedidos "aquí" la mesa es obligatoria y el nombre opcional
 function mesaObligatoria() { return pedirPorMesa && modalidad === 'aqui' && !ordenDestino; }
+/* El nombre es opcional si ya se eligió mesa; para llevar o recoger siempre se pide. */
+function nombreOpcional() { return !ordenDestino && modalidad === 'aqui' && mesas.length > 0 && ($('mesa').value !== '' || pedirPorMesa); }
 function actualizarMesa() {
   $('mesa-fila').hidden = !(mesas.length && modalidad === 'aqui' && !ordenDestino);
   if ($('mesa-fila').hidden) $('mesa').value = '';
+  campoMesa.refrescar();
   // Sin mesas en esta sucursal no hay nada que elegir: se avisa en vez de esconderlo sin explicación
   const sinMesas = !mesas.length && modalidad === 'aqui' && !ordenDestino;
   $('mesa-aviso').hidden = !sinMesas;
   $('mesa-aviso').textContent = sinMesas ? 'Esta sucursal no tiene mesas todavía (se pide por nombre). ¿Estás en la sucursal correcta? Cámbiala arriba o crea las mesas en Ajustes → Sucursales y mesas.' : '';
-  // Con plano activo se elige tocando la mesa en el dibujo; el <select> sigue siendo el valor real
-  const usaPlano = planoActivo && !$('mesa-fila').hidden;
-  $('mesa').hidden = usaPlano;
-  $('mesa-plano-btn').hidden = !usaPlano;
-  if (usaPlano) {
-    const m = mesas.find((x) => String(x.id) === $('mesa').value);
-    const z = m && zonasPlano.find((q) => q.id === m.zona_id);
-    $('mesa-plano-btn').textContent = m ? `🪑 Mesa ${m.nombre}${z ? ' (' + z.nombre + ')' : ''} · cambiar` : 'Elegir mesa en el plano';
-  }
-  const ob = mesaObligatoria();
-  $('mesa-rotulo').textContent = ob ? 'Mesa (obligatoria)' : 'Mesa';
-  $('cliente-rotulo').textContent = ob ? 'Nombre del cliente (opcional)' : 'Nombre del cliente';
-  $('cliente').placeholder = ob ? 'Opcional' : 'Obligatorio';
+  const op = nombreOpcional();
+  $('mesa-rotulo').textContent = mesaObligatoria() ? 'Mesa (obligatoria)' : 'Mesa';
+  $('cliente-rotulo').textContent = op ? 'Nombre (opcional)' : 'Nombre';
+  $('cliente').placeholder = op ? 'Opcional' : 'Obligatorio';
 }
 
 async function entrar(usuario) {
@@ -464,19 +458,63 @@ const textoModalidad = (m) => infoMod(m).corto;
 const chipModalidad = (m) => el('span', 'chip-mod ' + infoMod(m).clase, textoModalidad(m));
 function fijarModalidad(m) {
   modalidad = m;
-  document.querySelectorAll('#campos-cliente .mod-btn').forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.mod === m)));
   $('tel-fila').hidden = m !== 'recoger';
   if (typeof actualizarMesa === 'function') actualizarMesa();
   if (typeof actualizarEspera === 'function') actualizarEspera();
   try { pintarPlatos(); } catch { /* aún no inicia la pantalla */ }
 }
-document.querySelectorAll('#campos-cliente .mod-btn').forEach((b) => b.addEventListener('click', () => fijarModalidad(b.dataset.mod)));
+document.querySelectorAll('#tipo-bloque .mod-btn').forEach((b) => b.addEventListener('click', () => elegirTipo(b.dataset.mod)));
 
 let platoActual = 1;
 let pagoPrevisto = null;           // efectivo | tarjeta | transferencia | null (sin definir)
 const platosLlevar = new Set();   // platos marcados "para llevar" dentro de un pedido para comer aquí
 const mixtoPosible = () => (ordenDestino ? ordenDestino.modalidad === 'aqui' : modalidad === 'aqui');
 const esLlevar = (n) => mixtoPosible() && platosLlevar.has(n);
+
+/* Tipo de pedido por plato: los tres botones se aplican al PLATO seleccionado.
+   Todos iguales → el pedido es de ese tipo. Unos «aquí» y otros «para llevar» → el pedido va en «comer aquí»
+   (cocina) y esos platos se marcan «para llevar». «Recoger» es de todo el pedido: se bloquea si hay mezcla. */
+const baseMod = () => (ordenDestino ? ordenDestino.modalidad : modalidad);
+const modDePlato = (n) => (baseMod() === 'aqui' && platosLlevar.has(n) ? 'llevar' : baseMod());
+const platosEnUso = () => [...new Set([...carrito.map((l) => l.plato || 1), platoActual])].sort((a, b) => a - b);
+const hayMezcla = () => !ordenDestino && modalidad === 'aqui' && platosLlevar.size > 0;
+function normalizarTipo() {
+  if (ordenDestino) return;
+  const con = new Set(carrito.map((l) => l.plato || 1));
+  for (const n of [...platosLlevar]) if (!con.has(n) && n !== platoActual) platosLlevar.delete(n);
+  if (modalidad === 'aqui' && con.size > 0 && [...con].every((n) => platosLlevar.has(n))) { platosLlevar.clear(); fijarModalidad('llevar'); }
+}
+function elegirTipo(m) {
+  const n = platoActual;
+  if (ordenDestino) {   // pedido ya levantado: solo se decide por plato entre «aquí» y «para llevar»
+    if (!mixtoPosible() || m === 'recoger') return;
+    if (m === 'llevar') platosLlevar.add(n); else platosLlevar.delete(n);
+    pintarCarrito();
+    return;
+  }
+  if (m === 'recoger') { if (hayMezcla()) return; platosLlevar.clear(); fijarModalidad('recoger'); pintarCarrito(); return; }
+  const platos = platosEnUso();
+  if (platos.length === 1 || modalidad === 'recoger') { platosLlevar.clear(); fijarModalidad(m); pintarCarrito(); return; }
+  const mods = platos.map((x) => (x === n ? m : modDePlato(x)));
+  platosLlevar.clear();
+  if (mods.every((x) => x === 'aqui')) fijarModalidad('aqui');
+  else if (mods.every((x) => x === 'llevar')) fijarModalidad('llevar');
+  else { platos.forEach((x, i) => { if (mods[i] === 'llevar') platosLlevar.add(x); }); fijarModalidad('aqui'); }
+  pintarCarrito();
+}
+function pintarTipo() {
+  const botones = [...document.querySelectorAll('#tipo-bloque .mod-btn')];
+  $('tipo-bloque').hidden = !!ordenDestino && !mixtoPosible();
+  for (const b of botones) {
+    b.hidden = !!ordenDestino && b.dataset.mod === 'recoger';
+    b.setAttribute('aria-pressed', String(b.dataset.mod === modDePlato(platoActual)));
+    b.disabled = b.dataset.mod === 'recoger' && hayMezcla();
+    b.title = b.disabled ? 'No se puede recoger si unos platos son para comer aquí y otros para llevar' : '';
+  }
+  document.querySelector('#tipo-bloque .modalidad').style.gridTemplateColumns = `repeat(${botones.filter((b) => !b.hidden).length || 1}, minmax(0, 1fr))`;
+  $('tipo-plato').hidden = platosEnUso().length < 2;
+  $('tipo-plato').textContent = `Tipo del plato ${platoActual} (elige el plato en «Plato:» más abajo)`;
+}
 let platosBase = 0;            // platos que ya tiene el pedido al que se agrega
 const maxPlato = () => Math.max(platoActual, platosBase, ...carrito.map((l) => l.plato || 1));
 
@@ -495,14 +533,17 @@ function pintarCarrito() {
   if (carrito.length === 0) {
     caja.append(el('p', 'vacio', 'Toca un producto del menú o escribe un código rápido.'));
   }
+  normalizarTipo();
   pintarPlatos();
+  pintarTipo();
+  const mezcla = (ordenDestino ? ordenDestino.modalidad === 'aqui' : modalidad === 'aqui') && platosLlevar.size > 0;
   const hayVarios = maxPlato() > 1;
   const ordenado = [...carrito].sort((a, b) => a.plato - b.plato);
   let ultimo = 0;
   for (const l of ordenado) {
     if (hayVarios && l.plato !== ultimo) {
       const piezas = carrito.filter((x) => x.plato === l.plato).reduce((n, x) => n + x.cantidad, 0);
-      caja.append(el('h3', 'plato-titulo' + (esLlevar(l.plato) ? ' llevar' : ''), `Plato ${l.plato} · ${piezas} pza` + (esLlevar(l.plato) ? ' · 🥡 PARA LLEVAR' : '')));
+      caja.append(el('h3', 'plato-titulo' + (esLlevar(l.plato) ? ' llevar' : ''), `Plato ${l.plato} · ${piezas} pza` + (esLlevar(l.plato) ? ' · 🥡 PARA LLEVAR' : (mezcla ? ' · 🍽 PARA COMER AQUÍ' : ''))));
     }
     ultimo = l.plato;
     const fila = el('div', 'linea');
@@ -588,15 +629,6 @@ function pintarPlatos() {
     mas.addEventListener('click', () => { platoActual = maxPlato() + 1; pintarCarrito(); });
     caja.append(mas);
   }
-  // Interruptor del plato activo: 🍽 Aquí / 🥡 Para llevar (solo en pedidos para comer aquí)
-  if (mixtoPosible()) {
-    const llevar = esLlevar(platoActual);
-    const t = el('button', 'btn plato-llevar' + (llevar ? ' activo' : ''), llevar ? `🥡 Plato ${platoActual} es para llevar ✓ (quitar)` : `🥡 Poner plato ${platoActual} para llevar`);
-    t.type = 'button';
-    t.setAttribute('aria-pressed', String(llevar));
-    t.addEventListener('click', () => { if (platosLlevar.has(platoActual)) platosLlevar.delete(platoActual); else platosLlevar.add(platoActual); pintarCarrito(); });
-    caja.append(t);
-  }
 }
 
 /* El pedido en curso sobrevive a una recarga accidental de la página. */
@@ -638,6 +670,7 @@ function fijarDestino(o) {
   if (o) platoActual = platosBase;
   else platoActual = 1;
   $('destino').hidden = !o;
+  $('datos-pedido').hidden = !!o;
   $('campos-cliente').hidden = !!o;
   if (typeof actualizarMesa === 'function') actualizarMesa();
   if (o) $('destino-texto').textContent = `Agregando al pedido #${o.turno.slice(-3)} · ${o.nombre_cliente}`;
@@ -707,7 +740,7 @@ async function levantar(pagarAhora = false) {
   if (mesaObligatoria()) {
     if (!mesas.length) { error.textContent = 'Esta sucursal no tiene mesas. Pide al administrador que las cree en “Sucursales y mesas”.'; return; }
     if (!$('mesa').value) { error.textContent = 'Elige la mesa del pedido.'; $('mesa').focus(); return; }
-  } else if (!cliente && !ordenDestino) { error.textContent = 'Escribe el nombre del cliente.'; $('cliente').focus(); return; }
+  } else if (!cliente && !ordenDestino && !nombreOpcional()) { error.textContent = modalidad === 'aqui' && mesas.length ? 'Elige la mesa o escribe el nombre del cliente.' : 'Escribe el nombre del cliente.'; $('cliente').focus(); return; }
 
   enviando = true;
   const boton = pagarAhora ? $('btn-levantar-pagar') : $('btn-levantar');
@@ -1088,39 +1121,3 @@ iniciar();
 
 
 
-/* Selector visual de mesa (plano) */
-let mpZona = null;
-function mpElegir(m) { $('mesa').value = String(m.id); $('dlg-mesa-plano').close(); actualizarMesa(); }
-function mpPintar() {
-  const tabs = $('mp-zonas'); tabs.replaceChildren();
-  for (const z of zonasPlano) {
-    const b = el('button', 'btn', z.nombre); b.type = 'button';
-    b.setAttribute('aria-pressed', String(z.id === mpZona));
-    b.addEventListener('click', () => { mpZona = z.id; mpPintar(); });
-    tabs.append(b);
-  }
-  const lienzo = $('mp-lienzo'); lienzo.replaceChildren();
-  const aqui = mesas.filter((m) => m.zona_id === mpZona && m.x !== null && m.activa !== false);
-  if (!aqui.length) lienzo.append(el('div', 'plano-vacio', 'No hay mesas en esta zona.'));
-  for (const m of aqui) {
-    const b = el('button', 'plano-mesa ' + m.forma + (String(m.id) === $('mesa').value ? ' elegida' : ''), m.nombre);
-    b.type = 'button'; b.style.left = m.x + '%'; b.style.top = m.y + '%';
-    b.addEventListener('click', () => mpElegir(m));
-    lienzo.append(b);
-  }
-  const sin = $('mp-sin'); sin.replaceChildren();
-  const libres = mesas.filter((m) => (m.zona_id === null || m.x === null) && m.activa !== false);
-  if (!libres.length) sin.append(el('span', 'ayuda', 'Ninguna.'));
-  for (const m of libres) {
-    const b = el('button', 'btn chico', m.nombre); b.type = 'button';
-    b.addEventListener('click', () => mpElegir(m));
-    sin.append(b);
-  }
-}
-$('mesa-plano-btn').addEventListener('click', () => {
-  const m = mesas.find((x) => String(x.id) === $('mesa').value);
-  mpZona = (m && m.zona_id) || (zonasPlano[0] && zonasPlano[0].id) || null;
-  mpPintar();
-  $('dlg-mesa-plano').showModal();
-});
-$('mp-cancelar').addEventListener('click', () => $('dlg-mesa-plano').close());

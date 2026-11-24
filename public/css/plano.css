@@ -18,3 +18,18 @@
 .plano-edicion { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; padding: 8px 10px; border: 1px solid var(--color-borde); border-radius: 10px; background: #fff; margin: 8px 0; }
 .plano-edicion .btn[aria-pressed="true"] { background: var(--color-amarillo); border-color: var(--color-amarillo); font-weight: 800; }
 .mesa-elegida-txt { font-weight: 700; }
+.dlg-plano-sel { width: min(94vw, 680px); max-height: 92vh; padding: 14px; border-radius: 14px; border-top: 6px solid var(--color-principal, #0a6b4e); }
+.dlg-plano-sel .plano-sel-cab { display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px; font-size: 1.1rem; }
+.dlg-plano-sel .plano-sel-pie { display: flex; gap: 8px; margin-top: 8px; }
+.dlg-plano-sel .plano-pestanas { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 8px; }
+.dlg-plano-sel .plano-pestanas .btn[aria-pressed="true"] { background: var(--color-amarillo, #ffc83a); font-weight: 800; }
+
+/* Mesa y nombre en la misma fila, arriba del pedido; debajo, el tipo de pedido */
+.fila-mesa-nombre { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 10px; align-items: start; }
+.fila-mesa-nombre #mesa-fila { display: grid; gap: 6px; font-weight: 600; font-size: .95rem; }
+.fila-mesa-nombre #mesa-fila[hidden] { display: none; }
+.fila-mesa-nombre #mesa-plano-btn { min-height: 48px; font-weight: 700; justify-content: center; text-align: center; }
+.tipo-bloque { margin: 10px 0 12px; display: grid; gap: 6px; }
+.tipo-bloque[hidden] { display: none; }
+.tipo-plato { margin: 0; font-weight: 700; }
+.mod-btn:disabled { opacity: .45; cursor: not-allowed; }

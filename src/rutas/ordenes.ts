@@ -110,7 +110,7 @@ export async function rutasOrdenes(app: FastifyInstance): Promise<void> {
       const modalidadPedida = leerModalidad(datos['modalidad']);
       const porMesa = agregarA === 0 && modalidadPedida === 'aqui' && (await pedirPorMesaEn(c.nid, c.sid));
       if (largo(nombreCliente) > 80) throw fallo('El nombre del cliente no puede pasar de 80 caracteres.');
-      if (agregarA === 0 && nombreCliente === '' && !porMesa) throw fallo('Escribe el nombre del cliente (máximo 80 caracteres).');
+      if (agregarA === 0 && nombreCliente === '' && !porMesa && !(modalidadPedida === 'aqui' && entero(datos['mesa_id']))) throw fallo('Escribe el nombre del cliente (máximo 80 caracteres).');
       if (porMesa && !entero(datos['mesa_id'])) throw fallo('Elige la mesa del pedido.');
       const notasOrden = String(datos['notas'] ?? '').trim();
       if (largo(notasOrden) > 255) throw fallo('Las notas del pedido no pueden pasar de 255 caracteres.');
@@ -131,7 +131,7 @@ export async function rutasOrdenes(app: FastifyInstance): Promise<void> {
       const agendado = horaPrometida !== null;
       const espera = agregarA > 0 ? null : await estimarNuevo(c, modalidad, unidades);
       const mesa = agregarA > 0 || modalidad !== 'aqui' ? null : await leerMesa(c, datos['mesa_id']);
-      if (porMesa && nombreCliente === '') nombreCliente = mesa ? (/mesa/i.test(mesa.nombre) ? mesa.nombre : `Mesa ${mesa.nombre}`) : 'Mesa';
+      if (nombreCliente === '' && (porMesa || mesa)) nombreCliente = mesa ? (/mesa/i.test(mesa.nombre) ? mesa.nombre : `Mesa ${mesa.nombre}`) : 'Mesa';
       const orden =
         agregarA > 0
           ? await agregarAOrden(c, agregarA, lineas, total)

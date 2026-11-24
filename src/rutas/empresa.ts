@@ -13,6 +13,7 @@ import { rutasAdminImportar } from './admin/importar.js';
 import { rutasCategorias } from './admin/categorias.js';
 import { rutasEstaciones } from './admin/estaciones.js';
 import { rutasExtras } from './admin/extras.js';
+import { mesasParaElegir } from '../plano.js';
 import { rutasAdminMesas } from './admin/mesas.js';
 import { rutasSucursales } from './admin/sucursales.js';
 import { rutasUsuarios } from './admin/usuarios.js';
@@ -52,13 +53,14 @@ export async function rutasEmpresa(app: FastifyInstance): Promise<void> {
     const estado = await estadoPedidosCliente(req.negocio.id);
     const pest = await pestanasCliente(req.negocio.id);
     const ajustesCliente = await cargarAjustesCliente(req.negocio.id);
-    const mesasActivas = await filas('SELECT id, sucursal_id, nombre FROM mesas WHERE negocio_id = ? AND activa = 1 ORDER BY orden, id', [req.negocio.id]);
+    const sucs = await sucursalesActivas(req.negocio.id);
+    const mesasPor = new Map(await Promise.all(sucs.map(async (s) => [s.id, await mesasParaElegir(req.negocio.id, s.id)] as const)));
     return {
       ok: true,
       negocio: { nombre: req.negocio.nombre, slug: req.negocio.slug },
       // `pedidos`: ¿el cliente puede levantar su pedido desde el QR en esa sucursal, o solo ver el menú?
       // `ver_pedido` / `ver_pagar`: ¿se muestran las pestañas "Mi pedido" y "Pagar"?
-      sucursales: (await sucursalesActivas(req.negocio.id)).map((s) => ({ id: s.id, slug: s.slug, nombre: s.nombre, pedidos: efectivo(estado, s.id), ver_pedido: pestanasDe(pest, s.id).verPedido, ver_pagar: pestanasDe(pest, s.id).verPagar, ver_menu: pestanasDe(pest, s.id).verMenu, ...(() => { const c = configEfectiva(ajustesCliente, s.id); return { modalidades: c.modalidades, mixto: c.mixto, pago: c.pago, transferencia: c.transferencia, mesa: c.mesa, mesas: mesasActivas.filter((m) => Number(m['sucursal_id']) === s.id).map((m) => ({ id: Number(m['id']), nombre: String(m['nombre']) })) }; })() })),
+      sucursales: sucs.map((s) => ({ id: s.id, slug: s.slug, nombre: s.nombre, pedidos: efectivo(estado, s.id), ver_pedido: pestanasDe(pest, s.id).verPedido, ver_pagar: pestanasDe(pest, s.id).verPagar, ver_menu: pestanasDe(pest, s.id).verMenu, ...(() => { const c = configEfectiva(ajustesCliente, s.id); return { modalidades: c.modalidades, mixto: c.mixto, pago: c.pago, transferencia: c.transferencia, mesa: c.mesa, ...(() => { const m = mesasPor.get(s.id)!; return { mesas: m.mesas, zonas: m.zonas, plano: m.plano }; })() }; })() })),
     };
   });
 
