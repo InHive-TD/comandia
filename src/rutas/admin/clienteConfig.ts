@@ -28,12 +28,12 @@ export async function rutasClienteConfig(app: FastifyInstance): Promise<void> {
 
       const estado = async () => {
         const a = await cargarAjustesCliente(nid);
-        const sucs = await filas(`SELECT id, nombre FROM sucursales WHERE negocio_id = ? AND activa = 1${alcance !== null ? ` AND id = ${Math.trunc(alcance)}` : ''} ORDER BY orden, id`, [nid]);
+        const sucs = await filas(`SELECT id, slug, nombre FROM sucursales WHERE negocio_id = ? AND activa = 1${alcance !== null ? ` AND id = ${Math.trunc(alcance)}` : ''} ORDER BY orden, id`, [nid]);
         return {
           ok: true,
           puede_general: alcance === null,
           general: nivelCliente(a, null),
-          sucursales: sucs.map((s) => ({ id: Number(s['id']), nombre: s['nombre'], propio: nivelCliente(a, Number(s['id'])), efectivo: configEfectiva(a, Number(s['id'])) })),
+          sucursales: sucs.map((s) => ({ id: Number(s['id']), slug: s['slug'], nombre: s['nombre'], propio: nivelCliente(a, Number(s['id'])), efectivo: configEfectiva(a, Number(s['id'])) })),
         };
       };
 

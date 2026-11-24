@@ -2532,3 +2532,21 @@ $('ef-otro').addEventListener('click', async () => {
 });
 
 iniciar();
+
+
+/* Enlaces «Ver la pantalla…» (se abren en otra pestaña): cliente, cocina y pedidos */
+const RAIZ_EMPRESA = BASE_ADMIN.replace(/admin\/$/, '');   // "/lavale/"
+function actualizarEnlacesPagina() {
+  const slugCliente = (() => {
+    if (!cfgCliente || !cfgCliente.sucursales.length) return '';
+    const ambito = $('pg-ambito').offsetParent !== null ? $('pg-ambito') : $('ct-ambito');
+    const suc = cfgCliente.sucursales.find((x) => String(x.id) === ambito.value) || cfgCliente.sucursales[0];
+    return suc.slug || '';
+  })();
+  document.querySelectorAll('.ver-pagina').forEach((a) => {
+    const pag = a.dataset.pagina;
+    a.href = location.origin + RAIZ_EMPRESA + (pag === 'cliente' ? (slugCliente ? slugCliente + '/' : 'cliente/') : pag + '/');
+  });
+}
+for (const id of ['ct-ambito', 'pg-ambito']) $(id).addEventListener('change', actualizarEnlacesPagina);
+document.addEventListener('click', (ev) => { if (ev.target.closest && ev.target.closest('.ver-pagina')) actualizarEnlacesPagina(); }, true);
