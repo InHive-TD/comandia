@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="robots" content="noindex">
+  <title>Crea tu contraseña · Comandia</title>
+  <link rel="icon" type="image/png" href="../img/favicon.png">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Outfit:wght@600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="../css/estilos.css">
+  <link rel="stylesheet" href="../css/acceso.css">
+  <link rel="stylesheet" href="../api/tema.php">
+</head>
+<body class="pag-acceso">
+  <main class="ac-tarjeta" id="ac">
+    <div class="ac-marca">
+      <img class="ac-logo" src="../api/logo.php" alt="">
+      <h1 class="ac-negocio" id="ac-negocio"></h1>
+      <p class="ac-sub" id="ac-sub">Comprobando tu enlace…</p>
+    </div>
+    <form id="ac-form" class="formulario" hidden autocomplete="off">
+      <label>Crea tu contraseña
+        <span class="ac-campo"><input id="ac-p1" type="password" autocomplete="new-password" minlength="10" maxlength="200" required><button type="button" class="ac-ojo" id="ac-ojo" aria-label="Mostrar contraseña">👁</button></span>
+      </label>
+      <label>Repítela
+        <input id="ac-p2" type="password" autocomplete="new-password" maxlength="200" required>
+      </label>
+      <ul class="ac-reglas"><li id="r-largo">Al menos 10 caracteres</li><li id="r-igual">Las dos coinciden</li></ul>
+      <p id="ac-error" class="msg-error" role="alert"></p>
+      <button class="btn principal" type="submit" id="ac-enviar">Guardar y entrar</button>
+    </form>
+    <div id="ac-exito" class="ac-exito" hidden>
+      <div class="grande">✅</div>
+      <h2 style="margin:0">¡Listo! Tu correo quedó confirmado</h2>
+      <p class="ac-sub">Ya puedes iniciar sesión con tu correo y la contraseña que acabas de crear.</p>
+      <a class="btn principal" id="ac-ir" href="../admin/">Iniciar sesión</a>
+    </div>
+    <div id="ac-malo" class="ac-exito" hidden>
+      <div class="grande">⌛</div>
+      <p class="ac-sub" id="ac-malo-txt"></p>
+    </div>
+    <p class="ac-pie">Con tecnología de <b>Comandia</b></p>
+  </main>
+  <script src="../js/acceso.js"></script>
+</body>
+</html>

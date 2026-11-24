@@ -30,6 +30,25 @@ export async function asegurarEsquema(): Promise<void> {
   await asegurarColumna('productos', 'grupo_obligatorio', 'VARCHAR(40) NULL');
   // Foto de perfil de cada usuario (nombre del archivo en uploads, igual que las fotos de platillos)
   await asegurarColumna('usuarios', 'foto', 'VARCHAR(80) NULL');
+  // Acceso con correo: el admin invita, la persona confirma el correo y crea su propia contraseña
+  await asegurarColumna('usuarios', 'correo', 'VARCHAR(150) NULL');
+  await asegurarColumna('usuarios', 'clave_pendiente', 'TINYINT(1) NOT NULL DEFAULT 0');
+  const idxCorreo = await fila(`SELECT COUNT(*) AS n FROM information_schema.STATISTICS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'usuarios' AND INDEX_NAME = 'uq_usuario_correo'`);
+  if (Number(idxCorreo?.['n']) === 0) {
+    try { await ejecutar('ALTER TABLE usuarios ADD UNIQUE KEY uq_usuario_correo (negocio_id, correo)'); } catch (e) { console.warn('No se pudo crear el índice único de correo:', (e as Error).message); }
+  }
+  await ejecutar(`CREATE TABLE IF NOT EXISTS tokens_usuario (
+    id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+    negocio_id INT UNSIGNED NOT NULL,
+    usuario_id INT UNSIGNED NOT NULL,
+    tipo ENUM('invitacion','restablecer') NOT NULL,
+    token_hash CHAR(64) NOT NULL,
+    expira_en DATETIME NOT NULL,
+    usado_en DATETIME NULL,
+    creado_en DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE KEY uq_token (token_hash),
+    INDEX idx_token_usuario (usuario_id)
+  ) ENGINE=InnoDB`);
   // Plano de mesas: zonas de una sucursal (Piso 1, Patio…) y la posición de cada mesa dentro de su zona (en % del lienzo)
   await ejecutar(`CREATE TABLE IF NOT EXISTS zonas (
     id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,

@@ -932,12 +932,13 @@ function grupoUsuarios(clave, titulo, gente, r, colapsable) {
 function renglonUsuario(u, r) {
   const fila = el('div', 'us-renglon' + (u.activo ? '' : ' inactivo'));
   const quien = el('div', 'us-quien');
-  quien.append(el('strong', '', u.nombre), el('span', 'ayuda', '@' + u.usuario));
+  quien.append(el('strong', '', u.nombre), el('span', 'ayuda', u.correo || '@' + u.usuario));
   const chips = el('div', 'us-chips');
   chips.append(el('span', 'chip rol-' + u.rol, ROL_TEXTO[u.rol]));
   const extra = (u.sucursales_extra || []).map((id) => (r.sucursales.find((x) => x.id === id) || {}).nombre).filter(Boolean);
   if (extra.length) chips.append(el('span', 'chip', '+ ' + extra.join(' + ')));
   if (u.id === r.yo) chips.append(el('span', 'chip', 'Tú'));
+  if (u.pendiente) chips.append(el('span', 'chip sin', '✉ Pendiente de crear contraseña'));
   chips.append(el('span', 'chip ' + (u.activo ? 'activo' : 'sin'), u.activo ? '● Activo' : 'Desactivado'));
   const editar = el('button', 'btn chico', '✎ Editar');
   editar.type = 'button';
@@ -953,6 +954,8 @@ function abrirEditarUsuario(u) {
   $('ue-error').textContent = '';
   $('ue-titulo').textContent = u.nombre;
   $('ue-usuario').textContent = '@' + u.usuario;
+  $('ue-correo').textContent = u.correo ? `Correo: ${u.correo}${u.pendiente ? ' · aún no crea su contraseña' : ''}` : 'Sin correo registrado: entra con usuario y contraseña.';
+  $('ue-reenviar').textContent = u.correo ? (u.pendiente ? '✉ Reenviar invitación' : '✉ Restablecer contraseña por correo') : '✉ Agregar correo e invitar';
   $('ue-nombre').value = u.nombre;
   const esAdmin = u.rol === 'admin';
   $('ue-fila-rol').hidden = esAdmin;
@@ -982,6 +985,24 @@ function abrirEditarUsuario(u) {
       dlg.close();
       await cargarUsuarios();
       avisar('Usuario actualizado');
+    } catch (err) { $('ue-error').textContent = err.message; }
+  };
+  $('ue-reenviar').onclick = async () => {
+    $('ue-error').textContent = '';
+    try {
+      if (!u.correo) {
+        const c = await pedirTexto(`Correo de ${u.nombre}:`, { si: 'Enviar invitación' });
+        if (!c) return;
+        await enviarJson(API + 'admin/usuarios.php', { accion: 'correo', id: u.id, correo: c.trim() });
+        avisar('Invitación enviada');
+      } else {
+        const aviso = u.pendiente ? `¿Reenviar la invitación a ${u.correo}?` : `¿Restablecer la contraseña de ${u.nombre}? Su contraseña actual dejará de servir y se le enviará un enlace a ${u.correo}.`;
+        if (!(await confirmar(aviso, { si: u.pendiente ? 'Reenviar' : 'Restablecer', peligro: !u.pendiente }))) return;
+        await enviarJson(API + 'admin/usuarios.php', { accion: 'reenviar', id: u.id });
+        avisar('Enlace enviado a ' + u.correo);
+      }
+      $('dlg-usuario-editar').close();
+      await cargarUsuarios();
     } catch (err) { $('ue-error').textContent = err.message; }
   };
   $('ue-clave').onclick = async () => {
@@ -1015,13 +1036,23 @@ $('btn-usuarios').addEventListener('click', async () => {
 $('us-cerrar').addEventListener('click', () => dlgUsuarios.close());
 $('form-nuevo-usuario').addEventListener('submit', async (ev) => {
   ev.preventDefault();
-  const ok = await accionUsuario({
-    accion: 'crear', nombre: $('us-nombre').value.trim(), usuario: $('us-usuario').value.trim(),
-    password: $('us-password').value, rol: $('us-rol').value, sucursal_id: Number($('us-sucursal').value),
-    ...(extraNuevo ? { sucursales_extra: extraNuevo.valor() } : {}),
-  }, 'Usuario creado');
-  if (ok) { $('us-nombre').value = ''; $('us-usuario').value = ''; $('us-password').value = ''; }
+  const correo = $('us-correo').value.trim();
+  const comun = { nombre: $('us-nombre').value.trim(), rol: $('us-rol').value, sucursal_id: Number($('us-sucursal').value), ...(extraNuevo ? { sucursales_extra: extraNuevo.valor() } : {}) };
+  const boton = $('us-enviar'); boton.disabled = true;
+  const ok = correo
+    ? await accionUsuario({ accion: 'invitar', correo, ...comun }, 'Invitación enviada a ' + correo)
+    : await accionUsuario({ accion: 'crear', usuario: $('us-usuario').value.trim(), password: $('us-password').value, ...comun }, 'Usuario creado');
+  boton.disabled = false;
+  if (ok) { for (const id of ['us-nombre', 'us-correo', 'us-usuario', 'us-password']) $(id).value = ''; sincronizarCorreoUsuario(); }
 });
+function sincronizarCorreoUsuario() {
+  const conCorreo = $('us-correo').value.trim() !== '';
+  $('us-fila-usuario').hidden = conCorreo; $('us-fila-password').hidden = conCorreo;
+  $('us-usuario').required = !conCorreo; $('us-password').required = !conCorreo;
+  $('us-enviar').textContent = conCorreo ? '✉ Enviar invitación' : 'Crear usuario';
+}
+$('us-correo').addEventListener('input', sincronizarCorreoUsuario);
+sincronizarCorreoUsuario();
 
 /* ------------------------------------------------------------------ */
 /*  Sucursales y mesas                                                 */

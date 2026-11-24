@@ -28,6 +28,16 @@ export const config = {
     user: texto('DB_USER', 'root'),
     password: texto('DB_PASSWORD', ''),
   },
+  /** Correo saliente (SMTP). Si falta SMTP_HOST el sistema funciona igual, pero no puede enviar invitaciones. */
+  smtp: {
+    host: texto('SMTP_HOST', ''),
+    port: entero('SMTP_PORT', 465),
+    usuario: texto('SMTP_USER', ''),
+    password: texto('SMTP_PASS', ''),
+    de: texto('SMTP_FROM', ''),
+  },
+  /** Dirección pública del sistema, sin "/" al final (para los enlaces de los correos). */
+  urlPublica: texto('APP_URL', '').replace(/\/+$/, ''),
   /** Duración de una sesión iniciada: 12 horas. */
   sesionSegundos: 12 * 60 * 60,
 } as const;

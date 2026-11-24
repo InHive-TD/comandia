@@ -17,6 +17,7 @@ import { mesasParaElegir } from '../plano.js';
 import { rutasAdminMesas } from './admin/mesas.js';
 import { rutasSucursales } from './admin/sucursales.js';
 import { rutasUsuarios } from './admin/usuarios.js';
+import { rutasAcceso } from '../acceso.js';
 import { rutasPrioridades } from './admin/prioridades.js';
 import { rutasTiempos } from './admin/tiempos.js';
 import { rutasCaja } from './caja.js';
@@ -44,7 +45,7 @@ export async function rutasEmpresa(app: FastifyInstance): Promise<void> {
   await app.register(rutasEventos);
   await app.register(rutasManifiesto);
   // Menú y administración del catálogo (cada archivo documenta sus reglas y permisos)
-  for (const grupo of [rutasPerfil, rutasMenu, rutasCategorias, rutasEstaciones, rutasExtras, rutasAdminProductos, rutasAdminImportar, rutasSucursales, rutasAdminMesas, rutasUsuarios, rutasOrdenes, rutasCocina, rutasCaja, rutasPrioridades, rutasTiempos, rutasMarca, rutasReportes, rutasCliente, rutasTema, rutasClientePedidos, rutasClienteConfig, rutasAdminPlano]) {
+  for (const grupo of [rutasPerfil, rutasMenu, rutasCategorias, rutasEstaciones, rutasExtras, rutasAdminProductos, rutasAdminImportar, rutasSucursales, rutasAdminMesas, rutasUsuarios, rutasOrdenes, rutasCocina, rutasCaja, rutasPrioridades, rutasTiempos, rutasMarca, rutasReportes, rutasCliente, rutasTema, rutasClientePedidos, rutasClienteConfig, rutasAdminPlano, rutasAcceso]) {
     await app.register(grupo);
   }
 
@@ -91,8 +92,8 @@ export async function rutasEmpresa(app: FastifyInstance): Promise<void> {
     const d = cuerpoJson(req);
     const usuario = String(d['usuario'] ?? '').trim();
     const password = String(d['password'] ?? '');
-    if (!usuario || !password || [...usuario].length > 40 || password.length > 200) {
-      throw new ErrorHttp(400, 'datos', 'Escribe tu usuario y contraseña.');
+    if (!usuario || !password || [...usuario].length > 150 || password.length > 200) {
+      throw new ErrorHttp(400, 'datos', 'Escribe tu usuario o correo y tu contraseña.');
     }
     const nid = req.negocio.id;
     const ip = req.ip.slice(0, 45);
@@ -100,22 +101,25 @@ export async function rutasEmpresa(app: FastifyInstance): Promise<void> {
     await ejecutar('DELETE FROM intentos_login WHERE creado_en < (NOW() - INTERVAL 1 DAY)');
     const porUsuario = await fila(
       'SELECT COUNT(*) AS n FROM intentos_login WHERE negocio_id = ? AND ip = ? AND usuario = ? AND creado_en > (NOW() - INTERVAL 10 MINUTE)',
-      [nid, ip, usuario],
+      [nid, ip, usuario.slice(0, 40)],
     );
     const porIp = await fila('SELECT COUNT(*) AS n FROM intentos_login WHERE negocio_id = ? AND ip = ? AND creado_en > (NOW() - INTERVAL 10 MINUTE)', [nid, ip]);
     if (Number(porUsuario?.['n']) >= 5 || Number(porIp?.['n']) >= 20) {
       throw new ErrorHttp(429, 'bloqueado', 'Demasiados intentos. Espera 10 minutos e inténtalo de nuevo.');
     }
 
-    const f = await fila('SELECT id, nombre, rol, password_hash FROM usuarios WHERE negocio_id = ? AND usuario = ? AND activo = 1', [nid, usuario]);
+    const f = await fila('SELECT id, nombre, rol, password_hash, clave_pendiente FROM usuarios WHERE negocio_id = ? AND (usuario = ? OR correo = ?) AND activo = 1', [nid, usuario, usuario]);
+    if (f && Number(f['clave_pendiente']) === 1) {
+      throw new ErrorHttp(403, 'clave_pendiente', 'Aún no creas tu contraseña. Abre el correo de invitación o pide al administrador que te lo reenvíe.');
+    }
     // bcryptjs entiende los hashes "$2y$" que generó PHP, así que los usuarios existentes siguen entrando.
     const correcto = await bcrypt.compare(password, f ? String(f['password_hash']) : HASH_RELLENO);
     if (!f || !correcto) {
-      await ejecutar('INSERT INTO intentos_login (negocio_id, ip, usuario) VALUES (?, ?, ?)', [nid, ip, usuario]);
+      await ejecutar('INSERT INTO intentos_login (negocio_id, ip, usuario) VALUES (?, ?, ?)', [nid, ip, usuario.slice(0, 40)]);
       await esperar(400);
-      throw new ErrorHttp(401, 'credenciales', 'Usuario o contraseña incorrectos.');
+      throw new ErrorHttp(401, 'credenciales', 'Usuario, correo o contraseña incorrectos.');
     }
-    await ejecutar('DELETE FROM intentos_login WHERE negocio_id = ? AND ip = ? AND usuario = ?', [nid, ip, usuario]);
+    await ejecutar('DELETE FROM intentos_login WHERE negocio_id = ? AND ip = ? AND usuario = ?', [nid, ip, usuario.slice(0, 40)]);
 
     // Un usuario solo puede estar en UN dispositivo a la vez. Se considera "abierta" otra sesión del mismo usuario
     // si tuvo actividad en los últimos MINUTOS_SESION_ACTIVA minutos (cada petición renueva su caducidad).

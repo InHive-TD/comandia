@@ -105,8 +105,11 @@ CREATE TABLE IF NOT EXISTS usuarios (
     sucursal_id    INT UNSIGNED NULL,             -- NULL = ve todas las sucursales (administrador); si no, solo la suya
     activo         TINYINT(1)   NOT NULL DEFAULT 1,
     foto           VARCHAR(80)  NULL,             -- foto de perfil (archivo en uploads)
+    correo         VARCHAR(150) NULL,             -- acceso con correo (invitación); NULL = solo usuario y contraseña
+    clave_pendiente TINYINT(1)  NOT NULL DEFAULT 0, -- 1 = aún no crea su contraseña
     creado_en      DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP,
     UNIQUE KEY uq_usuario_negocio (negocio_id, usuario),
+    UNIQUE KEY uq_usuario_correo (negocio_id, correo),
     CONSTRAINT fk_usuario_negocio FOREIGN KEY (negocio_id) REFERENCES negocios(id)
 ) ENGINE=InnoDB;
 
@@ -463,4 +466,18 @@ CREATE TABLE IF NOT EXISTS extra_grupos (
     nombre     VARCHAR(40) NOT NULL,
     orden      INT NOT NULL DEFAULT 0,
     UNIQUE KEY uq_extra_grupo (negocio_id, nombre)
+) ENGINE=InnoDB;
+
+-- Enlaces de un solo uso para crear o restablecer la contraseña (se guarda solo el hash del código).
+CREATE TABLE IF NOT EXISTS tokens_usuario (
+    id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+    negocio_id INT UNSIGNED NOT NULL,
+    usuario_id INT UNSIGNED NOT NULL,
+    tipo ENUM('invitacion','restablecer') NOT NULL,
+    token_hash CHAR(64) NOT NULL,
+    expira_en DATETIME NOT NULL,
+    usado_en DATETIME NULL,
+    creado_en DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE KEY uq_token (token_hash),
+    INDEX idx_token_usuario (usuario_id)
 ) ENGINE=InnoDB;

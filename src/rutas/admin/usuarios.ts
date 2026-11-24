@@ -19,6 +19,9 @@ import { cuerpoJson, exigirMetodo, requerirGestion } from '../../auth.js';
 import { ejecutar, fila, filas } from '../../db.js';
 import { ErrorHttp, fallo } from '../../errores.js';
 import { sucursalesActivas } from '../../negocio.js';
+import { CORREO_VALIDO, exigirCorreoListo, mandarEnlace } from '../../acceso.js';
+import { correoListo } from '../../correo.js';
+import { randomBytes } from 'node:crypto';
 import { entero, largo, noVacio } from '../../util.js';
 
 const ROLES_DUENO = ['taquero', 'caja', 'mesero', 'gerente'];
@@ -68,7 +71,7 @@ export async function rutasUsuarios(app: FastifyInstance): Promise<void> {
 
       if (req.method === 'GET') {
         const r = await filas(
-          `SELECT u.id, u.nombre, u.usuario, u.rol, u.activo, u.creado_en, u.sucursal_id, s.nombre AS sucursal
+          `SELECT u.id, u.nombre, u.usuario, u.correo, u.clave_pendiente, u.rol, u.activo, u.creado_en, u.sucursal_id, s.nombre AS sucursal
              FROM usuarios u LEFT JOIN sucursales s ON s.id = u.sucursal_id
             WHERE u.negocio_id = ?${alcance !== null ? " AND u.sucursal_id = ? AND u.rol IN ('taquero','caja','mesero') AND NOT EXISTS (SELECT 1 FROM usuario_sucursales x WHERE x.usuario_id = u.id)" : ''}
             ORDER BY u.activo DESC, u.rol = 'admin' DESC, u.nombre`,
@@ -80,12 +83,13 @@ export async function rutasUsuarios(app: FastifyInstance): Promise<void> {
           ok: true,
           yo: yo.id,
           usuarios: r.map((u) => ({
-            id: Number(u['id']), nombre: u['nombre'], usuario: u['usuario'], rol: u['rol'], activo: Boolean(Number(u['activo'])), creado_en: u['creado_en'],
+            id: Number(u['id']), nombre: u['nombre'], usuario: u['usuario'], correo: u['correo'] ?? null, pendiente: Boolean(Number(u['clave_pendiente'])), rol: u['rol'], activo: Boolean(Number(u['activo'])), creado_en: u['creado_en'],
             sucursal_id: u['sucursal_id'] === null ? null : Number(u['sucursal_id']), sucursal: u['sucursal'],
             sucursales_extra: extrasDeUsuario(Number(u['id'])),
           })),
           sucursales: alcance === null ? activas : activas.filter((s) => s.id === alcance),
           roles,
+          correo_listo: correoListo(),
         };
       }
 
@@ -140,6 +144,58 @@ export async function rutasUsuarios(app: FastifyInstance): Promise<void> {
           // Si cambió la principal y no se mandaron extras, se quita la nueva principal de las adicionales (no se repite).
           if (extras === undefined) await ejecutar('DELETE FROM usuario_sucursales WHERE usuario_id = ? AND sucursal_id = ?', [id, principal]);
           await guardarExtras(id, extras);
+          return { ok: true };
+        }
+        case 'invitar': {
+          exigirCorreoListo();
+          const nombre = String(d['nombre'] ?? '').trim();
+          const correo = String(d['correo'] ?? '').trim().toLowerCase();
+          const rol = String(d['rol'] ?? '');
+          if (nombre === '' || largo(nombre) > 80) throw fallo('Escribe el nombre de la persona (máximo 80 caracteres).');
+          if (!CORREO_VALIDO.test(correo) || largo(correo) > 150) throw fallo('Escribe un correo válido.');
+          if (!roles.includes(rol)) throw fallo(`Elige el rol: ${textoRoles}.`);
+          const sucursalId = sucursalDelPersonal(d['sucursal_id']);
+          const dup = await fila('SELECT COUNT(*) AS n FROM usuarios WHERE negocio_id = ? AND correo = ?', [nid, correo]);
+          if (Number(dup?.['n']) > 0) throw new ErrorHttp(409, 'validacion', 'Ya existe una persona con ese correo.');
+          // Nombre de acceso interno: la parte del correo antes de la @ (único dentro de la empresa).
+          let base = (correo.split('@')[0] ?? '').replace(/[^a-z0-9._-]/g, '').slice(0, 34);
+          if (base.length < 3) base = (base + 'usuario').slice(0, 10);
+          let usuario = base;
+          for (let i = 2; Number((await fila('SELECT COUNT(*) AS n FROM usuarios WHERE negocio_id = ? AND usuario = ?', [nid, usuario]))?.['n']) > 0; i++) usuario = `${base}${i}`;
+          const r = await ejecutar('INSERT INTO usuarios (negocio_id, sucursal_id, nombre, usuario, correo, clave_pendiente, password_hash, rol) VALUES (?, ?, ?, ?, ?, 1, ?, ?)', [
+            nid, sucursalId, nombre, usuario, correo, await bcrypt.hash(randomBytes(24).toString('hex'), 10), rol,
+          ]);
+          await guardarExtras(r.insertId, extrasDe(d['sucursales_extra'], sucursalId));
+          await mandarEnlace(req.negocio, r.insertId, 'invitacion');
+          reply.code(201);
+          return { ok: true, id: r.insertId };
+        }
+        case 'reenviar': {
+          // Primera invitación sin terminar → se reenvía; si ya tenía contraseña → se restablece (la anterior deja de servir).
+          exigirCorreoListo();
+          const id = entero(d['id']);
+          await objetivo(id);
+          const u = await fila('SELECT correo, clave_pendiente FROM usuarios WHERE id = ? AND negocio_id = ?', [id, nid]);
+          if (!u?.['correo']) throw fallo('Esta persona no tiene correo registrado. Agrégaselo primero.');
+          const pendiente = Number(u['clave_pendiente']) === 1;
+          if (!pendiente) {
+            await ejecutar('UPDATE usuarios SET password_hash = ?, clave_pendiente = 1 WHERE id = ? AND negocio_id = ?', [await bcrypt.hash(randomBytes(24).toString('hex'), 10), id, nid]);
+            await ejecutar("DELETE FROM sesiones WHERE JSON_EXTRACT(datos, '$.usuario_id') = ? AND JSON_EXTRACT(datos, '$.negocio_id') = ?", [id, nid]);
+          }
+          await mandarEnlace(req.negocio, id, pendiente ? 'invitacion' : 'restablecer');
+          return { ok: true };
+        }
+        case 'correo': {
+          // A alguien que ya entra con usuario y contraseña se le agrega correo; conserva su contraseña hasta que cree una nueva.
+          exigirCorreoListo();
+          const id = entero(d['id']);
+          await objetivo(id);
+          const correo = String(d['correo'] ?? '').trim().toLowerCase();
+          if (!CORREO_VALIDO.test(correo) || largo(correo) > 150) throw fallo('Escribe un correo válido.');
+          const dup = await fila('SELECT COUNT(*) AS n FROM usuarios WHERE negocio_id = ? AND correo = ? AND id <> ?', [nid, correo, id]);
+          if (Number(dup?.['n']) > 0) throw new ErrorHttp(409, 'validacion', 'Ya existe una persona con ese correo.');
+          await ejecutar('UPDATE usuarios SET correo = ? WHERE id = ? AND negocio_id = ?', [correo, id, nid]);
+          await mandarEnlace(req.negocio, id, 'invitacion');
           return { ok: true };
         }
         case 'clave': {

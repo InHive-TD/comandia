@@ -11,15 +11,16 @@
   <meta name="theme-color" content="#0a6b4e">
   <meta name="mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-capable" content="yes">
-  <script src="../js/pwa.js?v=1795557104" defer></script>
+  <script src="../js/pwa.js?v=1795557467" defer></script>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Outfit:wght@600;700;800&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="../css/estilos.css?v=1795557104">
-  <link rel="stylesheet" href="../css/plano.css?v=1795557104">
-  <link rel="stylesheet" href="../css/admin.css?v=1795557104">
+  <link rel="stylesheet" href="../css/estilos.css?v=1795557467">
+  <link rel="stylesheet" href="../css/plano.css?v=1795557467">
+  <link rel="stylesheet" href="../css/admin.css?v=1795557467">
   <link rel="stylesheet" href="../css/tablero.css?v=1795557101">
-  <link rel="stylesheet" href="../css/shell.css?v=1795557104">
+  <link rel="stylesheet" href="../css/shell.css?v=1795557467">
+  <link rel="stylesheet" href="../css/acceso.css?v=1795557467">
   <link rel="stylesheet" href="../api/tema.php">
 </head>
 <body>
@@ -527,11 +528,15 @@
         <label>Nombre
           <input id="us-nombre" type="text" maxlength="80" placeholder="Ej. María López" required>
         </label>
-        <label>Usuario para entrar
-          <input id="us-usuario" type="text" maxlength="40" autocapitalize="none" placeholder="Ej. maria" required>
+        <label>Correo electrónico <small>(recomendado)</small>
+          <input id="us-correo" type="email" maxlength="150" autocapitalize="none" placeholder="Ej. maria@correo.com">
         </label>
-        <label>Contraseña (mínimo 10 caracteres)
-          <input id="us-password" type="text" minlength="10" maxlength="200" autocomplete="off" required>
+        <p id="us-correo-ayuda" class="ayuda">Con correo, le llega una invitación para confirmarlo y crear su propia contraseña. Sin correo, tú le pones usuario y contraseña (útil para tablets de cocina).</p>
+        <label id="us-fila-usuario">Usuario para entrar
+          <input id="us-usuario" type="text" maxlength="40" autocapitalize="none" placeholder="Ej. maria">
+        </label>
+        <label id="us-fila-password">Contraseña (mínimo 10 caracteres)
+          <input id="us-password" type="text" minlength="10" maxlength="200" autocomplete="off">
         </label>
         <label>Rol
           <select id="us-rol">
@@ -544,7 +549,7 @@
           <select id="us-sucursal" required></select>
         </label>
         <div id="us-extra-caja" class="us-extra" hidden></div>
-        <button class="btn principal" type="submit">Crear usuario</button>
+        <button id="us-enviar" class="btn principal" type="submit">Crear usuario</button>
       </form>
       </details>
       <p id="us-error" class="msg-error" role="alert"></p>
@@ -587,7 +592,11 @@
       <label id="ue-activo-fila" class="casilla ue-activo">
         <input id="ue-activo" type="checkbox"> <span>Activo <small>(si lo quitas, pierde el acceso)</small></span>
       </label>
-      <button id="ue-clave" class="btn" type="button">Nueva contraseña…</button>
+      <p id="ue-correo" class="ayuda"></p>
+      <div class="perfil-botones">
+        <button id="ue-reenviar" class="btn" type="button">✉ Reenviar enlace</button>
+        <button id="ue-clave" class="btn" type="button">Nueva contraseña…</button>
+      </div>
       <p id="ue-error" class="msg-error" role="alert"></p>
       <div class="acciones-dialogo">
         <button id="ue-cerrar" class="btn" type="button">Cerrar</button>
@@ -853,11 +862,12 @@
 
   <div id="toast" class="toast" role="status" hidden></div>
 
-  <script src="../js/comun.js?v=1795557104"></script>
-  <script src="../js/selectorMesa.js?v=1795557104"></script>
+  <script src="../js/comun.js?v=1795557467"></script>
+  <script src="../js/selectorMesa.js?v=1795557467"></script>
   <script src="../js/tablero.js?v=1795557101"></script>
-  <script src="../js/shell.js?v=1795557104"></script>
+  <script src="../js/shell.js?v=1795557467"></script>
+  <script src="../js/login.js?v=1795557467"></script>
   <script src="../js/vendor/qrcode.js"></script>
-  <script src="../js/admin.js?v=1795557104"></script>
+  <script src="../js/admin.js?v=1795557467"></script>
 </body>
 </html>
