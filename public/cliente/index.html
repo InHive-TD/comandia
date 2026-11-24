@@ -11,14 +11,14 @@
   <meta name="theme-color" content="#0a6b4e">
   <meta name="mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-capable" content="yes">
-  <script src="js/pwa.js?v=20261123200049" defer></script>
+  <script src="js/pwa.js?v=20261123200401" defer></script>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Outfit:wght@600;700;800&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="css/estilos.css?v=20261123200049">
-  <link rel="stylesheet" href="css/admin.css?v=20261123200049">
-  <link rel="stylesheet" href="css/pedidos.css?v=20261123200049">
-  <link rel="stylesheet" href="css/cliente.css?v=20261123200049">
+  <link rel="stylesheet" href="css/estilos.css?v=20261123200401">
+  <link rel="stylesheet" href="css/admin.css?v=20261123200401">
+  <link rel="stylesheet" href="css/pedidos.css?v=20261123200401">
+  <link rel="stylesheet" href="css/cliente.css?v=20261123200401">
   <link rel="stylesheet" href="api/tema.php">
 </head>
 <body>
@@ -100,10 +100,12 @@
         <div class="total-fila"><span>Total</span><strong id="total">$0.00</strong></div>
         <p id="espera-previa" class="espera-previa" role="status" hidden></p>
         <p class="ayuda">El pago se hace en caja al recoger tu pedido. Aceptamos <strong>efectivo, transferencia y tarjeta</strong>.</p>
-        <p id="pedido-error" class="msg-error" role="alert"></p>
-        <div class="acciones-dialogo">
-          <button id="btn-levantar" class="btn principal grande" type="button">Enviar pedido</button>
-          <button id="btn-vaciar" class="btn" type="button">Vaciar</button>
+        <div class="carrito-pie">
+          <p id="pedido-error" class="msg-error" role="alert"></p>
+          <div class="acciones-dialogo">
+            <button id="btn-levantar" class="btn principal grande" type="button">Enviar pedido</button>
+            <button id="btn-vaciar" class="btn" type="button">Vaciar</button>
+          </div>
         </div>
       </aside>
 
@@ -225,8 +227,8 @@
 
   <div id="toast" class="toast" role="status" hidden></div>
 
-  <script src="js/comun.js?v=20261123200049"></script>
-  <script src="js/eventos.js?v=20261123200049"></script>
-  <script src="js/cliente.js?v=20261123200049"></script>
+  <script src="js/comun.js?v=20261123200401"></script>
+  <script src="js/eventos.js?v=20261123200401"></script>
+  <script src="js/cliente.js?v=20261123200401"></script>
 </body>
 </html>
