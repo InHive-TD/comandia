@@ -128,7 +128,9 @@ function pintarTipo() {
   const botones = [...bloque.querySelectorAll('.mod-btn')];
   const ver = destino ? mixtoPosible() : modalidadesOk.length > 1;
   bloque.hidden = !ver;
-  const visibles = botones.filter((b) => (destino ? b.dataset.mod !== 'recoger' : modalidadesOk.includes(b.dataset.mod)));
+  // «Recoger» es de todo el pedido: con 2 o más platos desaparece (para recoger se hace otro pedido)
+  const variosPlatos = platosEnUso().length > 1 && modalidad !== 'recoger';
+  const visibles = botones.filter((b) => (destino ? b.dataset.mod !== 'recoger' : modalidadesOk.includes(b.dataset.mod) && !(b.dataset.mod === 'recoger' && variosPlatos)));
   for (const b of botones) {
     b.hidden = !visibles.includes(b);
     b.setAttribute('aria-pressed', String(b.dataset.mod === modDePlato(platoActual)));

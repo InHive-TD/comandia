@@ -506,7 +506,7 @@ function pintarTipo() {
   const botones = [...document.querySelectorAll('#tipo-bloque .mod-btn')];
   $('tipo-bloque').hidden = !!ordenDestino && !mixtoPosible();
   for (const b of botones) {
-    b.hidden = !!ordenDestino && b.dataset.mod === 'recoger';
+    b.hidden = b.dataset.mod === 'recoger' && (!!ordenDestino || (platosEnUso().length > 1 && modalidad !== 'recoger'));  // con 2+ platos «Recoger» desaparece
     b.setAttribute('aria-pressed', String(b.dataset.mod === modDePlato(platoActual)));
     b.disabled = b.dataset.mod === 'recoger' && hayMezcla();
     b.title = b.disabled ? 'No se puede recoger si unos platos son para comer aquí y otros para llevar' : '';
