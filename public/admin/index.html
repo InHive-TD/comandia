@@ -11,13 +11,13 @@
   <meta name="theme-color" content="#0a6b4e">
   <meta name="mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-capable" content="yes">
-  <script src="../js/pwa.js?v=1795493973" defer></script>
+  <script src="../js/pwa.js?v=1795494097" defer></script>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Outfit:wght@600;700;800&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="../css/estilos.css?v=1795493973">
-  <link rel="stylesheet" href="../css/admin.css?v=1795493973">
-  <link rel="stylesheet" href="../css/shell.css?v=1795493973">
+  <link rel="stylesheet" href="../css/estilos.css?v=1795494097">
+  <link rel="stylesheet" href="../css/admin.css?v=1795494097">
+  <link rel="stylesheet" href="../css/shell.css?v=1795494097">
   <link rel="stylesheet" href="../api/tema.php">
 </head>
 <body>
@@ -79,14 +79,27 @@
         <p class="menu-sub">Menú</p>
         <button id="btn-productos" class="btn nav-ico i-platillos" type="button">Platillos</button>
         <button id="btn-extras" class="btn nav-ico i-extras" type="button">Extras</button>
-        <p class="menu-sub">Interfaz del cliente</p>
-        <button id="btn-pedidos-qr" data-titulo="Interfaz del cliente · Opciones" class="btn nav-ico i-qr" type="button">Opciones del cliente</button>
-        <button id="btn-pago" data-titulo="Interfaz del cliente · Datos de pago" class="btn nav-ico i-pago" type="button">Datos de pago</button>
-        <p class="menu-sub">Interfaz de pedidos</p>
-        <button id="btn-toma-pedidos" data-titulo="Interfaz de pedidos · Opciones" class="btn nav-ico i-pedidos" type="button">Opciones de pedidos</button>
-        <p class="menu-sub">Interfaz de cocina</p>
-        <button id="btn-prioridades" data-titulo="Interfaz de cocina · Opciones" class="btn nav-ico i-cocina" type="button">Opciones de cocina</button>
-        <button id="btn-carriles" data-titulo="Interfaz de cocina · Carriles" class="btn nav-ico i-carriles" type="button">Carriles de cocina</button>
+        <p class="menu-sub">Interfaces</p>
+        <div class="menu-desp" data-grupo="cliente">
+          <button class="nav-sum" type="button" aria-expanded="false">Cliente</button>
+          <div class="menu-desp-items">
+            <button id="btn-pedidos-qr" data-titulo="Interfaz del cliente · Configuración general" class="btn nav-ico i-qr" type="button">Configuración general</button>
+            <button id="btn-pago" data-titulo="Interfaz del cliente · Datos de pago" class="btn nav-ico i-pago" type="button">Datos de pago</button>
+          </div>
+        </div>
+        <div class="menu-desp" data-grupo="pedidos">
+          <button class="nav-sum" type="button" aria-expanded="false">Pedidos</button>
+          <div class="menu-desp-items">
+            <button id="btn-toma-pedidos" data-titulo="Interfaz de pedidos · Configuración general" class="btn nav-ico i-pedidos" type="button">Configuración general</button>
+          </div>
+        </div>
+        <div class="menu-desp" data-grupo="cocina">
+          <button class="nav-sum" type="button" aria-expanded="false">Cocina</button>
+          <div class="menu-desp-items">
+            <button id="btn-prioridades" data-titulo="Interfaz de cocina · Configuración general" class="btn nav-ico i-cocina" type="button">Configuración general</button>
+            <button id="btn-carriles" data-titulo="Interfaz de cocina · Carriles" class="btn nav-ico i-carriles" type="button">Carriles</button>
+          </div>
+        </div>
         <p class="menu-sub">Negocio</p>
         <button id="btn-sucursales" class="btn nav-ico i-sucursales" type="button">Sucursales y mesas</button>
         <button id="btn-usuarios" class="btn nav-ico i-usuarios" type="button">Usuarios</button>
@@ -606,7 +619,7 @@
   <dialog id="dlg-prioridades" class="pagina">
     <div class="formulario dialogo">
             <div class="ver-pagina-fila"><a class="btn chico ver-pagina" data-pagina="cocina" href="#" target="_blank" rel="noopener" title="Se abre en otra pestaña para ver los cambios">👁 Ver la pantalla de cocina ↗</a></div>
-      <h2>Interfaz de cocina · Opciones</h2>
+      <h2>Interfaz de cocina · Configuración general</h2>
       <p class="ayuda">En cocina los pedidos <strong>para comer aquí</strong> se preparan primero, por orden de llegada; los <strong>para llevar</strong> y los de <strong>recoger</strong> van después, también por orden de llegada.</p>
       <label>📅 Pedidos agendados: pasan a la comanda de cocina (min) antes de la hora
         <input id="pm-prep" type="number" min="0" max="120" step="1" inputmode="numeric">
@@ -636,7 +649,7 @@
   <dialog id="dlg-toma-pedidos" class="pagina">
     <div class="formulario dialogo">
             <div class="ver-pagina-fila"><a class="btn chico ver-pagina" data-pagina="pedidos" href="#" target="_blank" rel="noopener" title="Se abre en otra pestaña para ver los cambios">👁 Ver la pantalla de pedidos ↗</a></div>
-      <h2>Interfaz de pedidos · Opciones</h2>
+      <h2>Interfaz de pedidos · Configuración general</h2>
       <h3 class="cp-sub">🍽 Pedir por mesa o por nombre</h3>
       <p class="ayuda">Si marcas “por mesa”, al levantar un pedido “Aquí” la mesa es obligatoria y el nombre del cliente es opcional (si no lo escriben, el pedido se llama “Mesa N”). Para llevar y recoger siempre se pide el nombre. Las mesas se crean en “Sucursales y mesas”.</p>
       <label id="tm-general-fila" class="lote-op" hidden>
@@ -710,7 +723,7 @@
   <dialog id="dlg-pedidos-qr" class="pagina">
     <div class="formulario dialogo">
             <div class="ver-pagina-fila"><a class="btn chico ver-pagina" data-pagina="cliente" href="#" target="_blank" rel="noopener" title="Se abre en otra pestaña para ver los cambios">👁 Ver la pantalla del cliente ↗</a></div>
-      <h2>Interfaz del cliente · Opciones</h2>
+      <h2>Interfaz del cliente · Configuración general</h2>
       <div>
         <p class="ayuda">Si está <strong>activado</strong>, el cliente escanea el QR, arma y envía su propio pedido. Si está <strong>desactivado</strong>, solo puede ver el menú (y consultar sus pedidos) y pide en el mostrador.</p>
         <label id="cp-general-fila" class="lote-op" hidden>
@@ -754,9 +767,9 @@
 
   <div id="toast" class="toast" role="status" hidden></div>
 
-  <script src="../js/comun.js?v=1795493973"></script>
-  <script src="../js/shell.js?v=1795493973"></script>
+  <script src="../js/comun.js?v=1795494097"></script>
+  <script src="../js/shell.js?v=1795494097"></script>
   <script src="../js/vendor/qrcode.js"></script>
-  <script src="../js/admin.js?v=1795493973"></script>
+  <script src="../js/admin.js?v=1795494097"></script>
 </body>
 </html>

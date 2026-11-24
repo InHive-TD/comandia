@@ -474,8 +474,31 @@ function pintarExtrasProducto(marcados, precios = {}) {
 const paginasPortal = [...document.querySelectorAll('dialog.pagina')];
 for (const d of paginasPortal) $('panel-contenido').append(d);   // dentro del área de contenido, junto a la lista
 
+/* Grupos desplegables del menú (Cliente / Pedidos / Cocina): se recuerda cuáles están abiertos y el de la sección activa se abre solo */
+const CLAVE_DESP = 'comandia_menu_desp';
+const despAbiertos = (() => { try { return new Set(JSON.parse(localStorage.getItem(CLAVE_DESP) || '[]')); } catch { return new Set(); } })();
+function pintarDesp(g) {
+  const abierto = despAbiertos.has(g.dataset.grupo);
+  g.classList.toggle('abierto', abierto);
+  g.querySelector('.nav-sum').setAttribute('aria-expanded', String(abierto));
+}
+document.querySelectorAll('.menu-desp').forEach((g) => {
+  pintarDesp(g);
+  g.querySelector('.nav-sum').addEventListener('click', () => {
+    const k = g.dataset.grupo;
+    if (despAbiertos.has(k)) despAbiertos.delete(k); else despAbiertos.add(k);
+    try { localStorage.setItem(CLAVE_DESP, JSON.stringify([...despAbiertos])); } catch { /* sin almacenamiento */ }
+    pintarDesp(g);
+  });
+});
+
 function marcarMenu(idBoton) {
   for (const b of document.querySelectorAll('.menu-lateral .nav-ico')) b.classList.toggle('activo', b.id === idBoton);
+  document.querySelectorAll('.menu-desp').forEach((g) => {
+    const dentro = !!idBoton && !!g.querySelector('#' + idBoton);
+    g.classList.toggle('tiene-activo', dentro);
+    if (dentro && !despAbiertos.has(g.dataset.grupo)) { despAbiertos.add(g.dataset.grupo); pintarDesp(g); }   // el grupo de la sección abierta se despliega solo
+  });
   const activo = $(idBoton);   // el nombre de la sección seleccionada se muestra en la barra superior
   if (activo) $('titulo-seccion').textContent = activo.dataset.titulo || activo.textContent.trim();
 }

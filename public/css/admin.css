@@ -798,3 +798,15 @@ body.en-panel .panel-lateral { min-height: 100vh; grid-template-columns: 240px m
 
 .ver-pagina-fila { display: flex; justify-content: flex-end; margin-bottom: 6px; }
 .ver-pagina { text-decoration: none; font-weight: 700; }
+
+/* Grupos del menú que se expanden hacia abajo (Interfaces → Cliente / Pedidos / Cocina) */
+.menu-desp { margin: 1px 0; }
+.nav-sum { all: unset; box-sizing: border-box; display: flex; align-items: center; justify-content: space-between; width: 100%; padding: 6px 10px; min-height: 34px; border-radius: 10px; font-weight: 700; font-size: .92rem; cursor: pointer; color: inherit; }
+.nav-sum::after { content: ""; width: 8px; height: 8px; border-right: 2px solid currentColor; border-bottom: 2px solid currentColor; transform: rotate(-45deg); transition: transform .15s; opacity: .7; margin-right: 4px; }
+.menu-desp.abierto > .nav-sum::after { transform: rotate(45deg); }
+.nav-sum:hover, .nav-sum:focus-visible { background: rgba(255,255,255,.1); }
+.menu-desp-items { display: none; padding-left: 12px; }
+.menu-desp.abierto > .menu-desp-items { display: block; }
+.menu-desp.tiene-activo > .nav-sum { color: #fff; }
+body.menu-compacto .nav-sum { display: none; }
+body.menu-compacto .menu-desp-items { display: block; padding-left: 0; }
