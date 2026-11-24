@@ -261,24 +261,41 @@ function pintarProductos() {
     if (p.agotado) info.append(el('span', 'pr-agotado', 'AGOTADO HOY'));
     else if (p.extras.length) info.append(el('span', 'pr-mas', 'con opciones ›'));
     b.addEventListener('click', (ev) => { if (!ignorarClic) tocarProducto(p, !!ev.target.closest('.pr-foto')); });
-    mantenerPresionado(b, () => alternarAgotado(p));
+    mantenerPresionado(b, () => abrirAccionesPlato(p));
     caja.append(b);
   }
 }
 
-/* Mantener presionado un producto = marcarlo como agotado hoy (o habilitarlo otra vez) */
-let ignorarClic = false;
-function mantenerPresionado(nodo, accion, ms = 700) {
-  let t = null;
-  const cancelar = () => { clearTimeout(t); t = null; };
-  nodo.addEventListener('pointerdown', (ev) => {
-    if (ev.pointerType === 'mouse' && ev.button !== 0) return;
-    cancelar();
-    t = setTimeout(() => { t = null; ignorarClic = true; setTimeout(() => { ignorarClic = false; }, 400); accion(); }, ms);
-  });
-  for (const e of ['pointerup', 'pointerleave', 'pointercancel']) nodo.addEventListener(e, cancelar);
-  nodo.addEventListener('contextmenu', (ev) => ev.preventDefault());
+/* Mantener presionado un producto = menú con dos opciones: ver el platillo (como lo ve el cliente) o darlo de baja / habilitarlo hoy */
+const dlgAcciones = $('dlg-acciones-plato');
+let accionesProducto = null;
+function abrirAccionesPlato(p) {
+  accionesProducto = p;
+  $('pa-titulo').textContent = p.nombre;
+  $('pa-baja').textContent = p.agotado ? 'Volver a habilitar' : 'Dar de baja (agotado hoy)';
+  $('pa-baja').classList.toggle('peligro', !p.agotado);
+  dlgAcciones.showModal();
 }
+$('pa-ver').addEventListener('click', () => { dlgAcciones.close(); abrirDetalle(accionesProducto); });
+$('pa-baja').addEventListener('click', () => { dlgAcciones.close(); alternarAgotado(accionesProducto); });   // pide confirmación
+$('pa-cerrar').addEventListener('click', () => dlgAcciones.close());
+
+/* Detalle del platillo: igual que lo ve el cliente (foto grande y descripción completa) */
+const dlgDetalle = $('dlg-detalle');
+function abrirDetalle(p) {
+  $('dt-titulo').textContent = p.nombre;
+  $('dt-meta').textContent = p.porcion || '';
+  $('dt-meta').hidden = !p.porcion;
+  $('dt-desc').textContent = p.descripcion || '';
+  $('dt-desc').hidden = !p.descripcion;
+  $('dt-precio').textContent = dinero.format(p.precio) + (p.agotado ? ' · Agotado hoy' : '');
+  const img = $('dt-foto');
+  if (p.foto) { img.src = p.foto; img.hidden = false; } else { img.removeAttribute('src'); img.hidden = true; }
+  $('dt-agregar').hidden = !!p.agotado;
+  $('dt-agregar').onclick = () => { dlgDetalle.close(); tocarProducto(p); };
+  dlgDetalle.showModal();
+}
+$('dt-cerrar').addEventListener('click', () => dlgDetalle.close());
 
 async function alternarAgotado(p) {
   const habilitar = !!p.agotado;
@@ -296,7 +313,7 @@ async function alternarAgotado(p) {
 /** Con extras disponibles se abre la hoja de opciones; si no, se agrega directo. */
 /** Tocar la foto agrega el platillo completo (sin opciones); tocar la parte de abajo abre las opciones. */
 function tocarProducto(p, desdeFoto = false) {
-  if (p.agotado) { avisar(`${p.nombre} está agotado hoy. Mantén presionado para habilitarlo.`, true); return; }
+  if (p.agotado) { avisar(`${p.nombre} está agotado hoy. Mantén presionado para verlo o habilitarlo.`, true); return; }
   if (p.extras.length && (!desdeFoto || p.pedir_opciones)) abrirOpciones(p);
   else { agregarLinea(p, [], 1, ''); avisar(`${p.nombre} agregado`); }
 }

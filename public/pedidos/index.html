@@ -11,14 +11,14 @@
   <meta name="theme-color" content="#0a6b4e">
   <meta name="mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-capable" content="yes">
-  <script src="../js/pwa.js?v=20261123201851" defer></script>
+  <script src="../js/pwa.js?v=20261123202210" defer></script>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Outfit:wght@600;700;800&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="../css/estilos.css?v=20261123201851">
-  <link rel="stylesheet" href="../css/admin.css?v=20261123201851">
-  <link rel="stylesheet" href="../css/menu-barra.css?v=20261123201851">
-  <link rel="stylesheet" href="../css/pedidos.css?v=20261123201851">
+  <link rel="stylesheet" href="../css/estilos.css?v=20261123202210">
+  <link rel="stylesheet" href="../css/admin.css?v=20261123202210">
+  <link rel="stylesheet" href="../css/menu-barra.css?v=20261123202210">
+  <link rel="stylesheet" href="../css/pedidos.css?v=20261123202210">
   <link rel="stylesheet" href="../api/tema.php">
 </head>
 <body>
@@ -161,6 +161,32 @@
   </main>
 
   <!-- Elegir extras y cantidad -->
+  <!-- Mantener presionado un platillo: ver el platillo o darlo de baja -->
+  <dialog id="dlg-acciones-plato">
+    <div class="formulario dialogo acciones-plato">
+      <h2 id="pa-titulo"></h2>
+      <button id="pa-ver" class="btn grande" type="button">Ver platillo</button>
+      <button id="pa-baja" class="btn grande peligro" type="button">Dar de baja (agotado hoy)</button>
+      <div class="acciones-dialogo">
+        <button id="pa-cerrar" class="btn" type="button">Cerrar</button>
+      </div>
+    </div>
+  </dialog>
+
+  <dialog id="dlg-detalle">
+    <div class="formulario dialogo detalle-plato">
+      <img id="dt-foto" class="dt-foto" alt="" hidden>
+      <h2 id="dt-titulo"></h2>
+      <p id="dt-meta" class="ayuda"></p>
+      <p id="dt-desc" class="dt-desc"></p>
+      <p id="dt-precio" class="dt-precio"></p>
+      <div class="acciones-dialogo">
+        <button id="dt-agregar" class="btn principal grande" type="button">Agregar al pedido</button>
+        <button id="dt-cerrar" class="btn" type="button">Cerrar</button>
+      </div>
+    </div>
+  </dialog>
+
   <dialog id="dlg-opciones">
     <form id="form-opciones" class="formulario dialogo">
       <!-- Lo ya agregado en esta ventana: va arriba (justo bajo la barra) para que se vea sin hacer scroll -->
@@ -238,9 +264,9 @@
 
   <div id="toast" class="toast" role="status" hidden></div>
 
-  <script src="../js/comun.js?v=20261123201851"></script>
-  <script src="../js/eventos.js?v=20261123201851"></script>
-  <script src="../js/codigos.js?v=20261123201851"></script>
-  <script src="../js/pedidos.js?v=20261123201851"></script>
+  <script src="../js/comun.js?v=20261123202210"></script>
+  <script src="../js/eventos.js?v=20261123202210"></script>
+  <script src="../js/codigos.js?v=20261123202210"></script>
+  <script src="../js/pedidos.js?v=20261123202210"></script>
 </body>
 </html>

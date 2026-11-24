@@ -438,3 +438,18 @@ async function montarSucursal() {
     quien.append(fila);
   } catch { /* sin sucursal no se muestra nada */ }
 }
+
+/* Mantener presionado un elemento (≈0.7 s) ejecuta `accion`; el toque corto sigue siendo un clic normal.
+   Tras el presionado largo se ignora el clic que el navegador dispara al soltar (`ignorarClic`). */
+let ignorarClic = false;
+function mantenerPresionado(nodo, accion, ms = 700) {
+  let t = null;
+  const cancelar = () => { clearTimeout(t); t = null; };
+  nodo.addEventListener('pointerdown', (ev) => {
+    if (ev.pointerType === 'mouse' && ev.button !== 0) return;
+    cancelar();
+    t = setTimeout(() => { t = null; ignorarClic = true; setTimeout(() => { ignorarClic = false; }, 400); accion(); }, ms);
+  });
+  for (const e of ['pointerup', 'pointerleave', 'pointercancel']) nodo.addEventListener(e, cancelar);
+  nodo.addEventListener('contextmenu', (ev) => ev.preventDefault());
+}

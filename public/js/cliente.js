@@ -233,7 +233,9 @@ function pintarProductos() {
     if (p.agotado) info.append(el('span', 'pr-agotado', 'Agotado por hoy'));
     else if (p.extras.length) info.append(el('span', 'pr-mas', 'con opciones ›'));
     b.append(foto, info);
+    mantenerPresionado(b, () => abrirDetalle(p));   // mantener presionado = ver el platillo en grande (foto y descripción)
     b.addEventListener('click', (ev) => {
+      if (ignorarClic) return;   // venía de un presionado largo: ya se abrió el detalle, no se agrega
       if (!pedidosActivos) { abrirDetalle(p); return; }     // solo se puede ver el menú: un toque muestra el detalle del platillo
       const desdeFoto = !!ev.target.closest('.pr-foto');
       if (p.extras.length && (!desdeFoto || p.pedir_opciones)) abrirOpciones(p);

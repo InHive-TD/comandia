@@ -373,3 +373,12 @@ main.contenedor:has(#vista-pedido:not([hidden])) { padding-top: 0; }
 /* Opción obligatoria en la hoja de opciones */
 .requisito { margin: 0 0 8px; padding: 6px 10px; border-radius: 8px; background: color-mix(in srgb, var(--color-amarillo) 18%, white); color: var(--color-oscuro); font-weight: 700; font-size: .9rem; }
 .requisito[hidden] { display: none; }
+
+/* Detalle del platillo y menú de acciones (mismo diseño para el cliente y para quien levanta pedidos) */
+.detalle-plato { gap: 6px; }
+.dt-foto { width: 100%; max-height: 42vh; object-fit: cover; border-radius: 12px; display: block; }
+.dt-desc { margin: 4px 0; font-size: 1.05rem; line-height: 1.4; white-space: pre-line; }
+.dt-precio { margin: 2px 0 6px; font-weight: 800; font-size: 1.2rem; }
+.acciones-plato { gap: 10px; }
+.acciones-plato h2 { margin: 0 0 4px; }
+.acciones-plato .btn.grande { width: 100%; min-height: 52px; }
