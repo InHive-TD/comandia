@@ -617,3 +617,75 @@ dialog.pagina .acciones-dialogo { position: sticky; bottom: 0; z-index: 5; backg
 .cm-msg { font-size: .85rem; margin-top: 2px; }
 .cm-msg-error { color: #9a2a1d; font-weight: 600; }
 .cm-msg-aviso { color: #7a5b00; }
+
+
+/* =====================================================================
+   Panel de administración · estructura de aplicación (identidad Esmeralda)
+   Barra lateral del color de la marca con la sección activa sombreada y el usuario abajo;
+   barra superior con el nombre de la sección y la sucursal. Todo con las variables del tema,
+   así que cada empresa conserva sus colores.
+   ===================================================================== */
+body.en-panel > .encabezado { display: none; }
+body.en-panel .panel-lateral { min-height: 100vh; grid-template-columns: 240px minmax(0, 1fr); }
+.panel-derecha { min-width: 0; display: flex; flex-direction: column; background: var(--color-fondo); }
+
+.menu-lateral { background: var(--color-vino); color: var(--texto-encabezado, #fff); border-right: 0; }
+.menu-caja { display: flex; flex-direction: column; min-height: 100vh; padding: 18px 12px 14px; }
+@media (min-height: 820px) { .menu-caja { position: sticky; top: 0; } }
+.menu-lateral .menu-fijo { position: static; flex: 1; padding: 0; margin-top: 14px; gap: 2px; }
+
+.menu-marca { padding: 4px 8px 12px; border-bottom: 1px solid rgba(255,255,255,.16); }
+.marca-logo { display: flex; align-items: center; gap: 10px; text-decoration: none; color: #fff; }
+.marca-logo svg { width: 34px; height: 34px; flex: none; }
+.marca-logo span { font-family: var(--fuente-titulos); font-weight: 800; font-size: 1.55rem; letter-spacing: -.04em; line-height: 1; }
+.marca-logo b { color: var(--color-amarillo); font-weight: 800; }
+.menu-negocio { display: block; margin-top: 6px; font-size: .78rem; opacity: .75; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.menu-negocio:empty { display: none; }
+
+.menu-grupo { color: rgba(255,255,255,.6); }
+.menu-sub { color: rgba(255,255,255,.5); }
+.menu-lateral .menu-ajustes { border-top-color: rgba(255,255,255,.16); color: rgba(255,255,255,.6); font-size: .7rem; }
+.menu-lateral .nav-ico { color: inherit; border-radius: 10px; font-weight: 500; }
+.menu-lateral .nav-ico:hover { background: rgba(255,255,255,.09); filter: none; }
+.menu-lateral .nav-ico.activo, .menu-lateral .nav-ico.activo:hover { background: rgba(255,255,255,.17); color: inherit; font-weight: 600; }
+.menu-lateral .nav-ico:focus-visible, .btn-salir-menu:focus-visible { outline: 2px solid #fff; outline-offset: 1px; }
+.menu-lateral .nav-ico::before { content: ''; width: 20px; height: 20px; flex: none; background: currentColor; opacity: .9;
+  -webkit-mask: var(--ico) center / contain no-repeat; mask: var(--ico) center / contain no-repeat; }
+.i-reportes { --ico: url("data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 24 24%22 fill=%22none%22 stroke=%22black%22 stroke-width=%222%22 stroke-linecap=%22round%22 stroke-linejoin=%22round%22%3E%3Cpath d=%22M3 3v18h18%22/%3E%3Cpath d=%22M8 17v-5M13 17V8M18 17v-9%22/%3E%3C/svg%3E"); }
+.i-pedidos { --ico: url("data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 24 24%22 fill=%22none%22 stroke=%22black%22 stroke-width=%222%22 stroke-linecap=%22round%22 stroke-linejoin=%22round%22%3E%3Cpath d=%22M6 2h12v20l-3-2-3 2-3-2-3 2z%22/%3E%3Cpath d=%22M9 8h6M9 12h6%22/%3E%3C/svg%3E"); }
+.i-cocina { --ico: url("data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 24 24%22 fill=%22none%22 stroke=%22black%22 stroke-width=%222%22 stroke-linecap=%22round%22 stroke-linejoin=%22round%22%3E%3Cpath d=%22M6 13h12v6a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2zM6 13a4 4 0 0 1 1-7.7A5 5 0 0 1 17 6a4 4 0 0 1 1 7%22/%3E%3C/svg%3E"); }
+.i-caja { --ico: url("data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 24 24%22 fill=%22none%22 stroke=%22black%22 stroke-width=%222%22 stroke-linecap=%22round%22 stroke-linejoin=%22round%22%3E%3Crect x=%222%22 y=%226%22 width=%2220%22 height=%2212%22 rx=%222%22/%3E%3Ccircle cx=%2212%22 cy=%2212%22 r=%222.5%22/%3E%3C/svg%3E"); }
+.i-platillos { --ico: url("data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 24 24%22 fill=%22none%22 stroke=%22black%22 stroke-width=%222%22 stroke-linecap=%22round%22 stroke-linejoin=%22round%22%3E%3Cpath d=%22M4 3v7a2 2 0 0 0 2 2v9M8 3v7M12 3v7a2 2 0 0 1-2 2M17 21V3c-2 1-4 4-4 8 0 2 1 3 4 3%22/%3E%3C/svg%3E"); }
+.i-extras { --ico: url("data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 24 24%22 fill=%22none%22 stroke=%22black%22 stroke-width=%222%22 stroke-linecap=%22round%22 stroke-linejoin=%22round%22%3E%3Ccircle cx=%2212%22 cy=%2212%22 r=%229%22/%3E%3Cpath d=%22M12 8v8M8 12h8%22/%3E%3C/svg%3E"); }
+.i-carga { --ico: url("data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 24 24%22 fill=%22none%22 stroke=%22black%22 stroke-width=%222%22 stroke-linecap=%22round%22 stroke-linejoin=%22round%22%3E%3Cpath d=%22M12 3v12m0 0-4-4m4 4 4-4M4 17v3h16v-3%22/%3E%3C/svg%3E"); }
+.i-qr { --ico: url("data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 24 24%22 fill=%22none%22 stroke=%22black%22 stroke-width=%222%22 stroke-linecap=%22round%22 stroke-linejoin=%22round%22%3E%3Crect x=%223%22 y=%223%22 width=%227%22 height=%227%22 rx=%221%22/%3E%3Crect x=%2214%22 y=%223%22 width=%227%22 height=%227%22 rx=%221%22/%3E%3Crect x=%223%22 y=%2214%22 width=%227%22 height=%227%22 rx=%221%22/%3E%3Cpath d=%22M14 14h3v3h-3zM20 14v.01M14 20h3M20 17v4%22/%3E%3C/svg%3E"); }
+.i-sucursales { --ico: url("data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 24 24%22 fill=%22none%22 stroke=%22black%22 stroke-width=%222%22 stroke-linecap=%22round%22 stroke-linejoin=%22round%22%3E%3Cpath d=%22M3 10l1.5-6h15L21 10M3 10v10h18V10M3 10c0 1.7 1.3 3 3 3s3-1.3 3-3c0 1.7 1.3 3 3 3s3-1.3 3-3c0 1.7 1.3 3 3 3s3-1.3 3-3M10 20v-4h4v4%22/%3E%3C/svg%3E"); }
+.i-usuarios { --ico: url("data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 24 24%22 fill=%22none%22 stroke=%22black%22 stroke-width=%222%22 stroke-linecap=%22round%22 stroke-linejoin=%22round%22%3E%3Ccircle cx=%229%22 cy=%228%22 r=%223.5%22/%3E%3Cpath d=%22M2.5 20c0-3.6 2.9-6 6.5-6s6.5 2.4 6.5 6M16 4.5a3.5 3.5 0 0 1 0 7M18 14.4c2 .7 3.5 2.4 3.5 5.6%22/%3E%3C/svg%3E"); }
+.i-apariencia { --ico: url("data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 24 24%22 fill=%22none%22 stroke=%22black%22 stroke-width=%222%22 stroke-linecap=%22round%22 stroke-linejoin=%22round%22%3E%3Cpath d=%22M12 3a9 9 0 1 0 0 18c1.1 0 2-.9 2-2 0-.6-.2-1-.6-1.4-.3-.4-.5-.8-.5-1.3 0-1.1.9-2 2-2H17a4 4 0 0 0 4-4c0-4.4-4-7.3-9-7.3z%22/%3E%3Ccircle cx=%227.5%22 cy=%2211%22 r=%221%22/%3E%3Ccircle cx=%2210.5%22 cy=%227%22 r=%221%22/%3E%3Ccircle cx=%2215.5%22 cy=%227.5%22 r=%221%22/%3E%3C/svg%3E"); }
+
+.menu-usuario { display: flex; align-items: center; gap: 10px; margin-top: 12px; padding: 12px 6px 0; border-top: 1px solid rgba(255,255,255,.16); }
+.avatar { width: 38px; height: 38px; flex: none; border-radius: 50%; display: grid; place-items: center; background: var(--color-amarillo); color: var(--color-oscuro); font-weight: 800; font-size: .9rem; }
+.usuario-datos { min-width: 0; flex: 1; display: grid; line-height: 1.25; }
+.usuario-datos strong { font-size: .92rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.usuario-datos span { font-size: .76rem; opacity: .78; }
+.btn-salir-menu { width: 38px; height: 38px; flex: none; border: 0; border-radius: 10px; background: transparent; color: inherit; cursor: pointer; display: grid; place-items: center; }
+.btn-salir-menu::before { content: ''; width: 20px; height: 20px; background: currentColor; -webkit-mask: url("data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 24 24%22 fill=%22none%22 stroke=%22black%22 stroke-width=%222%22 stroke-linecap=%22round%22 stroke-linejoin=%22round%22%3E%3Cpath d=%22M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4M16 17l5-5-5-5M21 12H9%22/%3E%3C/svg%3E") center / contain no-repeat; mask: url("data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 24 24%22 fill=%22none%22 stroke=%22black%22 stroke-width=%222%22 stroke-linecap=%22round%22 stroke-linejoin=%22round%22%3E%3Cpath d=%22M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4M16 17l5-5-5-5M21 12H9%22/%3E%3C/svg%3E") center / contain no-repeat; }
+.btn-salir-menu:hover { background: rgba(255,255,255,.14); }
+
+.barra-panel { position: sticky; top: 0; z-index: 6; display: flex; align-items: center; gap: 14px; flex-wrap: wrap; padding: 14px 24px; background: var(--color-tarjeta); border-bottom: 1px solid var(--color-borde); }
+.barra-panel h2 { margin: 0; font-size: 1.55rem; font-weight: 800; letter-spacing: -.02em; text-align: left; }
+.chip-sucursal { display: inline-flex; align-items: center; gap: 8px; min-height: 36px; padding: 0 14px; border: 1px solid var(--color-borde); border-radius: 10px; background: var(--color-tarjeta); font-weight: 600; font-size: .9rem; }
+.chip-sucursal::before { content: ''; width: 8px; height: 8px; border-radius: 50%; background: var(--color-ok); }
+.chip-sucursal[hidden] { display: none; }
+
+@media (max-width: 860px) {
+  body.en-panel .panel-lateral { grid-template-columns: 1fr; }
+  .menu-caja { position: static; min-height: 0; padding: 10px 10px 8px; }
+  .menu-marca { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 2px 6px 8px; }
+  .menu-negocio { margin: 0; max-width: 45%; text-align: right; }
+  .menu-lateral .menu-fijo { margin-top: 8px; flex: none; flex-direction: row; overflow-x: auto; padding: 0; gap: 6px; }
+  .menu-usuario { margin-top: 6px; padding-top: 8px; }
+  .menu-lateral .menu-ajustes { display: none; }
+  .barra-panel { position: static; padding: 12px 16px; }
+  .barra-panel h2 { font-size: 1.3rem; }
+}

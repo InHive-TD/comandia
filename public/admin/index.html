@@ -16,7 +16,7 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Outfit:wght@600;700;800&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="../css/estilos.css?v=202611231945">
-  <link rel="stylesheet" href="../css/admin.css?v=202611212110">
+  <link rel="stylesheet" href="../css/admin.css?v=202611231948">
   <link rel="stylesheet" href="../api/tema.php">
 </head>
 <body>
@@ -59,29 +59,45 @@
     <section id="vista-panel" class="panel-lateral" hidden>
       <!-- Barra lateral izquierda: todas las secciones del portal. Los id de los botones no cambian
            (admin.js los usa para abrir cada sección y para ocultar los que el rol no puede ver). -->
-      <nav class="menu-lateral" aria-label="Secciones del portal"><div class="menu-fijo">
-        <button id="btn-reportes" class="btn nav-ico" data-ico="📊" type="button">Inicio · Reportes</button>
+      <nav class="menu-lateral" aria-label="Secciones del portal"><div class="menu-caja">
+        <div class="menu-marca">
+          <a class="marca-logo" href="../" aria-label="Comandia"><svg viewBox="0 0 120 120" aria-hidden="true"><path d="M18 80A42 42 0 0 1 102 80Z" fill="#FF7A30"/><rect x="8" y="84" width="104" height="12" rx="6" fill="#F3F7F4"/><circle cx="60" cy="30" r="8" fill="#F3F7F4"/></svg><span>coman<b>dia</b></span></a>
+          <span id="menu-negocio" class="menu-negocio"></span>
+        </div>
+        <div class="menu-fijo">
+        <button id="btn-reportes" class="btn nav-ico i-reportes" type="button">Inicio · Reportes</button>
 
         <p class="menu-grupo">Operación</p>
-        <a class="btn nav-ico" data-ico="🧾" href="../pedidos/">Tomar pedidos</a>
-        <a class="btn nav-ico" data-ico="🔥" href="../cocina/">Cocina</a>
-        <a class="btn nav-ico" data-ico="💵" href="../caja/">Caja y propinas</a>
+        <a class="btn nav-ico i-pedidos" href="../pedidos/">Tomar pedidos</a>
+        <a class="btn nav-ico i-cocina" href="../cocina/">Cocina</a>
+        <a class="btn nav-ico i-caja" href="../caja/">Caja y propinas</a>
 
         <!-- Todo lo que se configura vive en "Ajustes", agrupado por para qué sirve. Los id de los botones no cambian. -->
-        <p class="menu-grupo menu-ajustes">⚙️ Ajustes</p>
+        <p class="menu-grupo menu-ajustes">Ajustes</p>
         <p class="menu-sub">Menú</p>
-        <button id="btn-productos" class="btn nav-ico" data-ico="🌮" type="button">Platillos</button>
-        <button id="btn-extras" class="btn nav-ico" data-ico="➕" type="button">Extras</button>
-        <button id="btn-carga" class="btn nav-ico" data-ico="📥" type="button">Carga masiva</button>
+        <button id="btn-productos" class="btn nav-ico i-platillos" type="button">Platillos</button>
+        <button id="btn-extras" class="btn nav-ico i-extras" type="button">Extras</button>
+        <button id="btn-carga" class="btn nav-ico i-carga" type="button">Carga masiva</button>
         <p class="menu-sub">Cocina y pedidos</p>
-        <button id="btn-prioridades" class="btn nav-ico" data-ico="🍳" type="button">Cocina</button>
-        <button id="btn-toma-pedidos" class="btn nav-ico" data-ico="🧾" type="button">Tomar pedidos</button>
-        <button id="btn-pedidos-qr" class="btn nav-ico" data-ico="📱" type="button">Pedidos por QR</button>
+        <button id="btn-prioridades" data-titulo="Ajustes · Cocina" class="btn nav-ico i-cocina" type="button">Cocina</button>
+        <button id="btn-toma-pedidos" data-titulo="Ajustes · Tomar pedidos" class="btn nav-ico i-pedidos" type="button">Tomar pedidos</button>
+        <button id="btn-pedidos-qr" data-titulo="Ajustes · Pedidos por QR" class="btn nav-ico i-qr" type="button">Pedidos por QR</button>
         <p class="menu-sub">Negocio</p>
-        <button id="btn-sucursales" class="btn nav-ico" data-ico="🏪" type="button">Sucursales y mesas</button>
-        <button id="btn-usuarios" class="btn nav-ico" data-ico="👥" type="button">Usuarios</button>
-        <button id="btn-apariencia" class="btn nav-ico" data-ico="🎨" type="button">Apariencia</button>
+        <button id="btn-sucursales" class="btn nav-ico i-sucursales" type="button">Sucursales y mesas</button>
+        <button id="btn-usuarios" class="btn nav-ico i-usuarios" type="button">Usuarios</button>
+        <button id="btn-apariencia" class="btn nav-ico i-apariencia" type="button">Apariencia</button>
+      </div>
+        <div class="menu-usuario">
+          <span id="usuario-ini" class="avatar" aria-hidden="true"></span>
+          <span class="usuario-datos"><strong id="usuario-nombre"></strong><span id="usuario-rol"></span></span>
+          <button id="btn-salir-menu" class="btn-salir-menu" type="button" title="Salir" aria-label="Salir"></button>
+        </div>
       </div></nav>
+      <div class="panel-derecha">
+      <div class="barra-panel">
+        <h2 id="titulo-seccion">Inicio</h2>
+        <span id="chip-sucursal" class="chip-sucursal" hidden></span>
+      </div>
       <div class="panel-contenido" id="panel-contenido">
         <!-- Página de Platillos: barra de acciones (categorías de platillos, expandir/colapsar) + lista por categoría -->
         <div id="vista-platillos">
@@ -95,6 +111,7 @@
           </div>
           <div id="lista" class="lista-cats" aria-live="polite"></div>
         </div>
+      </div>
       </div>
     </section>
 

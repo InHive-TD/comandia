@@ -25,6 +25,7 @@ function mostrar(vista) {
     $(id).hidden = id !== vista;
   }
   $('btn-salir').hidden = vista === 'vista-login';
+  document.body.classList.toggle('en-panel', vista === 'vista-panel');   // en el panel, la barra lateral reemplaza al encabezado
 }
 
 let temporizadorAviso;
@@ -70,6 +71,7 @@ async function entrar(usuario) {
     return;
   }
   esGerente = usuario.rol === 'gerente';
+  pintarUsuario(usuario);
   for (const id of ['btn-categorias', 'btn-extras', 'btn-apariencia']) { const b = $(id); if (b) b.hidden = esGerente; }
   $('btn-sucursales').textContent = esGerente ? 'Mi sucursal y mesas' : 'Sucursales y mesas';
   mostrar('vista-panel');
@@ -78,6 +80,24 @@ async function entrar(usuario) {
   const pedida = RUTAS[seccionDeLaDireccion()] && $(RUTAS[seccionDeLaDireccion()]);
   (pedida && !pedida.hidden ? pedida : $('btn-reportes')).click();
 }
+
+/** Barra lateral: usuario abajo (iniciales, nombre y rol) y, arriba a la derecha, la sucursal con la que se trabaja. */
+function pintarUsuario(usuario) {
+  const partes = String(usuario.nombre || '').trim().split(/\s+/).filter(Boolean);
+  $('usuario-ini').textContent = ((partes[0] || '?')[0] + (partes.length > 1 ? partes[partes.length - 1][0] : '')).toUpperCase();
+  $('usuario-nombre').textContent = usuario.nombre;
+  $('usuario-rol').textContent = usuario.rol === 'gerente' ? 'Gerente de sucursal' : 'Administrador';
+  const chip = $('chip-sucursal');
+  chip.hidden = true;
+  pedir(API + 'sesion.php').then((s) => {
+    if (s.negocio) $('menu-negocio').textContent = s.negocio.nombre;
+    const propia = usuario.rol === 'gerente' && (s.sucursales || []).find((x) => x.id === s.sucursal);
+    chip.textContent = propia ? propia.nombre : (s.sucursales && s.sucursales.length > 1 ? 'Todas las sucursales' : ((s.sucursales || [])[0] || {}).nombre || '');
+    chip.hidden = !chip.textContent;
+  }).catch(() => { /* la barra funciona igual sin el nombre de la sucursal */ });
+}
+
+$('btn-salir-menu').addEventListener('click', () => $('btn-salir').click());
 
 $('form-login').addEventListener('submit', async (ev) => {
   ev.preventDefault();
@@ -378,6 +398,8 @@ for (const d of paginasPortal) $('panel-contenido').append(d);   // dentro del �
 
 function marcarMenu(idBoton) {
   for (const b of document.querySelectorAll('.menu-lateral .nav-ico')) b.classList.toggle('activo', b.id === idBoton);
+  const activo = $(idBoton);   // el nombre de la sección seleccionada se muestra en la barra superior
+  if (activo) $('titulo-seccion').textContent = activo.dataset.titulo || activo.textContent.trim();
 }
 
 /** Muestra una sección como página: cierra la que estuviera abierta y oculta la lista de productos. */
