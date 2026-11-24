@@ -11,12 +11,12 @@
   <meta name="theme-color" content="#0a6b4e">
   <meta name="mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-capable" content="yes">
-  <script src="../js/pwa.js?v=20261123201254" defer></script>
+  <script src="../js/pwa.js?v=20261123201851" defer></script>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Outfit:wght@600;700;800&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="../css/estilos.css?v=20261123201254">
-  <link rel="stylesheet" href="../css/admin.css?v=20261123201254">
+  <link rel="stylesheet" href="../css/estilos.css?v=20261123201851">
+  <link rel="stylesheet" href="../css/admin.css?v=20261123201851">
   <link rel="stylesheet" href="../api/tema.php">
 </head>
 <body>
@@ -154,6 +154,18 @@
         <input id="f-descripcion" type="text" maxlength="255">
       </label>
 
+      <label class="casilla">
+        <input id="f-pedir" type="checkbox">
+        <span>Pedir las opciones aunque toquen la foto <small>(si no, la foto lo agrega directo)</small></span>
+      </label>
+      <label class="casilla">
+        <input id="f-obligatoria" type="checkbox">
+        <span>Elegir una opción es obligatorio <small>(ej. burrito: hay que elegir de qué; las opciones se abren siempre, toquen la foto o la parte blanca)</small></span>
+      </label>
+      <label id="f-grupo-fila" class="campo-grupo-oblig" hidden>Debe elegir una opción de
+        <select id="f-grupo-oblig"></select>
+      </label>
+
       <fieldset class="extras-campo">
         <legend>Extras que se pueden elegir</legend>
         <div id="f-extras" class="lista-extras-prod"></div>
@@ -173,21 +185,6 @@
         <input id="f-disponible" type="checkbox" checked>
         <span class="slider"></span>
         <span>Disponible para vender</span>
-      </label>
-
-      <label class="switch">
-        <input id="f-pedir" type="checkbox">
-        <span class="slider"></span>
-        <span>Pedir las opciones aunque toquen la foto <small>(si no, la foto lo agrega directo)</small></span>
-      </label>
-
-      <label class="switch">
-        <input id="f-obligatoria" type="checkbox">
-        <span class="slider"></span>
-        <span>Elegir una opción es obligatorio <small>(ej. burrito: hay que elegir de qué; las opciones se abren siempre, toquen la foto o la parte blanca)</small></span>
-      </label>
-      <label id="f-grupo-fila" hidden>Debe elegir una opción de
-        <select id="f-grupo-oblig"></select>
       </label>
 
       <p id="f-error" class="msg-error" role="alert"></p>
@@ -600,8 +597,8 @@
 
   <div id="toast" class="toast" role="status" hidden></div>
 
-  <script src="../js/comun.js?v=20261123201254"></script>
+  <script src="../js/comun.js?v=20261123201851"></script>
   <script src="../js/vendor/qrcode.js"></script>
-  <script src="../js/admin.js?v=20261123201254"></script>
+  <script src="../js/admin.js?v=20261123201851"></script>
 </body>
 </html>

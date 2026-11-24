@@ -737,3 +737,9 @@ body.en-panel .panel-lateral { min-height: 100vh; grid-template-columns: 240px m
   .barra-panel { padding: 12px; }
   .barra-panel h2 { font-size: 1.2rem; }
 }
+
+/* Casillas de opciones del platillo (arriba de los extras) */
+.casilla > span small { display: block; font-weight: 400; color: var(--color-suave-texto, #5d7468); font-size: .82rem; line-height: 1.3; }
+.casilla { align-items: flex-start; }
+.casilla input { margin-top: 10px; flex: none; }
+.campo-grupo-oblig { margin-left: 30px; }

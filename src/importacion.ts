@@ -52,6 +52,8 @@ const COLUMNAS: Columna[] = [
   { clave: 'parrilla', titulo: 'Parrilla', ancho: 16, nota: 'Opcional. Estación de cocina donde se prepara. Elige de la lista.' },
   { clave: 'extras', titulo: 'Extras', ancho: 34, nota: 'Opcional. Extras que se pueden pedir con este platillo, separados por punto y coma. Usa el nombre o el código del extra, tal como están en la hoja “Listas”. Ej.: Queso; Aguacate' },
   { clave: 'pide opciones', titulo: 'Pide opciones', ancho: 14, nota: 'Opcional. Sí = al tocar el platillo siempre se abre la ventana de opciones. Vacío = No.' },
+  { clave: 'opcion obligatoria', titulo: 'Opción obligatoria', ancho: 18, nota: 'Opcional. Sí = el cliente debe elegir una opción antes de agregarlo (ej. el burrito: la carne). Necesita extras en la columna “Extras”. Vacío = No (al actualizar, vacío conserva el valor actual).' },
+  { clave: 'seccion obligatoria', titulo: 'Sección obligatoria', ancho: 22, nota: 'Opcional. Solo con “Opción obligatoria = Sí”. Nombre de la sección de extras de la que hay que elegir (ej. Carne a elegir). Vacío = vale cualquier opción. Las secciones están en la hoja “Listas”.' },
   { clave: 'disponible', titulo: 'Disponible', ancho: 12, nota: 'Opcional. Sí / No. Vacío = Sí (al actualizar, vacío conserva el valor actual).' },
   { clave: 'foto', titulo: 'Foto', ancho: 26, nota: 'Opcional. Nombre del archivo de la foto dentro del ZIP, con extensión (p. ej. taco-arrachera.jpg). Si lo dejas vacío pero el platillo tiene Código, se busca una foto llamada <código>.jpg (o .png / .webp).' },
 ];
@@ -68,7 +70,8 @@ const INSTRUCCIONES: string[] = [
   '• Código: si ya existe en tu empresa, la fila ACTUALIZA ese platillo. En una actualización, las celdas opcionales en blanco conservan el valor actual.',
   '• Categoría, Parrilla y Extras: elige de las listas de la hoja “Listas”. Una categoría nueva la crea el dueño automáticamente; las parrillas y extras deben existir.',
   '• Extras: sepáralos con punto y coma (Queso; Aguacate). Puedes usar su nombre o su código.',
-  '• Sí / No: Pide opciones y Disponible aceptan Sí, No (también 1/0, x).',
+  '• Sí / No: Pide opciones, Opción obligatoria y Disponible aceptan Sí, No (también 1/0, x).',
+  '• Opción obligatoria: con Sí, el cliente debe elegir una opción (de la Sección obligatoria, si la escribes) antes de agregar el platillo; siempre se abre la ventana de opciones. El platillo debe tener extras en la columna “Extras”.',
   '• Fotos: JPG, PNG o WebP. Se reducen y optimizan solas. Recomendado: fotos cuadradas o 4:3, de hasta unos 2 MB cada una.',
   '• Máximo 500 platillos por carga y 120 MB en el ZIP. Si tienes más, divídelos en varias cargas.',
   '• No cambies los títulos de la fila 1 ni el nombre de la hoja “Productos”.',
@@ -76,8 +79,9 @@ const INSTRUCCIONES: string[] = [
 ];
 
 const EJEMPLOS: string[][] = [
-  ['ARR-01', 'Taco de arrachera', 'Tacos', '35', 'Tortilla de maíz con arrachera asada, cebolla y cilantro.', '1 taco', 'Parrilla', 'Queso; Aguacate', 'Sí', 'Sí', 'taco-arrachera.jpg'],
-  ['', 'Agua de horchata', 'Bebidas', '30', 'Agua fresca de arroz con canela. Vaso de 500 ml.', '500 ml', '', '', 'No', 'Sí', 'horchata.jpg'],
+  ['ARR-01', 'Taco de arrachera', 'Tacos', '35', 'Tortilla de maíz con arrachera asada, cebolla y cilantro.', '1 taco', 'Parrilla', 'Queso; Aguacate', 'Sí', 'No', '', 'Sí', 'taco-arrachera.jpg'],
+  ['', 'Agua de horchata', 'Bebidas', '30', 'Agua fresca de arroz con canela. Vaso de 500 ml.', '500 ml', '', '', 'No', 'No', '', 'Sí', 'horchata.jpg'],
+  ['BUR-01', 'Burrito', 'Burritos', '65', 'Tortilla de harina con frijoles, queso y la carne que elijas.', '1 pieza', 'Parrilla', 'Asada; Pastor; Chorizo', 'Sí', 'Sí', 'Carne a elegir', 'Sí', 'burrito.jpg'],
   ['GUAC', 'Guacamole', 'Entradas', '60.50', 'Aguacate, jitomate, cebolla y chile serrano, con totopos.', '', '', '', '', '', ''],
 ];
 
@@ -199,6 +203,7 @@ export async function generarPlantilla(listas: ListasPlantilla): Promise<Buffer>
     hp.getCell(r, 7).dataValidation = lista(`Listas!$B$2:$B$${finPar}`);
     hp.getCell(r, 9).dataValidation = sino;
     hp.getCell(r, 10).dataValidation = sino;
+    hp.getCell(r, 12).dataValidation = sino;
   }
 
   libro.views = [{ x: 0, y: 0, width: 20000, height: 12000, firstSheet: 0, activeTab: 1, visibility: 'visible' }];
@@ -337,7 +342,7 @@ export async function analizarCarga(ctx: Contexto, planilla: Buffer, zip: Buffer
       if (p.codigo !== '') {
         if (codigosVistos.has(p.codigo)) throw fallo(`El código ${p.codigo} se repite en la planilla.`);
         codigosVistos.add(p.codigo);
-        previo = await fila('SELECT id, nombre, categoria_id, descripcion, precio, foto, disponible, porcion, estacion_id, pedir_opciones FROM productos WHERE negocio_id = ? AND codigo = ?', [nid, p.codigo]);
+        previo = await fila('SELECT id, nombre, categoria_id, descripcion, precio, foto, disponible, porcion, estacion_id, pedir_opciones, opciones_obligatorias, grupo_obligatorio FROM productos WHERE negocio_id = ? AND codigo = ?', [nid, p.codigo]);
         if (previo) {
           p.accion = 'actualizar';
           p.idExistente = Number(previo['id']);
@@ -383,7 +388,9 @@ export async function analizarCarga(ctx: Contexto, planilla: Buffer, zip: Buffer
 
       /* Sí/No */
       const sPide = siNo(valor(r, 'pide opciones')), sDisp = siNo(valor(r, 'disponible'));
+      const sObl = siNo(valor(r, 'opcion obligatoria'));
       if (sPide === 'raro') throw fallo('“Pide opciones” debe ser Sí o No.');
+      if (sObl === 'raro') throw fallo('“Opción obligatoria” debe ser Sí o No.');
       if (sDisp === 'raro') throw fallo('“Disponible” debe ser Sí o No.');
 
       /* Mismas reglas que el formulario de “Nuevo platillo” */
@@ -400,6 +407,8 @@ export async function analizarCarga(ctx: Contexto, planilla: Buffer, zip: Buffer
         ['precios_extra', [JSON.stringify(preciosPrevios)]],
         ['disponible', [sDisp ?? (actualiza ? prev('disponible') : '1')]],
         ['pedir_opciones', [sPide ?? (actualiza ? prev('pedir_opciones') : '0')]],
+        ['opciones_obligatorias', [sObl ?? (actualiza ? prev('opciones_obligatorias') : '0')]],
+        ['grupo_obligatorio', [sObl === '0' ? '' : celda('seccion obligatoria', actualiza ? prev('grupo_obligatorio') : '')]],
       ]), null);
       p.campos = await leerCampos(nid, alcance, f, p.idExistente ?? 0, categoriaPorCrear);
 
@@ -484,8 +493,8 @@ export async function aplicarCarga(ctx: Contexto, analisis: AnalisisCarga): Prom
         await transaccion(async (tx) => {
           await tx.ejecutar(
             `UPDATE productos SET categoria_id = ?, nombre = ?, descripcion = ?, precio = ?, foto = ?, disponible = ?,
-                    codigo = ?, porcion = ?, estacion_id = ?, pedir_opciones = ? WHERE id = ? AND negocio_id = ?`,
-            [categoriaId, c.nombre, c.descripcion, c.precio, fotoNueva ?? p.fotoActual ?? null, c.disponible, c.codigo, c.porcion, c.estacionId, c.pedirOpciones, id, nid],
+                    codigo = ?, porcion = ?, estacion_id = ?, pedir_opciones = ?, opciones_obligatorias = ?, grupo_obligatorio = ? WHERE id = ? AND negocio_id = ?`,
+            [categoriaId, c.nombre, c.descripcion, c.precio, fotoNueva ?? p.fotoActual ?? null, c.disponible, c.codigo, c.porcion, c.estacionId, c.pedirOpciones, c.obligatorias, c.grupoObligatorio, id, nid],
           );
           await guardarExtras(tx, id, c.extras, c.preciosExtra);
         });
@@ -495,9 +504,9 @@ export async function aplicarCarga(ctx: Contexto, analisis: AnalisisCarga): Prom
         await transaccion(async (tx) => {
           const sig = await fila('SELECT COALESCE(MAX(orden), 0) + 1 AS n FROM productos WHERE negocio_id = ? AND categoria_id = ?', [nid, categoriaId]);
           const r = await tx.ejecutar(
-            `INSERT INTO productos (negocio_id, sucursal_id, categoria_id, nombre, descripcion, precio, foto, disponible, codigo, porcion, estacion_id, pedir_opciones, orden)
-             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-            [nid, alcance, categoriaId, c.nombre, c.descripcion, c.precio, fotoNueva, c.disponible, c.codigo, c.porcion, c.estacionId, c.pedirOpciones, Number(sig?.['n'])],
+            `INSERT INTO productos (negocio_id, sucursal_id, categoria_id, nombre, descripcion, precio, foto, disponible, codigo, porcion, estacion_id, pedir_opciones, opciones_obligatorias, grupo_obligatorio, orden)
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+            [nid, alcance, categoriaId, c.nombre, c.descripcion, c.precio, fotoNueva, c.disponible, c.codigo, c.porcion, c.estacionId, c.pedirOpciones, c.obligatorias, c.grupoObligatorio, Number(sig?.['n'])],
           );
           await guardarExtras(tx, r.insertId, c.extras, c.preciosExtra);
         });
