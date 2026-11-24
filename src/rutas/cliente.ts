@@ -23,7 +23,7 @@ import { ejecutar, filas as consultar, type Fila } from '../db.js';
 import { ErrorHttp, fallo } from '../errores.js';
 import {
   type Cx, ESTADOS_ACTIVOS, activarAgendados, agregarAOrden, calcularHoraPrometida, cambiarCantidad, colaActiva, contexto, crearOrden, enTransaccion,
-  estimarNuevo, leerModalidad, minutosEstimados, quitarRenglon, textoTurno, validarLineas,
+  estimarNuevo, leerMesa, leerModalidad, minutosEstimados, quitarRenglon, textoTurno, validarLineas,
 } from '../ordenes.js';
 import { clientePuedePedir } from '../pedidosClientes.js';
 import { entero, largo } from '../util.js';
@@ -192,8 +192,8 @@ export async function rutasCliente(app: FastifyInstance): Promise<void> {
         const existente = await buscarOrden(base, clave);
         if (existente) return { ok: true, repetido: true, orden: await vistaOrden(base, existente) };
         if (String(datos['web'] ?? '').trim() !== '') throw fallo('No se pudo enviar el pedido.', 400); // campo trampa para robots
-        const nombre = String(datos['nombre_cliente'] ?? '').trim();
-        if (nombre === '' || largo(nombre) > 80) throw fallo('Escribe tu nombre (máximo 80 caracteres) para entregarte tu pedido.');
+        let nombre = String(datos['nombre_cliente'] ?? '').trim();
+        if (largo(nombre) > 80) throw fallo('Tu nombre no puede pasar de 80 caracteres.');
         const notas = String(datos['notas'] ?? '').trim();
         if (largo(notas) > 255) throw fallo('Las notas no pueden pasar de 255 caracteres.');
 
@@ -216,6 +216,15 @@ export async function rutasCliente(app: FastifyInstance): Promise<void> {
         await exigirPedidosActivos(c);
         const cfg = await configClienteDe(nid, c.sid);
         if (!cfg.modalidades.includes(modalidad)) throw fallo('Ese tipo de pedido no está disponible. Elige otro.');
+        // Mesa: solo en «comer aquí», si la sucursal tiene mesas y el ajuste no es «no». Obligatoria = el nombre es opcional.
+        const hayMesas = Number((await c.filas('SELECT COUNT(*) AS n FROM mesas WHERE negocio_id = ? AND sucursal_id = ? AND activa = 1', [nid, c.sid]))[0]?.['n']) > 0;
+        const pideMesa = modalidad === 'aqui' && hayMesas && cfg.mesa !== 'no';
+        const mesa = pideMesa ? await leerMesa(c, datos['mesa_id']) : null;
+        if (pideMesa && cfg.mesa === 'obligatoria' && !mesa) throw fallo('Elige tu mesa.');
+        if (nombre === '') {
+          if (!(pideMesa && cfg.mesa === 'obligatoria')) throw fallo('Escribe tu nombre (máximo 80 caracteres) para entregarte tu pedido.');
+          nombre = mesa ? (/mesa/i.test(mesa.nombre) ? mesa.nombre : `Mesa ${mesa.nombre}`) : 'Mesa';
+        }
         const ip = sha(`${req.ip}|taqueria|${nid}`);
         await ejecutar('DELETE FROM intentos_pedido WHERE creado_en < NOW() - INTERVAL 1 DAY');
         const rato = await c.filas(`SELECT COUNT(*) AS n FROM intentos_pedido WHERE negocio_id = ? AND ip_hash = ? AND creado_en > NOW() - INTERVAL ${MINUTOS_RATO} MINUTE`, [nid, ip]);
@@ -225,7 +234,7 @@ export async function rutasCliente(app: FastifyInstance): Promise<void> {
 
         const horaPrometida = await calcularHoraPrometida(c, datos);
         const [lineas, total] = await validarLineas(c, soloSiMixto(datos['items'], cfg.mixto));
-        await crearOrden(c, { cliente: nombre, notas, lineas, total, origen: 'qr', creadoPor: null, clave, telefono, modalidad, horaPrometida });
+        await crearOrden(c, { cliente: nombre, notas, lineas, total, origen: 'qr', creadoPor: null, clave, telefono, modalidad, horaPrometida, mesa });
         await ejecutar('INSERT INTO intentos_pedido (negocio_id, sucursal_id, ip_hash) VALUES (?, ?, ?)', [nid, c.sid, ip]);
         if (telefono !== null) {
           // Un contacto por teléfono. El consentimiento solo se activa (nunca se quita) desde aquí.

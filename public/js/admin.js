@@ -1891,7 +1891,8 @@ function ctPintar() {
   document.querySelectorAll('#ct-mods input').forEach((x) => { x.checked = mods.includes(x.dataset.mod); });
   $('ct-mixto').checked = mixto && mods.includes('aqui') && mods.includes('llevar');
   $('ct-mixto').disabled = !(mods.includes('aqui') && mods.includes('llevar'));
-  const heredado = suc && suc.propio.modalidades === null && suc.propio.mixto === null;
+  const heredado = suc && suc.propio.modalidades === null && suc.propio.mixto === null && suc.propio.mesa === null;
+  $('ct-mesa').value = v === 'general' ? (cfgCliente.general.mesa || 'opcional') : (suc.efectivo.mesa || 'opcional');
   $('ct-nota').hidden = !heredado;
   $('ct-nota').textContent = heredado ? 'Esta sucursal usa la configuración de la empresa. Al guardar, tendrá la suya.' : '';
 }
@@ -1908,7 +1909,7 @@ $('ct-guardar').addEventListener('click', async () => {
   $('ct-error').textContent = '';
   const modalidades = [...document.querySelectorAll('#ct-mods input')].filter((x) => x.checked).map((x) => x.dataset.mod);
   try {
-    await enviarJson(API + 'admin/cliente-config.php', { accion: 'tipos', ...cfgAmbito($('ct-ambito')), modalidades, mixto: $('ct-mixto').checked });
+    await enviarJson(API + 'admin/cliente-config.php', { accion: 'tipos', ...cfgAmbito($('ct-ambito')), modalidades, mixto: $('ct-mixto').checked, mesa: $('ct-mesa').value });
     avisar('Tipos de pedido guardados');
     await cargarCfgCliente();
   } catch (err) { $('ct-error').textContent = err.message; }

@@ -4,6 +4,8 @@
  *   `cliente_modalidades`  / `cliente_modalidades@<sid>`  → JSON ["aqui","llevar","recoger"]: qué botones de tipo de pedido existen
  *   `cliente_mixto`        / `cliente_mixto@<sid>`        → "1"/"0": ¿puede elegir plato por plato (uno aquí y otro para llevar)?
  *   `cliente_pago`         / `cliente_pago@<sid>`         → JSON { clabe, beneficiario, institucion }: datos de la pestaña "Pagar"
+ *   `cliente_mesa`         / `cliente_mesa@<sid>`         → "no" | "opcional" | "obligatoria": ¿pide la mesa en pedidos para comer aquí?
+ *                                                           (obligatoria = el nombre pasa a ser opcional). Por defecto: opcional.
  *   `cliente_transferencia` / `cliente_transferencia@<sid>` → "1"/"0": ¿la empresa acepta pago por transferencia? Si el dueño la apaga
  *                                                           para toda la empresa, ninguna sucursal puede encenderla.
  *
@@ -14,6 +16,9 @@ import { filas } from './db.js';
 
 export const TIPOS_PEDIDO = ['aqui', 'llevar', 'recoger'] as const;
 
+export const MODOS_MESA = ['no', 'opcional', 'obligatoria'] as const;
+export type ModoMesa = (typeof MODOS_MESA)[number];
+
 export interface PagoCliente { clabe: string; beneficiario: string; institucion: string }
 
 export interface ConfigCliente {
@@ -21,6 +26,7 @@ export interface ConfigCliente {
   mixto: boolean;
   pago: PagoCliente | null;
   transferencia: boolean;
+  mesa: ModoMesa;
 }
 
 /** Valores guardados, tal cual, de un solo nivel (empresa o una sucursal); null = sin valor propio. */
@@ -29,12 +35,13 @@ export interface NivelCliente {
   mixto: boolean | null;
   pago: PagoCliente | null;
   transferencia: boolean | null;
+  mesa: ModoMesa | null;
 }
 
 export type AjustesCliente = Map<string, string>;
 
 export async function cargarAjustesCliente(negocioId: number): Promise<AjustesCliente> {
-  const r = await filas("SELECT clave, valor FROM ajustes WHERE negocio_id = ? AND (clave LIKE 'cliente\\_modalidades%' OR clave LIKE 'cliente\\_mixto%' OR clave LIKE 'cliente\\_pago%' OR clave LIKE 'cliente\\_transferencia%')", [negocioId]);
+  const r = await filas("SELECT clave, valor FROM ajustes WHERE negocio_id = ? AND (clave LIKE 'cliente\\_modalidades%' OR clave LIKE 'cliente\\_mixto%' OR clave LIKE 'cliente\\_pago%' OR clave LIKE 'cliente\\_transferencia%' OR clave LIKE 'cliente\\_mesa%')", [negocioId]);
   return new Map(r.map((f) => [String(f['clave']), String(f['valor'] ?? '')]));
 }
 
@@ -66,6 +73,7 @@ export function nivelCliente(a: AjustesCliente, sucursalId: number | null): Nive
     modalidades: leerModalidades(a.get(`cliente_modalidades${sufijo}`)),
     mixto: mixto === undefined ? null : mixto !== '0',
     pago: leerPago(a.get(`cliente_pago${sufijo}`)),
+    mesa: MODOS_MESA.find((m) => m === a.get(`cliente_mesa${sufijo}`)) ?? null,
     transferencia: a.get(`cliente_transferencia${sufijo}`) === undefined ? null : a.get(`cliente_transferencia${sufijo}`) !== '0',
   };
 }
@@ -78,7 +86,7 @@ export function configEfectiva(a: AjustesCliente, sucursalId: number): ConfigCli
   // "Uno aquí y otro para llevar" necesita que existan los dos tipos
   const mixto = (s.mixto ?? g.mixto ?? true) && modalidades.includes('aqui') && modalidades.includes('llevar');
   // Transferencia: deben permitirla la empresa Y la sucursal (por defecto sí)
-  return { modalidades, mixto, pago: s.pago ?? g.pago, transferencia: (g.transferencia ?? true) && (s.transferencia ?? true) };
+  return { modalidades, mixto, pago: s.pago ?? g.pago, transferencia: (g.transferencia ?? true) && (s.transferencia ?? true), mesa: s.mesa ?? g.mesa ?? 'opcional' };
 }
 
 export async function configClienteDe(negocioId: number, sucursalId: number): Promise<ConfigCliente> {

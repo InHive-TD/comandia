@@ -82,6 +82,10 @@ function mesaObligatoria() { return pedirPorMesa && modalidad === 'aqui' && !ord
 function actualizarMesa() {
   $('mesa-fila').hidden = !(mesas.length && modalidad === 'aqui' && !ordenDestino);
   if ($('mesa-fila').hidden) $('mesa').value = '';
+  // Sin mesas en esta sucursal no hay nada que elegir: se avisa en vez de esconderlo sin explicación
+  const sinMesas = !mesas.length && modalidad === 'aqui' && !ordenDestino;
+  $('mesa-aviso').hidden = !sinMesas;
+  $('mesa-aviso').textContent = sinMesas ? 'Esta sucursal no tiene mesas todavía (se pide por nombre). ¿Estás en la sucursal correcta? Cámbiala arriba o crea las mesas en Ajustes → Sucursales y mesas.' : '';
   const ob = mesaObligatoria();
   $('mesa-rotulo').textContent = ob ? 'Mesa (obligatoria)' : 'Mesa';
   $('cliente-rotulo').textContent = ob ? 'Nombre del cliente (opcional)' : 'Nombre del cliente';

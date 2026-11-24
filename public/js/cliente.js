@@ -39,6 +39,28 @@ let mixtoOk = false;                                  // ¿se puede elegir plato
 const platosLlevar = new Set();                       // platos marcados «para llevar» dentro de un pedido para comer aquí
 const mixtoPosible = () => mixtoOk && (destino ? destino.modalidad === 'aqui' : modalidad === 'aqui');
 const esLlevar = (n) => mixtoPosible() && platosLlevar.has(n);
+let mesasSuc = [];                                    // mesas activas de esta sucursal
+let modoMesa = 'opcional';                            // 'no' | 'opcional' | 'obligatoria' (lo decide el negocio)
+const mesaVisible = () => modalidad === 'aqui' && !destino && mesasSuc.length > 0 && modoMesa !== 'no';
+const mesaObligatoria = () => mesaVisible() && modoMesa === 'obligatoria';
+function actualizarMesaCliente() {
+  const ver = mesaVisible();
+  $('mesa-fila').hidden = !ver;
+  if (!ver) $('mesa').value = '';
+  const ob = mesaObligatoria();
+  $('mesa-rotulo').textContent = ob ? 'Tu mesa (obligatoria)' : 'Tu mesa';
+  $('cliente-rotulo').textContent = ob ? 'Tu nombre (opcional)' : 'Tu nombre (para entregarte tu pedido)';
+  $('cliente').placeholder = ob ? 'Opcional' : 'Obligatorio';
+}
+function aplicarMesas(suc) {
+  mesasSuc = Array.isArray(suc.mesas) ? suc.mesas : [];
+  modoMesa = suc.mesa || 'opcional';
+  const sel = $('mesa');
+  sel.replaceChildren(new Option('Elige tu mesa…', ''), ...mesasSuc.map((m) => new Option(m.nombre, String(m.id))));
+  const deLaDireccion = new URLSearchParams(location.search).get('mesa');   // QR de una mesa: /…?mesa=ID
+  if (deLaDireccion && mesasSuc.some((m) => String(m.id) === deLaDireccion)) sel.value = deLaDireccion;
+  actualizarMesaCliente();
+}
 function aplicarTipos(suc) {
   modalidadesOk = Array.isArray(suc.modalidades) && suc.modalidades.length ? suc.modalidades : ['aqui', 'llevar', 'recoger'];
   mixtoOk = suc.mixto === true;
@@ -46,6 +68,7 @@ function aplicarTipos(suc) {
   document.querySelector('#campos-cliente .modalidad').hidden = modalidadesOk.length < 2;   // con un solo tipo no hay nada que elegir
   document.querySelector('#campos-cliente .modalidad').style.gridTemplateColumns = `repeat(${modalidadesOk.length}, minmax(0, 1fr))`;
   fijarModalidad(modalidadesOk.includes(modalidad) ? modalidad : modalidadesOk[0]);
+  aplicarMesas(suc);
 }
 function aplicarPago(suc) {
   const p = suc.pago;
@@ -65,6 +88,7 @@ function fijarModalidad(m) {
   $('tel-nota').textContent = m === 'recoger' ? '(obligatorio para recoger)' : '(opcional)';
   $('telefono').placeholder = m === 'recoger' ? 'Obligatorio · 10 dígitos, ej. 322 123 4567' : '10 dígitos, ej. 322 123 4567';
   if (typeof actualizarEspera === 'function') actualizarEspera();
+  if (typeof actualizarMesaCliente === 'function') actualizarMesaCliente();
 }
 document.querySelectorAll('#campos-cliente .mod-btn').forEach((b) => b.addEventListener('click', () => fijarModalidad(b.dataset.mod)));
 let platoActual = 1;
@@ -506,7 +530,8 @@ $('btn-levantar').addEventListener('click', async () => {
   if (!destino && cuando.incompleto()) { error.textContent = 'Completa la hora del pedido agendado (hora, minutos y AM/PM) o quita la agenda.'; return; }
   if (!destino && modalidad === 'recoger' && !telefono) { error.textContent = 'Para recoger tu pedido escribe tu teléfono de 10 dígitos (te avisamos cuando esté listo).'; $('telefono').focus(); return; }
   if (!destino && telefono && !/^(\+?52)?\D*(\d\D*){10}$/.test(telefono)) { error.textContent = 'El teléfono debe tener 10 dígitos' + (modalidad === 'recoger' ? '.' : ' (o déjalo vacío).'); $('telefono').focus(); return; }
-  if (!destino && !nombre) { error.textContent = 'Escribe tu nombre para entregarte tu pedido.'; $('cliente').focus(); return; }
+  if (!destino && mesaObligatoria() && !$('mesa').value) { error.textContent = 'Elige tu mesa.'; $('mesa').focus(); return; }
+  if (!destino && !nombre && !mesaObligatoria()) { error.textContent = 'Escribe tu nombre para entregarte tu pedido.'; $('cliente').focus(); return; }
 
   enviando = true;
   const boton = $('btn-levantar');
@@ -520,7 +545,7 @@ $('btn-levantar').addEventListener('click', async () => {
       // La clave se crea una sola vez: si el envío se repite por mala señal, el servidor devuelve el mismo pedido.
       if (!claveNueva) claveNueva = nuevaClave();
       const creado = await enviarJson(API + 'cliente/pedido.php', {
-        accion: 'crear', clave: claveNueva, nombre_cliente: nombre, modalidad, ...cuando.datos(), telefono, acepta_promos: !!telefono && $('acepta-promos').checked, notas: $('notas-orden').value.trim(), web: $('web').value, items: itemsParaEnviar(),
+        accion: 'crear', clave: claveNueva, nombre_cliente: nombre, modalidad, mesa_id: mesaVisible() && $('mesa').value ? Number($('mesa').value) : undefined, ...cuando.datos(), telefono, acepta_promos: !!telefono && $('acepta-promos').checked, notas: $('notas-orden').value.trim(), web: $('web').value, items: itemsParaEnviar(),
       });
       if (creado.orden && creado.orden.estimado != null) avisar(`¡Pedido enviado! Tiempo de espera: unos ${creado.orden.estimado} min`);
       guardarContacto(nombre, telefono);

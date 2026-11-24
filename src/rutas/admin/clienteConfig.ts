@@ -3,7 +3,7 @@
  * tipos de pedido (comer aquí / para llevar / recoger), elegir plato por plato y datos de pago por transferencia.
  *
  *   GET  /admin/cliente-config → { puede_general, general: Nivel, sucursales: [{ id, nombre, propio: Nivel, efectivo: Config }] }
- *   POST { accion: 'tipos', ambito: 'general'|'sucursal', sucursal_id?, modalidades: [...], mixto }
+ *   POST { accion: 'tipos', ambito: 'general'|'sucursal', sucursal_id?, modalidades: [...], mixto, mesa?: 'no'|'opcional'|'obligatoria' }
  *   POST { accion: 'pago',  ambito, sucursal_id?, clabe, beneficiario, institucion }
  *   POST { accion: 'transferencia', ambito, sucursal_id?, activo }   acepta o no pago por transferencia (si la empresa la apaga, el gerente no puede encenderla)
  *   POST { accion: 'pago_quitar', ambito, sucursal_id? }        borra lo propio (la sucursal vuelve a usar el de la empresa)
@@ -14,7 +14,7 @@ import type { FastifyInstance } from 'fastify';
 import { cuerpoJson, exigirMetodo, requerirGestion } from '../../auth.js';
 import { ejecutar, filas } from '../../db.js';
 import { ErrorHttp, fallo } from '../../errores.js';
-import { TIPOS_PEDIDO, cargarAjustesCliente, configEfectiva, nivelCliente } from '../../clienteConfig.js';
+import { MODOS_MESA, TIPOS_PEDIDO, cargarAjustesCliente, configEfectiva, nivelCliente } from '../../clienteConfig.js';
 import { entero, largo, noVacio } from '../../util.js';
 
 export async function rutasClienteConfig(app: FastifyInstance): Promise<void> {
@@ -63,6 +63,8 @@ export async function rutasClienteConfig(app: FastifyInstance): Promise<void> {
           if (mods.length === 0) throw fallo('Deja al menos un tipo de pedido activo.');
           await guardar(`cliente_modalidades${suf}`, JSON.stringify(mods));
           await guardar(`cliente_mixto${suf}`, noVacio(d['mixto']) ? '1' : '0');
+          const mesa = MODOS_MESA.find((m) => m === d['mesa']);
+          if (mesa) await guardar(`cliente_mesa${suf}`, mesa);
           return estado();
         }
         case 'pago': {
