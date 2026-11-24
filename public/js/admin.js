@@ -2074,7 +2074,7 @@ function pintarExtras() {
     caja.append(el('p', 'ayuda ex-vacio', 'Todavía no hay extras. Toca “＋ Nuevo extra” para crear el primero (por ejemplo, Sin cebolla).'));
     return;
   }
-  if (categorias.length) caja.append(el('p', 'ayuda ex-leyenda', 'Toca una categoría para poner el extra (o quitarlo) en todos sus platillos. Verde = en todos · amarillo = en algunos · gris = en ninguno.'));
+  if (categorias.length) caja.append(el('p', 'ayuda ex-leyenda', 'Toca una categoría para poner el extra (o quitarlo) en todos sus platillos, o usa «☑ Elegir platillos…» para ver y marcar platillo por platillo. Verde = en todos · amarillo = en algunos (ej. 1/11) · gris = en ninguno.'));
 
   // Secciones en el orden elegido (las vacías también se muestran); los extras sin sección van al final, en "Otros"
   const grupos = new Map(gruposExtras.map((g) => [g, []]));
@@ -2125,6 +2125,11 @@ function tarjetaExtra(x) {
       igualar.addEventListener('click', () => accionExtra({ accion: 'precio_general', id: x.id }, 'Precio general aplicado a todos'));
       disp.append(igualar);
     }
+    const btnElegir = el('button', 'ex-cat ex-elegir', '☑ Elegir platillos…');
+    btnElegir.type = 'button';
+    btnElegir.title = 'Marca categorías completas o platillo por platillo.';
+    btnElegir.addEventListener('click', () => abrirExtraPlatillos(x));
+    disp.append(btnElegir);
     for (const c of categorias) {
       const deCat = productos.filter((p) => p.categoria_id === c.id);
       if (deCat.length === 0) continue;
@@ -2161,6 +2166,75 @@ function tarjetaExtra(x) {
 
   return tarjeta;
 }
+
+/* Elegir en qué platillos aparece un extra: categoría completa (casilla con ➖ si va a medias) o platillo por platillo */
+const dlgEP = $('dlg-extra-platillos');
+let epExtra = null, epOriginal = new Set(), epMarcados = new Set();
+
+function epPintar() {
+  const q = $('ep-buscar').value.trim().toLowerCase();
+  const lista = $('ep-lista');
+  lista.replaceChildren();
+  let visibles = 0;
+  for (const c of categorias) {
+    const deCat = productos.filter((p) => p.categoria_id === c.id);
+    if (deCat.length === 0) continue;
+    const mostrar = q ? deCat.filter((p) => p.nombre.toLowerCase().includes(q)) : deCat;
+    if (mostrar.length === 0) continue;
+    const marcados = deCat.filter((p) => epMarcados.has(p.id)).length;
+    const cab = el('div', 'ep-cat');
+    const cx = document.createElement('input');
+    cx.type = 'checkbox'; cx.checked = marcados === deCat.length; cx.indeterminate = marcados > 0 && marcados < deCat.length;
+    cx.setAttribute('aria-label', `Toda la categoría ${c.nombre}`);
+    cx.addEventListener('change', () => { for (const p of deCat) { if (cx.checked) epMarcados.add(p.id); else epMarcados.delete(p.id); } epPintar(); });
+    const rot = el('label', '');
+    rot.append(c.nombre + ' ', el('small', '', `${marcados} de ${deCat.length}`));
+    rot.prepend(cx);
+    cab.append(rot);
+    lista.append(cab);
+    for (const p of mostrar) {
+      visibles++;
+      const fila = el('div', 'ep-prod');
+      const x = document.createElement('input');
+      x.type = 'checkbox'; x.checked = epMarcados.has(p.id); x.id = 'ep-p' + p.id;
+      x.addEventListener('change', () => { if (x.checked) epMarcados.add(p.id); else epMarcados.delete(p.id); epPintar(); });
+      const l = el('label', '', p.nombre); l.htmlFor = x.id;
+      fila.append(x, l);
+      lista.append(fila);
+    }
+  }
+  if (visibles === 0) lista.append(el('p', 'ayuda', 'No hay platillos con ese nombre.'));
+  const cambios = [...epMarcados].filter((id) => !epOriginal.has(id)).length + [...epOriginal].filter((id) => !epMarcados.has(id)).length;
+  $('ep-cuenta').textContent = `${epMarcados.size} platillo${epMarcados.size === 1 ? '' : 's'} marcado${epMarcados.size === 1 ? '' : 's'}` + (cambios ? ` · ${cambios} cambio${cambios === 1 ? '' : 's'} sin guardar` : '');
+  $('ep-guardar').disabled = cambios === 0;
+}
+function abrirExtraPlatillos(x) {
+  epExtra = x;
+  epOriginal = new Set(productos.filter((p) => p.extras.includes(x.id)).map((p) => p.id));
+  epMarcados = new Set(epOriginal);
+  $('ep-titulo').textContent = `¿En qué platillos aparece «${x.nombre}»?`;
+  $('ep-buscar').value = '';
+  $('ep-error').textContent = '';
+  epPintar();
+  dlgEP.showModal();
+}
+$('ep-buscar').addEventListener('input', epPintar);
+$('ep-todos').addEventListener('click', () => { for (const p of productos) epMarcados.add(p.id); epPintar(); });
+$('ep-ninguno').addEventListener('click', () => { epMarcados.clear(); epPintar(); });
+$('ep-cancelar').addEventListener('click', () => dlgEP.close());
+$('ep-x').addEventListener('click', () => dlgEP.close());
+$('ep-guardar').addEventListener('click', async () => {
+  $('ep-error').textContent = '';
+  const agregar = [...epMarcados].filter((id) => !epOriginal.has(id));
+  const quitar = [...epOriginal].filter((id) => !epMarcados.has(id));
+  try {
+    await enviarJson(API + 'admin/extras.php', { accion: 'asignar_platillos', id: epExtra.id, agregar, quitar });
+    dlgEP.close();
+    await cargarCatalogo();
+    pintarExtras();
+    avisar('Platillos del extra actualizados');
+  } catch (err) { $('ep-error').textContent = err.message; }
+});
 
 /* ------------------------------------------------------------------ */
 /*  Secciones de extras (Quitar, Aparte, Solo...) y variantes          */

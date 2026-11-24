@@ -11,13 +11,13 @@
   <meta name="theme-color" content="#0a6b4e">
   <meta name="mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-capable" content="yes">
-  <script src="../js/pwa.js?v=1795493266" defer></script>
+  <script src="../js/pwa.js?v=1795493438" defer></script>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Outfit:wght@600;700;800&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="../css/estilos.css?v=1795493266">
-  <link rel="stylesheet" href="../css/admin.css?v=1795493266">
-  <link rel="stylesheet" href="../css/shell.css?v=1795493266">
+  <link rel="stylesheet" href="../css/estilos.css?v=1795493438">
+  <link rel="stylesheet" href="../css/admin.css?v=1795493438">
+  <link rel="stylesheet" href="../css/shell.css?v=1795493438">
   <link rel="stylesheet" href="../api/tema.php">
 </head>
 <body>
@@ -279,6 +279,29 @@
     </div>
   </dialog>
 
+
+  <!-- Elegir en qué platillos aparece un extra: por categoría completa o platillo por platillo -->
+  <dialog id="dlg-extra-platillos">
+    <div class="formulario dialogo ep-dialogo">
+      <div class="ep-cab">
+        <h2 id="ep-titulo">¿En qué platillos aparece?</h2>
+        <button id="ep-x" class="btn chico" type="button" aria-label="Cerrar sin guardar" title="Cerrar sin guardar">✕</button>
+      </div>
+      <p class="ayuda">Marca una <strong>categoría</strong> para elegir todos sus platillos, o marca los platillos uno por uno. Los cambios se aplican hasta que pulses <strong>Guardar</strong>.</p>
+      <input id="ep-buscar" type="search" placeholder="Buscar platillo…" aria-label="Buscar platillo" autocomplete="off">
+      <div class="ex-botones">
+        <button id="ep-todos" class="btn chico" type="button">Marcar todos</button>
+        <button id="ep-ninguno" class="btn chico" type="button">Quitar todos</button>
+        <span id="ep-cuenta" class="ayuda"></span>
+      </div>
+      <div id="ep-lista" class="ep-lista"></div>
+      <p id="ep-error" class="msg-error" role="alert"></p>
+      <div class="acciones-dialogo">
+        <button id="ep-guardar" class="btn principal" type="button">Guardar</button>
+        <button id="ep-cancelar" class="btn" type="button">Cancelar</button>
+      </div>
+    </div>
+  </dialog>
 
   <!-- Crear o editar UN extra: ventana propia con su botón Guardar arriba -->
   <dialog id="dlg-extra-form">
@@ -710,9 +733,9 @@
 
   <div id="toast" class="toast" role="status" hidden></div>
 
-  <script src="../js/comun.js?v=1795493266"></script>
-  <script src="../js/shell.js?v=1795493266"></script>
+  <script src="../js/comun.js?v=1795493438"></script>
+  <script src="../js/shell.js?v=1795493438"></script>
   <script src="../js/vendor/qrcode.js"></script>
-  <script src="../js/admin.js?v=1795493266"></script>
+  <script src="../js/admin.js?v=1795493438"></script>
 </body>
 </html>

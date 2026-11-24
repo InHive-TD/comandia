@@ -6,6 +6,7 @@
  *     actualizar { id, nombre, precio, activo, codigo, grupo }
  *     eliminar   { id }
  *     asignar    { id, categoria_id, asignar }           pone o quita el extra a TODOS los productos de una categoría
+ *     asignar_platillos { id, agregar: [producto_id], quitar: [producto_id] }   pone o quita el extra en platillos concretos
  *     crear_varios { extras: [{ nombre, precio, grupo }], categorias: [id] }   crea muchos de un golpe (variantes de un ingrediente)
  *                                                              y, si se piden categorías, los pone en todos sus productos
  *     grupo_crear / grupo_renombrar / grupo_eliminar / grupo_mover   secciones de extras (Quitar, Aparte, Solo...)
@@ -164,6 +165,29 @@ export async function rutasExtras(app: FastifyInstance): Promise<void> {
             if (!limpias.some((x) => x.texto.toLowerCase() === texto.toLowerCase())) limpias.push({ texto, seccion, precio });
           }
           await ejecutar('INSERT INTO ajustes (negocio_id, clave, valor) VALUES (?, ?, ?) ON DUPLICATE KEY UPDATE valor = VALUES(valor)', [nid, CLAVE_VARIANTES, JSON.stringify(limpias)]);
+          return { ok: true };
+        }
+        case 'asignar_platillos': {
+          // Elegir platillo por platillo: solo toca los ids pedidos (no pierde el precio propio de los que se quedan).
+          await extraExiste(nid, id);
+          const ids = (v: unknown): number[] => (Array.isArray(v) ? [...new Set(v.map((n) => entero(n)).filter((n) => n > 0))].slice(0, 2000) : []);
+          const agregar = ids(d['agregar']);
+          const quitar = ids(d['quitar']);
+          if (agregar.length > 0) {
+            await ejecutar(
+              `INSERT INTO producto_extras (producto_id, extra_id)
+               SELECT p.id, ? FROM productos p
+                WHERE p.negocio_id = ? AND p.id IN (${agregar.map(() => '?').join(',')})
+                  AND NOT EXISTS (SELECT 1 FROM producto_extras pe WHERE pe.producto_id = p.id AND pe.extra_id = ?)`,
+              [id, nid, ...agregar, id],
+            );
+          }
+          if (quitar.length > 0) {
+            await ejecutar(
+              `DELETE FROM producto_extras WHERE extra_id = ? AND producto_id IN (SELECT id FROM productos WHERE negocio_id = ? AND id IN (${quitar.map(() => '?').join(',')}))`,
+              [id, nid, ...quitar],
+            );
+          }
           return { ok: true };
         }
         case 'asignar_todos': {
