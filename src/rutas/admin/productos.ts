@@ -85,7 +85,7 @@ export async function leerCampos(nid: number, alcance: number | null, f: Formula
   if (extras.length > 0) {
     const marcas = extras.map(() => '?').join(',');
     const n = await fila(`SELECT COUNT(*) AS n FROM extras WHERE negocio_id = ? AND id IN (${marcas})`, [nid, ...extras]);
-    if (Number(n?.['n']) !== extras.length) throw fallo('Alguno de los extras elegidos ya no existe. Recarga la página.');
+    if (Number(n?.['n']) !== extras.length) throw fallo('Alguno de los modificadores elegidos ya no existe. Recarga la página.');
   }
 
   // Precios propios por platillo: JSON {"<extra_id>": precio}. Solo cuentan los extras marcados; precio vacío = el general.
@@ -99,7 +99,7 @@ export async function leerCampos(nid: number, alcance: number | null, f: Formula
         const id = Number(k);
         if (!extras.includes(id) || v === null || v === '') continue;
         const num = Number(v);
-        if (!Number.isFinite(num) || num < 0 || num > 99999) throw fallo('Un precio de extra no es válido.');
+        if (!Number.isFinite(num) || num < 0 || num > 99999) throw fallo('Un precio de modificador no es válido.');
         preciosExtra.set(id, Math.round(num * 100) / 100);
       }
     }
@@ -109,13 +109,13 @@ export async function leerCampos(nid: number, alcance: number | null, f: Formula
   const obligatorias = f.texto('opciones_obligatorias', '0') === '1' ? 1 : 0;
   let grupoObligatorio: string | null = null;
   if (obligatorias === 1) {
-    if (extras.length === 0) throw fallo('Para pedir una opción obligatoria marca al menos un extra de este platillo (por ejemplo, las carnes del burrito).');
+    if (extras.length === 0) throw fallo('Para pedir una opción obligatoria marca al menos un modificador de este platillo (por ejemplo, las carnes del burrito).');
     const g = f.texto('grupo_obligatorio').trim();
     if (g !== '') {
       if (largo(g) > 40) throw fallo('El nombre de la sección no es válido.');
       const marcas = extras.map(() => '?').join(',');
       const enGrupo = await fila(`SELECT COUNT(*) AS n FROM extras WHERE negocio_id = ? AND grupo = ? AND activo = 1 AND id IN (${marcas})`, [nid, g, ...extras]);
-      if (Number(enGrupo?.['n']) === 0) throw fallo(`Marca al menos un extra de la sección “${g}” para este platillo, o elige “Cualquier opción”.`);
+      if (Number(enGrupo?.['n']) === 0) throw fallo(`Marca al menos un modificador de la sección “${g}” para este platillo, o elige “Cualquier opción”.`);
       grupoObligatorio = g;
     }
   }

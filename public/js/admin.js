@@ -301,7 +301,7 @@ function tarjeta(p) {
   if (general && p.oculto) etiquetas.append(el('span', 'chip sin', 'Oculto en mi sucursal'));
   if (general && p.precio_sucursal != null) etiquetas.append(el('span', 'chip', 'Precio general: ' + dinero.format(p.precio)));
   if (p.porcion) etiquetas.append(el('span', 'chip', p.porcion));
-  if (p.extras.length) etiquetas.append(el('span', 'chip', p.extras.length === 1 ? '1 extra' : `${p.extras.length} extras`));
+  if (p.extras.length) etiquetas.append(el('span', 'chip', p.extras.length === 1 ? '1 modificador' : `${p.extras.length} modificadores`));
   info.append(etiquetas);
 
   const acciones = el('div', 'prod-acciones');
@@ -415,7 +415,7 @@ function pintarExtrasProducto(marcados, precios = {}) {
   caja.replaceChildren();
   const visibles = extras.filter((x) => x.activo || marcados.includes(x.id));
   if (visibles.length === 0) {
-    caja.append(el('p', 'vacio ayuda', 'Aún no hay extras. Créalos con el botón “Extras”.'));
+    caja.append(el('p', 'vacio ayuda', 'Aún no hay modificadores. Créalos con el botón “Modificadores”.'));
     return;
   }
   const grupos = new Map(gruposExtras.map((g) => [g, []]));   // secciones en el orden que eligió el dueño
@@ -450,7 +450,7 @@ function pintarExtrasProducto(marcados, precios = {}) {
       precio.step = '0.50';
       precio.className = 'precio-extra-prod';
       precio.placeholder = `$ ${x.precio}`;
-      precio.title = 'Precio de este extra solo en este platillo (vacío = precio general)';
+      precio.title = 'Precio de este modificador solo en este platillo (vacío = precio general)';
       precio.dataset.extra = String(x.id);
       if (precios[x.id] !== undefined) precio.value = String(precios[x.id]);
       const sync = () => { precio.hidden = !caja_.checked; };
@@ -2073,7 +2073,7 @@ function campoCosto(precioInicial = 0) {
   campo.type = 'text';
   campo.inputMode = 'decimal';
   campo.placeholder = '$ precio';
-  campo.setAttribute('aria-label', 'Precio del extra');
+  campo.setAttribute('aria-label', 'Precio del modificador');
   campo.value = precioInicial > 0 ? precioInicial.toFixed(2) : '';
   campo.hidden = !marca.checked;
 
@@ -2107,10 +2107,10 @@ function pintarExtras() {
   const caja = $('lista-extras');
   caja.replaceChildren();
   if (extras.length === 0) {
-    caja.append(el('p', 'ayuda ex-vacio', 'Todavía no hay extras. Toca “＋ Nuevo extra” para crear el primero (por ejemplo, Sin cebolla).'));
+    caja.append(el('p', 'ayuda ex-vacio', 'Todavía no hay modificadores. Toca “＋ Nuevo modificador” para crear el primero (por ejemplo, Sin cebolla).'));
     return;
   }
-  if (categorias.length) caja.append(el('p', 'ayuda ex-leyenda', 'Cada tarjeta muestra en qué categorías aparece el extra (verde = en todos sus platillos, amarillo = en algunos, ej. 1/11). Para cambiarlo, toca «Editar» y elige los platillos.'));
+  if (categorias.length) caja.append(el('p', 'ayuda ex-leyenda', 'Cada tarjeta muestra en qué categorías aparece el modificador (verde = en todos sus platillos, amarillo = en algunos, ej. 1/11). Para cambiarlo, toca «Editar» y elige los platillos.'));
 
   // Secciones en el orden elegido (las vacías también se muestran); los extras sin sección van al final, en "Otros"
   const grupos = new Map(gruposExtras.map((g) => [g, []]));
@@ -2122,7 +2122,7 @@ function pintarExtras() {
   if (grupos.has('Otros') && grupos.get('Otros').length === 0) grupos.delete('Otros');
   for (const [g, lista] of grupos) {
     if (grupos.size > 1 || lista.length === 0) caja.append(el('h3', 'ex-grupo', lista.length ? `${g} (${lista.length})` : `${g} (vacía)`));
-    if (lista.length === 0) { caja.append(el('p', 'ayuda', 'Sin extras todavía. Crea uno con “＋ Nuevo extra” y elige esta sección en “Más opciones”.')); continue; }
+    if (lista.length === 0) { caja.append(el('p', 'ayuda', 'Sin modificadores todavía. Crea uno con “＋ Nuevo modificador” y elige esta sección en “Más opciones”.')); continue; }
     const rejilla = el('div', 'ex-rejilla');
     for (const x of lista) rejilla.append(tarjetaExtra(x));
     caja.append(rejilla);
@@ -2152,10 +2152,10 @@ function tarjetaExtra(x) {
   editar.type = 'button';
   editar.addEventListener('click', () => abrirFormExtra(x));
   const borrar = el('button', 'btn chico peligro', '🗑');
-  borrar.type = 'button'; borrar.title = 'Eliminar extra'; borrar.setAttribute('aria-label', 'Eliminar extra');
+  borrar.type = 'button'; borrar.title = 'Eliminar modificador'; borrar.setAttribute('aria-label', 'Eliminar modificador');
   borrar.addEventListener('click', async () => {
-    if (await confirmar(`¿Eliminar el extra “${x.nombre}”? Se quita de todos los platillos.`, { si: 'Eliminar', peligro: true })) {
-      accionExtra({ accion: 'eliminar', id: x.id }, 'Extra eliminado');
+    if (await confirmar(`¿Eliminar el modificador “${x.nombre}”? Se quita de todos los platillos.`, { si: 'Eliminar', peligro: true })) {
+      accionExtra({ accion: 'eliminar', id: x.id }, 'Modificador eliminado');
     }
   });
   pie.append(editar, borrar);
@@ -2226,7 +2226,7 @@ function abrirExtraPlatillos(x) {
   epExtra = x;   // null = extra nuevo: la elección queda en el formulario y se guarda junto con el extra
   epOriginal = x ? new Set(productos.filter((p) => p.extras.includes(x.id)).map((p) => p.id)) : new Set();
   epMarcados = x ? new Set(epOriginal) : new Set(efSel);
-  $('ep-titulo').textContent = x ? `¿En qué platillos aparece «${x.nombre}»?` : '¿En qué platillos aparece el extra nuevo?';
+  $('ep-titulo').textContent = x ? `¿En qué platillos aparece «${x.nombre}»?` : '¿En qué platillos aparece el modificador nuevo?';
   $('ep-buscar').value = '';
   $('ep-error').textContent = '';
   epPintar();
@@ -2248,7 +2248,7 @@ $('ep-guardar').addEventListener('click', async () => {
     await cargarCatalogo();
     pintarExtras();
     efDonde();
-    avisar('Platillos del extra actualizados');
+    avisar('Platillos del modificador actualizados');
   } catch (err) { $('ep-error').textContent = err.message; }
 });
 
@@ -2268,7 +2268,7 @@ function pintarSeccionesExtras() {
     sube.addEventListener('click', () => accionExtra({ accion: 'grupo_mover', nombre: g, direccion: 'subir' }));
     baja.addEventListener('click', () => accionExtra({ accion: 'grupo_mover', nombre: g, direccion: 'bajar' }));
     const n = extras.filter((x) => x.grupo === g).length;
-    const nombre = el('span', 'ex-sec-nombre'); nombre.append(el('strong', '', g), el('small', '', ` · ${n} extra${n === 1 ? '' : 's'}`));
+    const nombre = el('span', 'ex-sec-nombre'); nombre.append(el('strong', '', g), el('small', '', ` · ${n} modificador${n === 1 ? '' : 'es'}`));
     const renombrar = el('button', 'btn chico', '✎ Renombrar'); renombrar.type = 'button';
     renombrar.addEventListener('click', async () => {
       const nuevo = await pedirTexto(`Nuevo nombre para la sección “${g}”:`, { si: 'Guardar', valor: g });
@@ -2276,7 +2276,7 @@ function pintarSeccionesExtras() {
     });
     const quitar = el('button', 'btn chico peligro', '🗑'); quitar.type = 'button'; quitar.title = 'Quitar sección'; quitar.setAttribute('aria-label', 'Quitar sección');
     quitar.addEventListener('click', async () => {
-      const aviso = n ? ` Sus ${n} extra${n === 1 ? '' : 's'} NO se borran: pasan a “Otros”.` : '';
+      const aviso = n ? ` Sus ${n} modificador${n === 1 ? '' : 'es'} NO se borran: pasan a “Otros”.` : '';
       if (await confirmar(`¿Quitar la sección “${g}”?${aviso}`, { si: 'Quitar sección', peligro: true })) accionExtra({ accion: 'grupo_eliminar', nombre: g }, 'Sección quitada');
     });
     fila.append(sube, baja, nombre, renombrar, quitar);
@@ -2366,7 +2366,7 @@ function pintarVariantesTipos() {
       const quitar = el('button', 'btn chico peligro', '✕');
       quitar.type = 'button'; quitar.title = 'Quitar esta variante de mi lista'; quitar.setAttribute('aria-label', 'Quitar variante propia');
       quitar.addEventListener('click', async () => {
-        if (!(await confirmar(`¿Quitar la variante propia “${v.texto || 'sin texto'}” de tu lista? Los extras que ya creaste con ella no se borran.`, { si: 'Quitar variante', peligro: true }))) return;
+        if (!(await confirmar(`¿Quitar la variante propia “${v.texto || 'sin texto'}” de tu lista? Los modificadores que ya creaste con ella no se borran.`, { si: 'Quitar variante', peligro: true }))) return;
         variantesEstado = variantesEstado.filter((o) => o !== v);
         await guardarVariantesPropias();
         pintarVariantesTipos();
@@ -2393,7 +2393,7 @@ function pintarVistaVariantes() {
   const vista = $('var-vista');
   vista.replaceChildren();
   if (lista.length === 0) { vista.textContent = 'Escribe un ingrediente para ver qué se va a crear.'; $('var-crear').disabled = true; return; }
-  vista.append(el('strong', '', nuevos.length ? `Se crearán ${nuevos.length} extra${nuevos.length === 1 ? '' : 's'}:` : 'No hay nada nuevo que crear.'));
+  vista.append(el('strong', '', nuevos.length ? `Se crearán ${nuevos.length} modificador${nuevos.length === 1 ? '' : 'es'}:` : 'No hay nada nuevo que crear.'));
   const ul = el('div', 'var-lista');
   for (const x of lista) ul.append(el('span', 'chip' + (x.existe ? ' sin' : ''), `${x.nombre}${x.seccion ? ' · ' + x.seccion : ''}${Number(x.precio.replace(',', '.')) > 0 ? ' · +$' + x.precio : ''}${x.existe ? ' (ya existe)' : ''}`));
   vista.append(ul);
@@ -2421,7 +2421,7 @@ $('form-variantes').addEventListener('submit', async (ev) => {
     $('var-ingredientes').value = '';
     variantesEstado = null;   // se reconstruye con la lista propia ya guardada
     pintarExtras();
-    avisar(`${r.creados.length} extra${r.creados.length === 1 ? '' : 's'} creado${r.creados.length === 1 ? '' : 's'}` + (varCategorias.size ? ' y agregados a las categorías elegidas' : ''));
+    avisar(`${r.creados.length} modificador${r.creados.length === 1 ? '' : 'es'} creado${r.creados.length === 1 ? '' : 's'}` + (varCategorias.size ? ' y agregados a las categorías elegidas' : ''));
   } catch (err) {
     $('x-error').textContent = err.message;
   }
@@ -2505,7 +2505,7 @@ $('ef-igualar').addEventListener('click', async () => {
 
 function abrirFormExtra(x) {
   efExtra = x || null;
-  $('ef-titulo').textContent = x ? 'Editar extra' : 'Nuevo extra';
+  $('ef-titulo').textContent = x ? 'Editar modificador' : 'Nuevo modificador';
   $('ef-nombre').value = x ? x.nombre : '';
   $('ef-codigo').value = x ? (x.codigo || '') : '';
   efCosto = campoCosto(x ? x.precio : 0);
@@ -2524,10 +2524,10 @@ function abrirFormExtra(x) {
 async function guardarFormExtra() {
   $('ef-error').textContent = '';
   const nombre = $('ef-nombre').value.trim();
-  if (!nombre) { $('ef-error').textContent = 'Escribe cómo se llama el extra.'; $('ef-nombre').focus(); return false; }
+  if (!nombre) { $('ef-error').textContent = 'Escribe cómo se llama el modificador.'; $('ef-nombre').focus(); return false; }
   const g = $('ef-grupo').value === '__nueva' ? $('ef-grupo-nuevo').value.trim() : $('ef-grupo').value;
   if ($('ef-grupo').value === '__nueva' && !g) { $('ef-error').textContent = 'Escribe el nombre de la nueva sección.'; $('ef-grupo-nuevo').focus(); return false; }
-  if (!efExtra && efSel.size === 0) { $('ef-error').textContent = 'Elige en qué platillos va a aparecer este extra (botón «Elegir platillos…»).'; return false; }
+  if (!efExtra && efSel.size === 0) { $('ef-error').textContent = 'Elige en qué platillos va a aparecer este modificador (botón «Elegir platillos…»).'; return false; }
   const cuerpo = { accion: efExtra ? 'actualizar' : 'crear', nombre, codigo: $('ef-codigo').value.trim(), grupo: g, precio: efCosto.valor() };
   if (efExtra) { cuerpo.id = efExtra.id; cuerpo.activo = $('ef-activo').checked; }
   try {
@@ -2535,7 +2535,7 @@ async function guardarFormExtra() {
     if (!efExtra) await enviarJson(API + 'admin/extras.php', { accion: 'asignar_platillos', id: r.id, agregar: [...efSel], quitar: [] });
     await cargarCatalogo();
     pintarExtras();
-    avisar(efExtra ? 'Extra actualizado' : `Extra creado en ${efSel.size} platillo${efSel.size === 1 ? '' : 's'}`);
+    avisar(efExtra ? 'Modificador actualizado' : `Modificador creado en ${efSel.size} platillo${efSel.size === 1 ? '' : 's'}`);
     return true;
   } catch (err) {
     $('ef-error').textContent = err.message;

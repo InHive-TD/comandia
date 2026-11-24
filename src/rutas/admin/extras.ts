@@ -21,7 +21,7 @@ import { entero, largo, mayusculas, noVacio } from '../../util.js';
 
 function leerNombre(d: Record<string, unknown>): string {
   const nombre = String(d['nombre'] ?? '').trim();
-  if (nombre === '' || largo(nombre) > 60) throw fallo('El nombre del extra es obligatorio (máximo 60 caracteres).');
+  if (nombre === '' || largo(nombre) > 60) throw fallo('El nombre del modificador es obligatorio (máximo 60 caracteres).');
   return nombre;
 }
 
@@ -49,7 +49,7 @@ async function leerCodigo(nid: number, d: Record<string, unknown>, idActual = 0)
   if (codigo === '') return null;
   if (!/^[A-Z0-9-]{1,20}$/.test(codigo)) throw fallo('El código solo puede llevar letras, números y guion (máximo 10 caracteres).');
   const otro = await fila('SELECT nombre FROM extras WHERE negocio_id = ? AND codigo = ? AND id <> ?', [nid, codigo, idActual]);
-  if (otro) throw fallo(`El código ${codigo} ya lo usa el extra “${String(otro['nombre'])}”.`);
+  if (otro) throw fallo(`El código ${codigo} ya lo usa el modificador “${String(otro['nombre'])}”.`);
   return codigo;
 }
 
@@ -88,7 +88,7 @@ function leerNombreGrupo(v: unknown): string {
 /** Comprueba que el extra exista en ESTA empresa (404 si no). */
 async function extraExiste(nid: number, id: number): Promise<void> {
   const n = await fila('SELECT COUNT(*) AS n FROM extras WHERE id = ? AND negocio_id = ?', [id, nid]);
-  if (Number(n?.['n']) === 0) throw new ErrorHttp(404, 'validacion', 'Ese extra ya no existe.');
+  if (Number(n?.['n']) === 0) throw new ErrorHttp(404, 'validacion', 'Ese modificador ya no existe.');
 }
 
 export async function rutasExtras(app: FastifyInstance): Promise<void> {
@@ -216,7 +216,7 @@ export async function rutasExtras(app: FastifyInstance): Promise<void> {
         case 'crear_varios': {
           // Variantes de uno o más ingredientes (Sin X, X aparte, Solo X...). Los que ya existen con ese nombre se omiten.
           const lista = Array.isArray(d['extras']) ? (d['extras'] as Record<string, unknown>[]) : [];
-          if (lista.length === 0 || lista.length > 100) throw fallo('Elige al menos un extra para crear (máximo 100 a la vez).');
+          if (lista.length === 0 || lista.length > 100) throw fallo('Elige al menos un modificador para crear (máximo 100 a la vez).');
           const categoriasIds = [...new Set((Array.isArray(d['categorias']) ? d['categorias'] : []).map(entero))].filter((c) => c > 0);
           for (const c of categoriasIds) {
             const ok = await fila('SELECT COUNT(*) AS n FROM categorias WHERE id = ? AND negocio_id = ?', [c, nid]);

@@ -50,10 +50,10 @@ const COLUMNAS: Columna[] = [
   { clave: 'descripcion', titulo: 'Descripción', ancho: 50, nota: 'Opcional. De qué es el platillo; la ve el cliente en el menú. Máximo 255 caracteres.' },
   { clave: 'porcion', titulo: 'Porción', ancho: 14, nota: 'Opcional. Ej. “3 tacos”, “250 g”. Máximo 40 caracteres.' },
   { clave: 'parrilla', titulo: 'Parrilla', ancho: 16, nota: 'Opcional. Estación de cocina donde se prepara. Elige de la lista.' },
-  { clave: 'extras', titulo: 'Extras', ancho: 34, nota: 'Opcional. Extras que se pueden pedir con este platillo, separados por punto y coma. Usa el nombre o el código del extra, tal como están en la hoja “Listas”. Ej.: Queso; Aguacate' },
+  { clave: 'extras', titulo: 'Modificadores', ancho: 34, nota: 'Opcional. Modificadores que se pueden pedir con este platillo, separados por punto y coma. Usa el nombre o el código del modificador, tal como están en la hoja “Listas”. Ej.: Queso; Aguacate' },
   { clave: 'pide opciones', titulo: 'Pide opciones', ancho: 14, nota: 'Opcional. Sí = al tocar el platillo siempre se abre la ventana de opciones. Vacío = No.' },
-  { clave: 'opcion obligatoria', titulo: 'Opción obligatoria', ancho: 18, nota: 'Opcional. Sí = el cliente debe elegir una opción antes de agregarlo (ej. el burrito: la carne). Necesita extras en la columna “Extras”. Vacío = No (al actualizar, vacío conserva el valor actual).' },
-  { clave: 'seccion obligatoria', titulo: 'Sección obligatoria', ancho: 22, nota: 'Opcional. Solo con “Opción obligatoria = Sí”. Nombre de la sección de extras de la que hay que elegir (ej. Carne a elegir). Vacío = vale cualquier opción. Las secciones están en la hoja “Listas”.' },
+  { clave: 'opcion obligatoria', titulo: 'Opción obligatoria', ancho: 18, nota: 'Opcional. Sí = el cliente debe elegir una opción antes de agregarlo (ej. el burrito: la carne). Necesita modificadores en la columna “Modificadores”. Vacío = No (al actualizar, vacío conserva el valor actual).' },
+  { clave: 'seccion obligatoria', titulo: 'Sección obligatoria', ancho: 22, nota: 'Opcional. Solo con “Opción obligatoria = Sí”. Nombre de la sección de modificadores de la que hay que elegir (ej. Carne a elegir). Vacío = vale cualquier opción. Las secciones están en la hoja “Listas”.' },
   { clave: 'disponible', titulo: 'Disponible', ancho: 12, nota: 'Opcional. Sí / No. Vacío = Sí (al actualizar, vacío conserva el valor actual).' },
   { clave: 'foto', titulo: 'Foto', ancho: 26, nota: 'Opcional. Nombre del archivo de la foto dentro del ZIP, con extensión (p. ej. taco-arrachera.jpg). Si lo dejas vacío pero el platillo tiene Código, se busca una foto llamada <código>.jpg (o .png / .webp).' },
 ];
@@ -68,10 +68,10 @@ const INSTRUCCIONES: string[] = [
   '',
   'REGLAS',
   '• Código: si ya existe en tu empresa, la fila ACTUALIZA ese platillo. En una actualización, las celdas opcionales en blanco conservan el valor actual.',
-  '• Categoría, Parrilla y Extras: elige de las listas de la hoja “Listas”. Una categoría nueva la crea el dueño automáticamente; las parrillas y extras deben existir.',
-  '• Extras: sepáralos con punto y coma (Queso; Aguacate). Puedes usar su nombre o su código.',
+  '• Categoría, Parrilla y Modificadores: elige de las listas de la hoja “Listas”. Una categoría nueva la crea el dueño automáticamente; las parrillas y modificadores deben existir.',
+  '• Modificadores: sepáralos con punto y coma (Queso; Aguacate). Puedes usar su nombre o su código.',
   '• Sí / No: Pide opciones, Opción obligatoria y Disponible aceptan Sí, No (también 1/0, x).',
-  '• Opción obligatoria: con Sí, el cliente debe elegir una opción (de la Sección obligatoria, si la escribes) antes de agregar el platillo; siempre se abre la ventana de opciones. El platillo debe tener extras en la columna “Extras”.',
+  '• Opción obligatoria: con Sí, el cliente debe elegir una opción (de la Sección obligatoria, si la escribes) antes de agregar el platillo; siempre se abre la ventana de opciones. El platillo debe tener modificadores en la columna “Modificadores”.',
   '• Fotos: JPG, PNG o WebP. Se reducen y optimizan solas. Recomendado: fotos cuadradas o 4:3, de hasta unos 2 MB cada una.',
   '• Máximo 500 platillos por carga y 120 MB en el ZIP. Si tienes más, divídelos en varias cargas.',
   '• No cambies los títulos de la fila 1 ni el nombre de la hoja “Productos”.',
@@ -182,7 +182,7 @@ export async function generarPlantilla(listas: ListasPlantilla): Promise<Buffer>
 
   /* --- Listas (las que alimentan los desplegables) --- */
   const hl = libro.addWorksheet('Listas');
-  const titulosListas = ['Categorías', 'Parrillas', 'Extras (nombre)', 'Extras (código)', 'Extras (sección)', 'Sí / No'];
+  const titulosListas = ['Categorías', 'Parrillas', 'Modificadores (nombre)', 'Modificadores (código)', 'Modificadores (sección)', 'Sí / No'];
   titulosListas.forEach((t, i) => {
     const c = hl.getCell(1, i + 1);
     c.value = t; c.font = { bold: true };
@@ -292,7 +292,7 @@ export async function analizarCarga(ctx: Contexto, planilla: Buffer, zip: Buffer
   const col = new Map<string, number>();
   hoja.getRow(1).eachCell((c, n) => {
     const t = normalizar(textoCelda(c.value).replace(/\*/g, ''));
-    const clave = t === 'estacion' ? 'parrilla' : t === 'pedir opciones' ? 'pide opciones' : t;
+    const clave = t === 'estacion' ? 'parrilla' : t === 'pedir opciones' ? 'pide opciones' : t === 'modificadores' ? 'extras' : t;   // «Modificadores» (plantilla nueva) y «Extras» (plantillas anteriores)
     if (COLUMNAS.some((k) => k.clave === clave)) col.set(clave, n);
   });
   for (const c of COLUMNAS.filter((k) => k.obligatoria)) {
@@ -381,7 +381,7 @@ export async function analizarCarga(ctx: Contexto, planilla: Buffer, zip: Buffer
         extras = [];
         for (const pieza of tExtras.split(/[;,]/).map((x) => x.trim()).filter(Boolean)) {
           const id = extrasPorClave.get(normalizar(pieza));
-          if (!id) throw fallo(`El extra “${pieza}” no existe (revisa la hoja “Listas”).`);
+          if (!id) throw fallo(`El modificador “${pieza}” no existe (revisa la hoja “Listas”).`);
           if (!extras.includes(id)) extras.push(id);
         }
       }
