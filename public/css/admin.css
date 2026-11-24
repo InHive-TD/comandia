@@ -743,3 +743,15 @@ body.en-panel .panel-lateral { min-height: 100vh; grid-template-columns: 240px m
 .casilla { align-items: flex-start; }
 .casilla input { margin-top: 10px; flex: none; }
 .campo-grupo-oblig { margin-left: 30px; }
+
+/* Avatar con foto + ventana "Mi perfil" */
+.avatar { background-size: cover; background-position: center; overflow: hidden; }
+.avatar-btn { border: 0; padding: 0; cursor: pointer; font-family: inherit; }
+.avatar-btn:hover { filter: brightness(1.08); }
+.avatar-btn:focus-visible { outline: 2px solid #fff; outline-offset: 2px; }
+.avatar.con-foto { font-size: 0; }
+.avatar.grande { width: 112px; height: 112px; font-size: 2.2rem; margin: 6px auto 0; border: 3px solid var(--color-suave); }
+.perfil-caja { text-align: center; }
+.perfil-caja h2 { margin: 6px 0 0; }
+.perfil-caja p { margin: 0; }
+.perfil-botones { display: grid; gap: 8px; margin-top: 10px; }

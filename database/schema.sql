@@ -85,6 +85,7 @@ CREATE TABLE IF NOT EXISTS usuarios (
     rol            ENUM('taquero','caja','admin','mesero','gerente') NOT NULL DEFAULT 'taquero',   -- admin = dueño · gerente = jefe de UNA sucursal · taquero = Cocina · mesero = Órdenes (mesas)
     sucursal_id    INT UNSIGNED NULL,             -- NULL = ve todas las sucursales (administrador); si no, solo la suya
     activo         TINYINT(1)   NOT NULL DEFAULT 1,
+    foto           VARCHAR(80)  NULL,             -- foto de perfil (archivo en uploads)
     creado_en      DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP,
     UNIQUE KEY uq_usuario_negocio (negocio_id, usuario),
     CONSTRAINT fk_usuario_negocio FOREIGN KEY (negocio_id) REFERENCES negocios(id)

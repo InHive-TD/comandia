@@ -11,12 +11,12 @@
   <meta name="theme-color" content="#0a6b4e">
   <meta name="mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-capable" content="yes">
-  <script src="../js/pwa.js?v=1795489050" defer></script>
+  <script src="../js/pwa.js?v=1795489252" defer></script>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Outfit:wght@600;700;800&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="../css/estilos.css?v=1795489050">
-  <link rel="stylesheet" href="../css/admin.css?v=1795489050">
+  <link rel="stylesheet" href="../css/estilos.css?v=1795489252">
+  <link rel="stylesheet" href="../css/admin.css?v=1795489252">
   <link rel="stylesheet" href="../api/tema.php">
 </head>
 <body>
@@ -89,7 +89,7 @@
         <button id="btn-apariencia" class="btn nav-ico i-apariencia" type="button">Apariencia</button>
       </div>
         <div class="menu-usuario">
-          <span id="usuario-ini" class="avatar" aria-hidden="true"></span>
+          <button id="usuario-ini" class="avatar avatar-btn" type="button" title="Cambiar mi foto" aria-label="Cambiar mi foto"></button>
           <span class="usuario-datos"><strong id="usuario-nombre"></strong><span id="usuario-rol"></span></span>
           <button id="btn-salir-menu" class="btn-salir-menu" type="button" title="Salir" aria-label="Salir"></button>
         </div>
@@ -98,7 +98,7 @@
       <div class="barra-movil">
         <button id="btn-menu" class="btn-menu" type="button" aria-label="Abrir menú" aria-controls="menu-principal" aria-expanded="false"></button>
         <a class="marca-logo" href="../" aria-label="Comandia"><svg viewBox="0 0 120 120" aria-hidden="true"><path d="M18 80A42 42 0 0 1 102 80Z" fill="#FF7A30"/><rect x="8" y="84" width="104" height="12" rx="6" fill="#F3F7F4"/><circle cx="60" cy="30" r="8" fill="#F3F7F4"/></svg><span>coman<b>dia</b></span></a>
-        <span id="usuario-ini-movil" class="avatar chico" aria-hidden="true"></span>
+        <button id="usuario-ini-movil" class="avatar chico avatar-btn" type="button" title="Mi perfil" aria-label="Mi perfil"></button>
       </div>
       <div class="barra-panel">
         <h2 id="titulo-seccion">Inicio</h2>
@@ -304,6 +304,23 @@
         <button id="ef-cancelar" class="btn" type="button">Cancelar</button>
       </div>
     </form>
+  </dialog>
+
+
+  <!-- Mi perfil: foto de quien está usando el panel -->
+  <dialog id="dlg-perfil">
+    <div class="formulario dialogo perfil-caja">
+      <div id="perfil-avatar" class="avatar grande"></div>
+      <h2 id="perfil-rol"></h2>
+      <p id="perfil-nombre" class="ayuda"></p>
+      <input id="perfil-archivo" type="file" accept="image/jpeg,image/png,image/webp" hidden>
+      <p id="perfil-error" class="msg-error" role="alert"></p>
+      <div class="perfil-botones">
+        <button id="perfil-cambiar" class="btn principal" type="button">📷 Cambiar foto</button>
+        <button id="perfil-quitar" class="btn" type="button" hidden>Quitar foto</button>
+      </div>
+      <div class="acciones-dialogo"><button id="perfil-cerrar" class="btn" type="button">Cerrar</button></div>
+    </div>
   </dialog>
 
   <!-- Usuarios del equipo -->
@@ -614,8 +631,8 @@
 
   <div id="toast" class="toast" role="status" hidden></div>
 
-  <script src="../js/comun.js?v=1795489050"></script>
+  <script src="../js/comun.js?v=1795489252"></script>
   <script src="../js/vendor/qrcode.js"></script>
-  <script src="../js/admin.js?v=1795489050"></script>
+  <script src="../js/admin.js?v=1795489252"></script>
 </body>
 </html>

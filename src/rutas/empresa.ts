@@ -26,6 +26,7 @@ import { rutasReportes } from './admin/reportes.js';
 import { rutasCliente } from './cliente.js';
 import { rutasTema } from './tema.js';
 import { rutasMenu } from './menu.js';
+import { rutasPerfil } from './perfil.js';
 import { rutasOrdenes } from './ordenes.js';
 
 /** Hash falso para tardar lo mismo cuando el usuario no existe (no delatar qué usuarios hay). */
@@ -39,7 +40,7 @@ export async function rutasEmpresa(app: FastifyInstance): Promise<void> {
   await app.register(rutasEventos);
   await app.register(rutasManifiesto);
   // Menú y administración del catálogo (cada archivo documenta sus reglas y permisos)
-  for (const grupo of [rutasMenu, rutasCategorias, rutasEstaciones, rutasExtras, rutasAdminProductos, rutasAdminImportar, rutasSucursales, rutasAdminMesas, rutasUsuarios, rutasOrdenes, rutasCocina, rutasCaja, rutasPrioridades, rutasTiempos, rutasMarca, rutasReportes, rutasCliente, rutasTema, rutasClientePedidos]) {
+  for (const grupo of [rutasPerfil, rutasMenu, rutasCategorias, rutasEstaciones, rutasExtras, rutasAdminProductos, rutasAdminImportar, rutasSucursales, rutasAdminMesas, rutasUsuarios, rutasOrdenes, rutasCocina, rutasCaja, rutasPrioridades, rutasTiempos, rutasMarca, rutasReportes, rutasCliente, rutasTema, rutasClientePedidos]) {
     await app.register(grupo);
   }
 
@@ -65,7 +66,7 @@ export async function rutasEmpresa(app: FastifyInstance): Promise<void> {
     return {
       ok: true,
       autenticado: usuario !== null,
-      usuario: usuario ? { nombre: usuario.nombre, rol: usuario.rol } : null,
+      usuario: usuario ? { nombre: usuario.nombre, rol: usuario.rol, foto: ((await fila('SELECT foto FROM usuarios WHERE id = ? AND negocio_id = ?', [usuario.id, req.negocio.id]))?.['foto'] as string | null) ?? null } : null,
       negocio: { nombre: req.negocio.nombre, slug: req.negocio.slug },
       sucursal: suc || null,
       sucursales: usuario && usuario.sucursalesPermitidas === null ? lista : lista.filter((s) => s.id === suc),

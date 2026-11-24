@@ -15,7 +15,7 @@ const LADO_MAX = 1200;
 const PIXELES_MAX = 40_000_000;
 
 /** Valida y guarda una foto. Devuelve "<id de la empresa>/p_xxxxxxxxxxxxxxxx.jpg". */
-export async function procesarFoto(buffer: Buffer, negocioId: number): Promise<string> {
+export async function procesarFoto(buffer: Buffer, negocioId: number, perfil = false): Promise<string> {
   const sharp = await cargarSharp();
   let meta;
   try {
@@ -30,7 +30,7 @@ export async function procesarFoto(buffer: Buffer, negocioId: number): Promise<s
   try {
     salida = await sharp(buffer, { limitInputPixels: PIXELES_MAX })
       .rotate() // corrige la orientación de fotos tomadas con el celular
-      .resize({ width: LADO_MAX, height: LADO_MAX, fit: 'inside', withoutEnlargement: true })
+      .resize(perfil ? { width: 360, height: 360, fit: 'cover' } : { width: LADO_MAX, height: LADO_MAX, fit: 'inside', withoutEnlargement: true }) // perfil: cuadrada y chica
       .flatten({ background: '#ffffff' }) // fondo blanco (PNG con transparencia)
       .jpeg({ quality: 82, progressive: true })
       .toBuffer(); // sin metadatos: se pierde el GPS y demás datos ocultos

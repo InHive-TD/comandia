@@ -28,6 +28,8 @@ export async function asegurarEsquema(): Promise<void> {
   // Platillos con opción obligatoria (ej. el burrito: hay que elegir de qué). grupo_obligatorio: NULL = cualquier opción; con nombre = una de esa sección.
   await asegurarColumna('productos', 'opciones_obligatorias', 'TINYINT(1) NOT NULL DEFAULT 0');
   await asegurarColumna('productos', 'grupo_obligatorio', 'VARCHAR(40) NULL');
+  // Foto de perfil de cada usuario (nombre del archivo en uploads, igual que las fotos de platillos)
+  await asegurarColumna('usuarios', 'foto', 'VARCHAR(80) NULL');
   await ejecutar(`CREATE TABLE IF NOT EXISTS sesiones (
     id CHAR(64) NOT NULL PRIMARY KEY,
     contexto VARCHAR(60) NOT NULL,

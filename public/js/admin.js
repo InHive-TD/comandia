@@ -82,24 +82,69 @@ async function entrar(usuario) {
 }
 
 /** Barra lateral: usuario abajo (iniciales, nombre y rol) y, arriba a la derecha, la sucursal con la que se trabaja. */
+let perfil = { nombre: '', rol: '', foto: null, iniciales: '?' };
+
+/** Pone la foto (o las iniciales) en los tres avatares: menú lateral, barra del celular y ventana de perfil. */
+function pintarAvatares() {
+  for (const id of ['usuario-ini', 'usuario-ini-movil', 'perfil-avatar']) {
+    const a = $(id);
+    if (perfil.foto) { a.style.backgroundImage = `url("${RUTA_FOTOS + encodeURIComponent(perfil.foto)}")`; a.textContent = ''; a.classList.add('con-foto'); }
+    else { a.style.backgroundImage = ''; a.textContent = perfil.iniciales; a.classList.remove('con-foto'); }
+  }
+  $('perfil-quitar').hidden = !perfil.foto;
+}
+
 function pintarUsuario(usuario) {
   const partes = String(usuario.nombre || '').trim().split(/\s+/).filter(Boolean);
-  const iniciales = ((partes[0] || '?')[0] + (partes.length > 1 ? partes[partes.length - 1][0] : '')).toUpperCase();
-  $('usuario-ini').textContent = iniciales;
-  $('usuario-ini-movil').textContent = iniciales;
-  $('usuario-nombre').textContent = usuario.nombre;
-  const rol = usuario.rol === 'gerente' ? 'Gerente de sucursal' : 'Administrador';
-  $('usuario-rol').textContent = rol;
-  $('usuario-rol').hidden = rol.toLowerCase() === String(usuario.nombre).trim().toLowerCase();   // si el nombre ya dice el rol, no se repite
+  perfil.iniciales = ((partes[0] || '?')[0] + (partes.length > 1 ? partes[partes.length - 1][0] : '')).toUpperCase();
+  perfil.nombre = String(usuario.nombre || '').trim();
+  perfil.rol = usuario.rol === 'gerente' ? 'Gerente de sucursal' : 'Administrador';
+  perfil.foto = usuario.foto || null;
+  // Arriba el puesto (Administrador) y abajo el nombre de la persona
+  $('usuario-nombre').textContent = perfil.rol;
+  $('usuario-rol').textContent = perfil.nombre;
+  $('usuario-rol').hidden = perfil.nombre.toLowerCase() === perfil.rol.toLowerCase();
+  $('perfil-rol').textContent = perfil.rol;
+  $('perfil-nombre').textContent = perfil.nombre;
+  pintarAvatares();
   const chip = $('chip-sucursal');
   chip.hidden = true;
   pedir(API + 'sesion.php').then((s) => {
+    if (s.usuario && s.usuario.foto !== undefined && s.usuario.foto !== perfil.foto) { perfil.foto = s.usuario.foto; pintarAvatares(); }
     if (s.negocio) $('menu-negocio').textContent = s.negocio.nombre;
     const propia = usuario.rol === 'gerente' && (s.sucursales || []).find((x) => x.id === s.sucursal);
     chip.textContent = propia ? propia.nombre : (s.sucursales && s.sucursales.length > 1 ? 'Todas las sucursales' : ((s.sucursales || [])[0] || {}).nombre || '');
     chip.hidden = !chip.textContent;
   }).catch(() => { /* la barra funciona igual sin el nombre de la sucursal */ });
 }
+
+/* Mi perfil: cualquier usuario cambia o quita su propia foto tocando su avatar */
+const dlgPerfil = $('dlg-perfil');
+function abrirPerfil() { $('perfil-error').textContent = ''; menuAbierto(false); dlgPerfil.showModal(); }
+$('usuario-ini').addEventListener('click', abrirPerfil);
+$('perfil-cerrar').addEventListener('click', () => dlgPerfil.close());
+$('perfil-cambiar').addEventListener('click', () => $('perfil-archivo').click());
+async function enviarPerfil(datos) {
+  $('perfil-error').textContent = '';
+  try {
+    const r = await pedir(API + 'perfil/foto.php', { method: 'POST', body: datos });
+    perfil.foto = r.foto;
+    pintarAvatares();
+    avisar(r.foto ? 'Foto actualizada' : 'Foto quitada');
+  } catch (err) { $('perfil-error').textContent = err.message; }
+}
+$('perfil-archivo').addEventListener('change', async () => {
+  const archivo = $('perfil-archivo').files[0];
+  $('perfil-archivo').value = '';
+  if (!archivo) return;
+  const datos = new FormData();
+  datos.append('accion', 'subir');
+  datos.append('foto', archivo);
+  $('perfil-cambiar').disabled = true;
+  await enviarPerfil(datos);
+  $('perfil-cambiar').disabled = false;
+});
+$('perfil-quitar').addEventListener('click', () => { const d = new FormData(); d.append('accion', 'quitar'); enviarPerfil(d); });
 
 $('btn-salir-menu').addEventListener('click', () => $('btn-salir').click());
 
