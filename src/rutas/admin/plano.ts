@@ -4,7 +4,7 @@
  *   GET  /admin/plano?sucursal=ID → { puede_general, general_activo, sucursales, sucursal, activo, activo_propio, zonas, mesas }
  *   POST { accion: 'activar', ambito: 'general'|'sucursal', sucursal_id?, activo }   usar (o no) el plano al elegir mesa
  *        { accion: 'zona_crear', sucursal_id, nombre } · { accion: 'zona_renombrar', id, nombre } · { accion: 'zona_eliminar', id }
- *        { accion: 'guardar', sucursal_id, mesas: [{ id, zona_id|null, x, y, forma }] }
+ *        { accion: 'guardar', sucursal_id, mesas: [{ id, zona_id|null, x, y, forma, escala }], zonas?: [{ id, poligono|null }] }
  *
  * El dueño trabaja con cualquier sucursal; el gerente solo con la suya. Quitar una zona NO borra sus mesas: quedan «sin ubicar».
  */
@@ -12,7 +12,7 @@ import type { FastifyInstance } from 'fastify';
 import { cuerpoJson, exigirMetodo, requerirGestion } from '../../auth.js';
 import { ejecutar, fila, filas, transaccion } from '../../db.js';
 import { ErrorHttp, fallo } from '../../errores.js';
-import { FORMAS_MESA, planoActivoEn, planoDe } from '../../plano.js';
+import { FORMAS_MESA, leerPoligono, planoActivoEn, planoDe } from '../../plano.js';
 import { esDuplicado, entero, largo, noVacio } from '../../util.js';
 
 export async function rutasAdminPlano(app: FastifyInstance): Promise<void> {
@@ -130,7 +130,15 @@ export async function rutasAdminPlano(app: FastifyInstance): Promise<void> {
               const x = Math.min(100, Math.max(0, Number(m['x']) || 0));
               const y = Math.min(100, Math.max(0, Number(m['y']) || 0));
               const forma = (FORMAS_MESA as readonly string[]).includes(String(m['forma'])) ? String(m['forma']) : 'cuadrada';
-              await t.ejecutar('UPDATE mesas SET zona_id = ?, pos_x = ?, pos_y = ?, forma = ? WHERE id = ?', [zona, x.toFixed(2), y.toFixed(2), forma, id]);
+              const escala = Math.min(2.5, Math.max(0.5, Number(m['escala']) || 1));
+              await t.ejecutar('UPDATE mesas SET zona_id = ?, pos_x = ?, pos_y = ?, forma = ?, escala = ? WHERE id = ?', [zona, x.toFixed(2), y.toFixed(2), forma, escala.toFixed(2), id]);
+            }
+            // Forma de cada zona (puntos del contorno); sin puntos válidos = rectángulo
+            for (const z of Array.isArray(d['zonas']) ? (d['zonas'] as Record<string, unknown>[]) : []) {
+              const zid = entero(z['id']);
+              if (!zonasOk.has(zid)) continue;
+              const poli = leerPoligono(z['poligono']);
+              await t.ejecutar('UPDATE zonas SET poligono = ? WHERE id = ?', [poli ? JSON.stringify(poli) : null, zid]);
             }
           });
           return estado(sid);

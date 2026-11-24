@@ -43,6 +43,8 @@ export async function asegurarEsquema(): Promise<void> {
   await asegurarColumna('mesas', 'pos_x', 'DECIMAL(5,2) NULL');
   await asegurarColumna('mesas', 'pos_y', 'DECIMAL(5,2) NULL');
   await asegurarColumna('mesas', 'forma', "VARCHAR(12) NOT NULL DEFAULT 'cuadrada'");
+  await asegurarColumna('mesas', 'escala', 'DECIMAL(3,2) NOT NULL DEFAULT 1.00');   // tamaño de la mesa en el plano (0.5 a 2.5)
+  await asegurarColumna('zonas', 'poligono', 'TEXT NULL');   // forma irregular de la zona: JSON [[x,y],…] en % del lienzo (NULL = rectángulo)
   await ejecutar(`CREATE TABLE IF NOT EXISTS sesiones (
     id CHAR(64) NOT NULL PRIMARY KEY,
     contexto VARCHAR(60) NOT NULL,

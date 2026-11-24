@@ -2589,6 +2589,9 @@ let plMesas = [];              // copia local editable de las mesas (zona_id, x,
 let plZona = null;             // id de la zona que se está viendo
 let plSel = null;              // id de la mesa seleccionada
 let plSucio = false;           // ¿hay posiciones sin guardar?
+let plPoli = new Map();        // forma de cada zona (id → [[x,y],…] o null = rectángulo), con lo que aún no se guarda
+let plForma = false;           // ¿se está dibujando la forma de la zona?
+let plPunto = null;            // punto del contorno elegido
 
 function plMarcarSucio(v = true) { plSucio = v; $('pl-guardar').disabled = !v; $('pl-pendiente').hidden = !v; }
 
@@ -2600,11 +2603,13 @@ async function plCargar(sid, conservar = false) {
 function plAplicar(r, conservar) {
   const locales = new Map(plMesas.map((m) => [m.id, m]));
   const mismaSucursal = pl && pl.sucursal === r.sucursal;
+  const previas = plPoli;
   pl = r;
+  plPoli = new Map(r.zonas.map((z) => [z.id, conservar && mismaSucursal && plSucio && previas.has(z.id) ? previas.get(z.id) : z.poligono]));
   plMesas = r.mesas.map((m) => {
     const l = conservar && mismaSucursal ? locales.get(m.id) : null;
     // lo que el usuario movió y aún no guardó se conserva, salvo que su zona ya no exista
-    return l && plSucio && (l.zona_id === null || r.zonas.some((z) => z.id === l.zona_id)) ? { ...m, zona_id: l.zona_id, x: l.x, y: l.y, forma: l.forma } : { ...m };
+    return l && plSucio && (l.zona_id === null || r.zonas.some((z) => z.id === l.zona_id)) ? { ...m, zona_id: l.zona_id, x: l.x, y: l.y, forma: l.forma, escala: l.escala } : { ...m };
   });
   if (!conservar || !mismaSucursal) plMarcarSucio(false);
   if (!r.zonas.some((z) => z.id === plZona)) plZona = r.zonas.length ? r.zonas[0].id : null;
@@ -2627,7 +2632,7 @@ function plPintar() {
   for (const z of pl.zonas) {
     const b = el('button', 'btn', z.nombre);
     b.type = 'button'; b.setAttribute('aria-pressed', String(z.id === plZona));
-    b.addEventListener('click', () => { plZona = z.id; plSel = null; plPintar(); });
+    b.addEventListener('click', () => { plZona = z.id; plSel = null; plForma = false; plPunto = null; plPintar(); });
     tabs.append(b);
   }
   const nueva = el('button', 'btn', '＋ Zona'); nueva.type = 'button';
@@ -2642,13 +2647,16 @@ function plPintar() {
 
   // Lienzo
   const lienzo = $('pl-lienzo');
-  lienzo.replaceChildren();
+  pintarLienzoZona(lienzo, { poligono: plZona === null ? null : plPoli.get(plZona) });
+  $('pl-forma-barra').hidden = !(plForma && plZona !== null);
+  $('pl-forma-btn').hidden = plForma;
   if (plZona === null) {
     lienzo.append(el('div', 'plano-vacio', 'Crea tu primera zona con «＋ Zona» (por ejemplo: Piso 1, Patio o Comedor principal).'));
   } else {
     const aqui = plMesas.filter((m) => m.zona_id === plZona);
-    if (aqui.length === 0) lienzo.append(el('div', 'plano-vacio', 'Esta zona está vacía. Toca una mesa de «Mesas sin ubicar» para ponerla aquí.'));
+    if (aqui.length === 0 && !plForma) lienzo.append(el('div', 'plano-vacio', 'Esta zona está vacía. Toca una mesa de «Mesas sin ubicar» para ponerla aquí.'));
     for (const m of aqui) lienzo.append(plToken(m));
+    if (plForma) plPuntos(lienzo);
   }
 
   // Edición de la mesa seleccionada
@@ -2682,7 +2690,8 @@ function plPintar() {
 function plToken(m) {
   const b = el('button', 'plano-mesa editable ' + m.forma + (m.id === plSel ? ' sel' : '') + (m.activa ? '' : ' inactiva'), m.nombre);
   b.type = 'button';
-  b.style.left = m.x + '%'; b.style.top = m.y + '%';
+  b.style.left = m.x + '%'; b.style.top = m.y + '%'; b.style.setProperty('--e', String(m.escala || 1));
+  if (plForma) { b.classList.add('fija'); return b; }
   let inicio = null;
   b.addEventListener('pointerdown', (ev) => {
     ev.preventDefault();
@@ -2747,6 +2756,14 @@ document.querySelectorAll('#pl-edicion [data-forma]').forEach((b) => b.addEventL
   const m = plMesas.find((x) => x.id === plSel);
   if (m) { m.forma = b.dataset.forma; plMarcarSucio(); plPintar(); }
 }));
+const plCambiarTamano = (paso) => {
+  const m = plMesas.find((x) => x.id === plSel);
+  if (!m) return;
+  m.escala = Math.min(2.5, Math.max(0.5, Math.round(((m.escala || 1) + paso) * 10) / 10));
+  plMarcarSucio(); plPintar();
+};
+$('pl-menos').addEventListener('click', () => plCambiarTamano(-0.2));
+$('pl-mas').addEventListener('click', () => plCambiarTamano(0.2));
 $('pl-quitar').addEventListener('click', () => {
   const m = plMesas.find((x) => x.id === plSel);
   if (m) { m.zona_id = null; m.x = null; m.y = null; plSel = null; plMarcarSucio(); plPintar(); }
@@ -2766,7 +2783,7 @@ $('pl-nueva').addEventListener('submit', async (ev) => {
 $('pl-guardar').addEventListener('click', async () => {
   $('pl-error').textContent = '';
   try {
-    const r = await enviarJson(API + 'admin/plano.php', { accion: 'guardar', sucursal_id: pl.sucursal, mesas: plMesas.map((m) => ({ id: m.id, zona_id: m.zona_id, x: m.x, y: m.y, forma: m.forma })) });
+    const r = await enviarJson(API + 'admin/plano.php', { accion: 'guardar', sucursal_id: pl.sucursal, mesas: plMesas.map((m) => ({ id: m.id, zona_id: m.zona_id, x: m.x, y: m.y, forma: m.forma, escala: m.escala || 1 })), zonas: pl.zonas.map((z) => ({ id: z.id, poligono: plPoli.get(z.id) || null })) });
     plMarcarSucio(false);
     plAplicar(r, false);
     avisar('Plano guardado');
@@ -2774,7 +2791,7 @@ $('pl-guardar').addEventListener('click', async () => {
 });
 $('pl-suc').addEventListener('change', async () => {
   if (!(await plConfirmarDescartar())) { $('pl-suc').value = String(pl.sucursal); return; }
-  plMarcarSucio(false); plZona = null; plSel = null;
+  plMarcarSucio(false); plZona = null; plSel = null; plForma = false; plPunto = null;
   try { await plCargar(Number($('pl-suc').value)); } catch (err) { $('pl-error').textContent = err.message; }
 });
 $('pl-activo').addEventListener('change', async () => {
@@ -2787,9 +2804,59 @@ $('pl-general').addEventListener('change', async () => {
 });
 $('btn-plano').addEventListener('click', async () => {
   $('pl-error').textContent = '';
-  plMarcarSucio(false); plMesas = []; pl = null; plZona = null; plSel = null;
+  plMarcarSucio(false); plMesas = []; pl = null; plZona = null; plSel = null; plForma = false; plPunto = null; plPoli = new Map();
   try { await plCargar(0); } catch (err) { avisar(err.message, true); return; }
   abrirPagina(dlgPlano, 'btn-plano');
   actualizarEnlacesPagina();
 });
 $('pl-cerrar').addEventListener('click', async () => { if (await plConfirmarDescartar()) { plMarcarSucio(false); dlgPlano.close(); } });
+
+
+/* Forma irregular de la zona: puntos del contorno que se arrastran; un ＋ entre dos puntos agrega otro */
+const PL_RECT = () => [[4, 6], [96, 6], [96, 94], [4, 94]];
+function plPuntos(lienzo) {
+  const poli = plPoli.get(plZona);
+  const svgPol = lienzo.querySelector('polygon');
+  const redibujarPoligono = () => svgPol && svgPol.setAttribute('points', poli.map((p) => p.join(',')).join(' '));
+  poli.forEach((p, i) => {
+    const q = poli[(i + 1) % poli.length];
+    const medio = el('button', 'plano-medio', '＋');
+    medio.type = 'button'; medio.title = 'Agregar un punto aquí';
+    medio.style.left = (p[0] + q[0]) / 2 + '%'; medio.style.top = (p[1] + q[1]) / 2 + '%';
+    medio.addEventListener('click', () => { poli.splice(i + 1, 0, [Math.round((p[0] + q[0]) * 50) / 100, Math.round((p[1] + q[1]) * 50) / 100]); plPunto = i + 1; plMarcarSucio(); plPintar(); });
+    lienzo.append(medio);
+  });
+  poli.forEach((p, i) => {
+    const b = el('button', 'plano-punto' + (i === plPunto ? ' sel' : ''));
+    b.type = 'button'; b.setAttribute('aria-label', 'Punto ' + (i + 1));
+    b.style.left = p[0] + '%'; b.style.top = p[1] + '%';
+    let ini = null;
+    b.addEventListener('pointerdown', (ev) => { ev.preventDefault(); b.setPointerCapture(ev.pointerId); ini = { x: ev.clientX, y: ev.clientY, movido: false }; });
+    b.addEventListener('pointermove', (ev) => {
+      if (!ini) return;
+      if (!ini.movido && Math.hypot(ev.clientX - ini.x, ev.clientY - ini.y) < 4) return;
+      ini.movido = true;
+      const r = lienzo.getBoundingClientRect();
+      p[0] = Math.round(Math.min(100, Math.max(0, ((ev.clientX - r.left) / r.width) * 100)) * 100) / 100;
+      p[1] = Math.round(Math.min(100, Math.max(0, ((ev.clientY - r.top) / r.height) * 100)) * 100) / 100;
+      b.style.left = p[0] + '%'; b.style.top = p[1] + '%';
+      redibujarPoligono();
+    });
+    b.addEventListener('pointerup', () => { if (!ini) return; const movido = ini.movido; ini = null; plPunto = i; if (movido) plMarcarSucio(); plPintar(); });
+    b.addEventListener('pointercancel', () => { ini = null; });
+    lienzo.append(b);
+  });
+  $('pl-punto-quitar').disabled = plPunto === null || poli.length <= 3;
+}
+$('pl-forma-btn').addEventListener('click', () => {
+  if (plZona === null) return;
+  if (!plPoli.get(plZona)) { plPoli.set(plZona, PL_RECT()); plMarcarSucio(); }
+  plForma = true; plPunto = null; plSel = null; plPintar();
+});
+$('pl-forma-ok').addEventListener('click', () => { plForma = false; plPunto = null; plPintar(); });
+$('pl-forma-rect').addEventListener('click', () => { plPoli.set(plZona, null); plForma = false; plPunto = null; plMarcarSucio(); plPintar(); });
+$('pl-punto-quitar').addEventListener('click', () => {
+  const poli = plPoli.get(plZona);
+  if (!poli || plPunto === null || poli.length <= 3) return;
+  poli.splice(plPunto, 1); plPunto = null; plMarcarSucio(); plPintar();
+});

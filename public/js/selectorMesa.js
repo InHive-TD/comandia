@@ -2,6 +2,25 @@
    elegirMesaEnPlano(...) → mesa elegida, null (quitar la mesa) o undefined (cancelado).
    crearCampoMesa(select, botón, alCambiar) → { poner({mesas, zonas, plano}), refrescar() }: el <select> sigue siendo el valor real;
    si el administrador activó el plano, el select se esconde y en su lugar hay un botón que abre el dibujo. */
+/** Fondo de una zona con forma irregular: polígono en % del lienzo. */
+function fondoZona(poligono) {
+  const ns = 'http://www.w3.org/2000/svg';
+  const svg = document.createElementNS(ns, 'svg');
+  svg.setAttribute('viewBox', '0 0 100 100'); svg.setAttribute('preserveAspectRatio', 'none'); svg.setAttribute('class', 'plano-fondo');
+  const pol = document.createElementNS(ns, 'polygon');
+  pol.setAttribute('points', poligono.map((p) => p.join(',')).join(' '));
+  pol.setAttribute('vector-effect', 'non-scaling-stroke');
+  svg.append(pol);
+  return svg;
+}
+/** Dibuja el lienzo de una zona: con forma irregular si la tiene. */
+function pintarLienzoZona(lienzo, zona) {
+  lienzo.replaceChildren();
+  const poli = zona && Array.isArray(zona.poligono) ? zona.poligono : null;
+  lienzo.classList.toggle('con-forma', !!poli);
+  if (poli) lienzo.append(fondoZona(poli));
+}
+
 function elegirMesaEnPlano({ zonas, mesas, elegida, permitirQuitar }) {
   return new Promise((resolver) => {
     const d = document.createElement('dialog');
@@ -31,12 +50,12 @@ function elegirMesaEnPlano({ zonas, mesas, elegida, permitirQuitar }) {
         b.addEventListener('click', () => { zona = z.id; pintar(); });
         tabs.append(b);
       }
-      lienzo.replaceChildren();
+      pintarLienzoZona(lienzo, zonas.find((z) => z.id === zona));
       const aqui = mesas.filter((m) => m.zona_id === zona && m.x !== null);
       if (!aqui.length) lienzo.append(el('div', 'plano-vacio', 'No hay mesas dibujadas en esta zona.'));
       for (const m of aqui) {
         const b = el('button', 'plano-mesa ' + m.forma + (String(m.id) === String(elegida) ? ' elegida' : ''), m.nombre);
-        b.type = 'button'; b.style.left = m.x + '%'; b.style.top = m.y + '%';
+        b.type = 'button'; b.style.left = m.x + '%'; b.style.top = m.y + '%'; b.style.setProperty('--e', String(m.escala || 1));
         b.addEventListener('click', () => elegir(m));
         lienzo.append(b);
       }

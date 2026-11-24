@@ -53,6 +53,7 @@ CREATE TABLE IF NOT EXISTS zonas (
     sucursal_id INT UNSIGNED NOT NULL,
     nombre      VARCHAR(40) NOT NULL,
     orden       INT NOT NULL DEFAULT 0,
+    poligono    TEXT NULL,                        -- forma irregular: JSON [[x,y],…] en % del lienzo (NULL = rectángulo)
     UNIQUE KEY uq_zona (sucursal_id, nombre)
 ) ENGINE=InnoDB;
 
@@ -67,6 +68,7 @@ CREATE TABLE IF NOT EXISTS mesas (
     pos_x       DECIMAL(5,2) NULL,                -- posición en el plano, en % del lienzo
     pos_y       DECIMAL(5,2) NULL,
     forma       VARCHAR(12) NOT NULL DEFAULT 'cuadrada',
+    escala      DECIMAL(3,2) NOT NULL DEFAULT 1.00,  -- tamaño en el plano (0.5 a 2.5)
     UNIQUE KEY uq_mesa (sucursal_id, nombre),
     CONSTRAINT fk_mesa_sucursal FOREIGN KEY (sucursal_id) REFERENCES sucursales(id)
 ) ENGINE=InnoDB;

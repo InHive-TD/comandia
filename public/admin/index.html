@@ -11,14 +11,14 @@
   <meta name="theme-color" content="#0a6b4e">
   <meta name="mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-capable" content="yes">
-  <script src="../js/pwa.js?v=1795547840" defer></script>
+  <script src="../js/pwa.js?v=1795549194" defer></script>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Outfit:wght@600;700;800&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="../css/estilos.css?v=1795547840">
-  <link rel="stylesheet" href="../css/plano.css?v=1795547840">
-  <link rel="stylesheet" href="../css/admin.css?v=1795547840">
-  <link rel="stylesheet" href="../css/shell.css?v=1795547840">
+  <link rel="stylesheet" href="../css/estilos.css?v=1795549194">
+  <link rel="stylesheet" href="../css/plano.css?v=1795549194">
+  <link rel="stylesheet" href="../css/admin.css?v=1795549194">
+  <link rel="stylesheet" href="../css/shell.css?v=1795549194">
   <link rel="stylesheet" href="../api/tema.php">
 </head>
 <body>
@@ -398,7 +398,14 @@
       <div id="pl-zonas" class="plano-pestanas"></div>
       <div id="pl-zona-acc" class="ex-botones" hidden>
         <button id="pl-zona-renombrar" class="btn chico" type="button">✎ Renombrar zona</button>
+        <button id="pl-forma-btn" class="btn chico" type="button">✏️ Dar forma a la zona</button>
         <button id="pl-zona-eliminar" class="btn chico peligro" type="button">🗑 Quitar zona</button>
+      </div>
+      <div id="pl-forma-barra" class="plano-forma-barra" hidden>
+        <span class="ayuda"><strong>Dando forma:</strong> arrastra los puntos verdes; toca un <b>＋</b> entre dos puntos para agregar otro.</span>
+        <button id="pl-punto-quitar" class="btn chico" type="button" disabled>Quitar punto elegido</button>
+        <button id="pl-forma-rect" class="btn chico" type="button">▭ Volver a rectángulo</button>
+        <button id="pl-forma-ok" class="btn chico principal" type="button">Listo</button>
       </div>
       <div id="pl-lienzo" class="plano-lienzo" aria-label="Plano de la zona"></div>
       <div id="pl-edicion" class="plano-edicion" hidden>
@@ -407,6 +414,9 @@
         <button class="btn chico" type="button" data-forma="cuadrada" aria-pressed="false">▢ Cuadrada</button>
         <button class="btn chico" type="button" data-forma="redonda" aria-pressed="false">◯ Redonda</button>
         <button class="btn chico" type="button" data-forma="larga" aria-pressed="false">▭ Larga</button>
+        <span class="ayuda">Tamaño:</span>
+        <button id="pl-menos" class="btn chico" type="button" aria-label="Más chica">− Chica</button>
+        <button id="pl-mas" class="btn chico" type="button" aria-label="Más grande">＋ Grande</button>
         <button id="pl-quitar" class="btn chico peligro" type="button">Quitar del plano</button>
       </div>
       <p class="ayuda">Arrastra cada mesa para acomodarla; toca una mesa para cambiar su forma o quitarla del plano.</p>
@@ -834,9 +844,9 @@
 
   <div id="toast" class="toast" role="status" hidden></div>
 
-  <script src="../js/comun.js?v=1795547840"></script>
-  <script src="../js/shell.js?v=1795547840"></script>
+  <script src="../js/comun.js?v=1795549194"></script>
+  <script src="../js/shell.js?v=1795549194"></script>
   <script src="../js/vendor/qrcode.js"></script>
-  <script src="../js/admin.js?v=1795547840"></script>
+  <script src="../js/admin.js?v=1795549194"></script>
 </body>
 </html>
