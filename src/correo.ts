@@ -67,7 +67,7 @@ export async function enviarInvitacion(d: DatosInvitacion): Promise<void> {
 </table></td></tr></table></body></html>`;
   const texto = `${titulo}\n\nHola ${d.nombre},\n${intro.replace(/<[^>]+>/g, '')}\n\n${boton}: ${d.enlace}\n\nEl enlace funciona una sola vez y vence en ${d.horas} horas.\nSi no esperabas este correo, ignóralo.`;
   await transportador().sendMail({
-    from: config.smtp.de || config.smtp.usuario,
+    from: `Comandia <${config.smtp.usuario}>`,
     to: d.para,
     subject: primera ? `Accede a ${d.negocio.nombre}: crea tu contraseña` : `${d.negocio.nombre}: restablece tu contraseña`,
     html,

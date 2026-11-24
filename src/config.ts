@@ -30,14 +30,13 @@ export const config = {
   },
   /** Correo saliente (SMTP). Si falta SMTP_HOST el sistema funciona igual, pero no puede enviar invitaciones. */
   smtp: {
-    host: texto('SMTP_HOST', ''),
-    port: entero('SMTP_PORT', 465),
-    usuario: texto('SMTP_USER', ''),
+    host: texto('SMTP_HOST', '').trim(),
+    port: Number.parseInt(texto('SMTP_PORT', '465').trim(), 10) || 465,   // permisivo: un valor mal escrito no debe impedir que el servidor arranque
+    usuario: texto('SMTP_USER', '').trim(),
     password: texto('SMTP_PASS', ''),
-    de: texto('SMTP_FROM', ''),
   },
   /** Dirección pública del sistema, sin "/" al final (para los enlaces de los correos). */
-  urlPublica: texto('APP_URL', '').replace(/\/+$/, ''),
+  urlPublica: texto('APP_URL', '').trim().replace(/\/+$/, ''),
   /** Duración de una sesión iniciada: 12 horas. */
   sesionSegundos: 12 * 60 * 60,
 } as const;
