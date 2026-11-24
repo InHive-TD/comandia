@@ -43,6 +43,15 @@ export async function asegurarEsquema(): Promise<void> {
   await asegurarColumna('mesas', 'pos_x', 'DECIMAL(5,2) NULL');
   await asegurarColumna('mesas', 'pos_y', 'DECIMAL(5,2) NULL');
   await asegurarColumna('mesas', 'forma', "VARCHAR(12) NOT NULL DEFAULT 'cuadrada'");
+  // El nombre de una mesa es único POR ZONA (puede haber «9» en el Patio y «9» en el Piso 1); sin zona, único entre las no ubicadas.
+  try {
+    await asegurarColumna('mesas', 'zona_clave', 'INT UNSIGNED AS (COALESCE(zona_id, 0)) STORED');
+    const idx = async (nombre: string) => Number((await fila('SELECT COUNT(*) AS n FROM information_schema.STATISTICS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = ? AND INDEX_NAME = ?', ['mesas', nombre]))?.['n']) > 0;
+    if (!(await idx('uq_mesa_zona'))) await ejecutar('ALTER TABLE mesas ADD UNIQUE KEY uq_mesa_zona (sucursal_id, zona_clave, nombre)');
+    if (await idx('uq_mesa')) await ejecutar('ALTER TABLE mesas DROP INDEX uq_mesa');
+  } catch (e) {
+    console.error('No se pudo pasar el nombre único de mesa a «por zona»:', e);
+  }
   await asegurarColumna('ordenes', 'mesa_zona', 'VARCHAR(40) NULL');   // zona de la mesa (Piso 1, Patio…) al levantar el pedido
   await asegurarColumna('mesas', 'ancho_cm', 'SMALLINT UNSIGNED NULL');   // medidas reales de la mesa (cm); NULL = las de su forma
   await asegurarColumna('mesas', 'alto_cm', 'SMALLINT UNSIGNED NULL');

@@ -117,6 +117,7 @@ export async function rutasAdminPlano(app: FastifyInstance): Promise<void> {
           if (lista.length > 500) throw fallo('Demasiadas mesas en una sola vez.');
           const zonasOk = new Set((await filas('SELECT id FROM zonas WHERE sucursal_id = ? AND negocio_id = ?', [sid, nid])).map((z) => Number(z['id'])));
           const mesasOk = new Set((await filas('SELECT id FROM mesas WHERE sucursal_id = ? AND negocio_id = ?', [sid, nid])).map((m) => Number(m['id'])));
+          try {
           await transaccion(async (t) => {
             for (const m of lista) {
               const id = entero(m['id']);
@@ -142,6 +143,10 @@ export async function rutasAdminPlano(app: FastifyInstance): Promise<void> {
               await t.ejecutar('UPDATE zonas SET poligono = ?, ancho_m = ? WHERE id = ?', [poli ? JSON.stringify(poli) : null, ancho.toFixed(1), zid]);
             }
           });
+          } catch (e) {
+            if (esDuplicado(e)) throw new ErrorHttp(409, 'validacion', 'Hay dos mesas con el mismo nombre en una misma zona. Cámbiale el nombre a una (en Sucursales).');
+            throw e;
+          }
           return estado(sid);
         }
         case 'ejemplo': {
@@ -161,7 +166,7 @@ export async function rutasAdminPlano(app: FastifyInstance): Promise<void> {
               zid = (await t.ejecutar('INSERT INTO zonas (negocio_id, sucursal_id, nombre, orden) VALUES (?, ?, ?, ?)', [nid, sid, 'Piso 1', Number(sig?.['n'])])).insertId;
             }
             for (const [nombre, x, y, forma] of diseno) {
-              const m = (await t.filas('SELECT id FROM mesas WHERE sucursal_id = ? AND nombre = ?', [sid, nombre]))[0];
+              const m = (await t.filas('SELECT id FROM mesas WHERE sucursal_id = ? AND nombre = ? AND (zona_id = ? OR zona_id IS NULL) ORDER BY zona_id IS NULL', [sid, nombre, zid]))[0];
               if (m) await t.ejecutar('UPDATE mesas SET activa = 1, zona_id = ?, pos_x = ?, pos_y = ?, forma = ? WHERE id = ?', [zid, x, y, forma, Number(m['id'])]);
               else {
                 const sig = (await t.filas('SELECT COALESCE(MAX(orden), 0) + 1 AS n FROM mesas WHERE sucursal_id = ?', [sid]))[0];

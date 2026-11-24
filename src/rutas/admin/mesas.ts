@@ -46,8 +46,8 @@ export async function rutasAdminMesas(app: FastifyInstance): Promise<void> {
       if (req.method === 'GET') {
         const q = req.query as Record<string, unknown>;
         const sid = await sucursalPropia(entero(q['sucursal']));
-        const r = await filas('SELECT id, nombre, activa, orden FROM mesas WHERE sucursal_id = ? AND negocio_id = ? ORDER BY orden, id', [sid, nid]);
-        return { ok: true, mesas: r.map((m) => ({ id: Number(m['id']), nombre: m['nombre'], activa: Boolean(Number(m['activa'])), orden: Number(m['orden']) })) };
+        const r = await filas('SELECT m.id, m.nombre, m.activa, m.orden, z.nombre AS zona FROM mesas m LEFT JOIN zonas z ON z.id = m.zona_id WHERE m.sucursal_id = ? AND m.negocio_id = ? ORDER BY m.orden, m.id', [sid, nid]);
+        return { ok: true, mesas: r.map((m) => ({ id: Number(m['id']), nombre: m['nombre'], zona: m['zona'] ?? null, activa: Boolean(Number(m['activa'])), orden: Number(m['orden']) })) };
       }
 
       exigirMetodo(req, 'POST');

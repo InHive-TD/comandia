@@ -72,7 +72,8 @@ CREATE TABLE IF NOT EXISTS mesas (
     escala      DECIMAL(3,2) NOT NULL DEFAULT 1.00,  -- (en desuso)
     ancho_cm    SMALLINT UNSIGNED NULL,           -- medidas reales en el plano; NULL = las de su forma
     alto_cm     SMALLINT UNSIGNED NULL,
-    UNIQUE KEY uq_mesa (sucursal_id, nombre),
+    zona_clave  INT UNSIGNED AS (COALESCE(zona_id, 0)) STORED,   -- el nombre es único por zona
+    UNIQUE KEY uq_mesa_zona (sucursal_id, zona_clave, nombre),
     CONSTRAINT fk_mesa_sucursal FOREIGN KEY (sucursal_id) REFERENCES sucursales(id)
 ) ENGINE=InnoDB;
 

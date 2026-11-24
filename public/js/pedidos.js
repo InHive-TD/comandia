@@ -69,14 +69,15 @@ async function iniciar() {
    Con el plano activado se elige tocando la mesa en el dibujo (zonas: piso 1, patio…). */
 let mesas = [];
 let planoActivo = false;
+let zonasPed = [];
 const campoMesa = crearCampoMesa($('mesa'), $('mesa-plano-btn'), () => actualizarMesa());
 async function cargarMesas() {
   let r = { mesas: [], zonas: [], plano: false };
   try { r = await pedir(API + 'mesas.php'); } catch { /* sin mesas */ }
-  mesas = r.mesas || []; planoActivo = r.plano === true;
+  mesas = r.mesas || []; zonasPed = r.zonas || []; planoActivo = r.plano === true;
   campoMesa.poner(r, 'Elige la mesa…');
   const ed = $('ed-mesa');
-  ed.replaceChildren(new Option('Sin mesa', ''), ...mesas.map((m) => new Option(m.nombre, String(m.id))));
+  ed.replaceChildren(new Option('Sin mesa', ''), ...mesas.map((m) => new Option(etiquetaMesaLista(m, r.zonas), String(m.id))));
   actualizarMesa();
 }
 let pedirPorMesa = false; // ajuste del administrador: en pedidos "aquí" la mesa es obligatoria y el nombre opcional
@@ -829,7 +830,7 @@ function pintarEditar() {
   const o = editandoOrden;
   $('ed-titulo').textContent = `#${o.turno.slice(-3)} · ${o.nombre_cliente}` + (o.mesa ? ` · ${etiquetaMesa(o)}` : '');
   $('ed-mesa-fila').hidden = !mesas.length;
-  const sm = mesas.find((m) => m.nombre === o.mesa);
+  const sm = mesas.find((m) => m.nombre === o.mesa && (o.mesa_zona ? (zonasPed.find((z) => z.id === m.zona_id) || {}).nombre === o.mesa_zona : true));
   $('ed-mesa').value = sm ? String(sm.id) : '';
   document.querySelectorAll('#ed-modalidad .mod-btn').forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.mod === o.modalidad)));
   $('ed-total').textContent = `Total ${dinero.format(o.total)} · ${ETIQUETA_ESTADO[o.estado]}` + (o.para ? ` · 🕒 para las ${hora12(o.para)}` : '');

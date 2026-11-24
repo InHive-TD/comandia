@@ -85,8 +85,8 @@ export async function rutasReportes(app: FastifyInstance): Promise<void> {
       `SELECT o.modalidad, COUNT(*) AS pedidos, SUM(o.total) AS vendido FROM ordenes o WHERE ${filtroO} AND o.estado <> 'cancelada' GROUP BY o.modalidad ORDER BY vendido DESC`, parO))
       .map((f) => ({ modalidad: f['modalidad'], pedidos: Number(f['pedidos']), vendido: num(f['vendido']) }));
     const porMesa = (await filas(
-      `SELECT o.mesa, COUNT(*) AS pedidos, SUM(o.total) AS vendido FROM ordenes o WHERE ${filtroO} AND o.estado <> 'cancelada' AND o.mesa IS NOT NULL GROUP BY o.mesa ORDER BY vendido DESC LIMIT 30`, parO))
-      .map((f) => ({ mesa: f['mesa'], pedidos: Number(f['pedidos']), vendido: num(f['vendido']) }));
+      `SELECT o.mesa, o.mesa_zona, COUNT(*) AS pedidos, SUM(o.total) AS vendido FROM ordenes o WHERE ${filtroO} AND o.estado <> 'cancelada' AND o.mesa IS NOT NULL GROUP BY o.mesa, o.mesa_zona ORDER BY vendido DESC LIMIT 30`, parO))
+      .map((f) => ({ mesa: f['mesa_zona'] ? `${String(f['mesa'])} · ${String(f['mesa_zona'])}` : f['mesa'], pedidos: Number(f['pedidos']), vendido: num(f['vendido']) }));
     const productos = (await filas(
       `SELECT i.nombre_producto AS nombre, SUM(i.cantidad) AS unidades, SUM((i.precio_unitario + COALESCE(i.extras_precio, 0)) * i.cantidad) AS importe
          FROM orden_items i JOIN ordenes o ON o.id = i.orden_id

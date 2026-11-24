@@ -1065,6 +1065,7 @@ async function pintarMesas(caja, s) {
     const nombre = document.createElement('input');
     nombre.type = 'text'; nombre.value = m.nombre; nombre.maxLength = 30; nombre.setAttribute('aria-label', 'Nombre de la mesa');
     nombre.addEventListener('change', () => accionSucursal('admin/mesas.php', { accion: 'renombrar', id: m.id, nombre: nombre.value.trim() }));
+    chip.title = m.zona ? 'Zona: ' + m.zona : 'Sin ubicar en el plano';
     const act = el('button', 'btn chico', m.activa ? 'Ocultar' : 'Mostrar');
     act.type = 'button';
     act.addEventListener('click', () => accionSucursal('admin/mesas.php', { accion: 'activar', id: m.id, activa: !m.activa }));

@@ -80,7 +80,7 @@ function elegirMesaEnPlano({ zonas, mesas, elegida, permitirQuitar }) {
       const libres = mesas.filter((m) => m.zona_id === null || m.x === null);
       rotSin.hidden = sin.hidden = libres.length === 0;
       for (const m of libres) {
-        const b = el('button', 'btn chico', m.nombre); b.type = 'button';
+        const b = el('button', 'btn chico', etiquetaMesaLista(m, zonas)); b.type = 'button';
         b.addEventListener('click', () => elegir(m));
         sin.append(b);
       }
@@ -91,6 +91,12 @@ function elegirMesaEnPlano({ zonas, mesas, elegida, permitirQuitar }) {
     document.body.append(d);
     d.showModal();
   });
+}
+
+/** «9 · Patio» si la mesa tiene zona (hay mesas con el mismo número en zonas distintas). */
+function etiquetaMesaLista(m, zonas) {
+  const z = m.zona_id !== null && m.zona_id !== undefined ? (zonas || []).find((q) => q.id === m.zona_id) : null;
+  return z ? `${m.nombre} · ${z.nombre}` : m.nombre;
 }
 
 function crearCampoMesa(sel, btn, alCambiar) {
@@ -115,7 +121,7 @@ function crearCampoMesa(sel, btn, alCambiar) {
     poner(d, vacio = 'Elige la mesa…') {
       datos = { mesas: d.mesas || [], zonas: d.zonas || [], plano: d.plano === true };
       const actual = sel.value;
-      sel.replaceChildren(new Option(vacio, ''), ...datos.mesas.map((m) => new Option(m.nombre, String(m.id))));
+      sel.replaceChildren(new Option(vacio, ''), ...datos.mesas.map((m) => new Option(etiquetaMesaLista(m, datos.zonas), String(m.id))));
       sel.value = datos.mesas.some((m) => String(m.id) === actual) ? actual : '';
       refrescar();
     },
