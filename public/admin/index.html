@@ -11,13 +11,13 @@
   <meta name="theme-color" content="#0a6b4e">
   <meta name="mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-capable" content="yes">
-  <script src="../js/pwa.js?v=1795491965" defer></script>
+  <script src="../js/pwa.js?v=1795492614" defer></script>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Outfit:wght@600;700;800&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="../css/estilos.css?v=1795491965">
-  <link rel="stylesheet" href="../css/admin.css?v=1795491965">
-  <link rel="stylesheet" href="../css/shell.css?v=1795491965">
+  <link rel="stylesheet" href="../css/estilos.css?v=1795492614">
+  <link rel="stylesheet" href="../css/admin.css?v=1795492614">
+  <link rel="stylesheet" href="../css/shell.css?v=1795492614">
   <link rel="stylesheet" href="../api/tema.php">
 </head>
 <body>
@@ -85,6 +85,7 @@
         <button id="btn-carriles" data-titulo="Ajustes · Carriles de cocina" class="btn nav-ico i-carriles" type="button">Carriles de cocina</button>
         <button id="btn-toma-pedidos" data-titulo="Ajustes · Tomar pedidos" class="btn nav-ico i-pedidos" type="button">Tomar pedidos</button>
         <button id="btn-pedidos-qr" data-titulo="Ajustes · Interfaz del cliente" class="btn nav-ico i-qr" type="button">Interfaz del cliente</button>
+        <button id="btn-pago" data-titulo="Ajustes · Datos de pago" class="btn nav-ico i-pago" type="button">Datos de pago</button>
         <p class="menu-sub">Negocio</p>
         <button id="btn-sucursales" class="btn nav-ico i-sucursales" type="button">Sucursales y mesas</button>
         <button id="btn-usuarios" class="btn nav-ico i-usuarios" type="button">Usuarios</button>
@@ -326,6 +327,32 @@
   </dialog>
 
   <!-- Carriles de cocina: cómo se acomodan los pedidos en la pantalla de Cocina (solo el dueño) -->
+  <dialog id="dlg-pago" class="pagina">
+    <div class="formulario dialogo">
+      <h2>Datos de pago por transferencia</h2>
+      <p class="ayuda">Es lo que el cliente ve en la pestaña <strong>Pagar</strong>: la clave interbancaria (CLABE), el beneficiario y la institución. Cada sucursal puede tener los suyos; si no, usa los de la empresa.</p>
+      <label>¿Para quién?
+        <select id="pg-ambito"></select>
+      </label>
+      <p id="pg-nota" class="ayuda" hidden></p>
+      <label>Clave interbancaria (CLABE, 18 dígitos)
+        <input id="pg-clabe" type="text" inputmode="numeric" maxlength="24" autocomplete="off" placeholder="18 dígitos">
+      </label>
+      <label>Beneficiario
+        <input id="pg-benef" type="text" maxlength="80" autocomplete="off" placeholder="Nombre de quien recibe">
+      </label>
+      <label>Institución
+        <input id="pg-inst" type="text" maxlength="80" autocomplete="off" placeholder="Ej. BBVA, Mercado Pago W">
+      </label>
+      <p id="pg-error" class="msg-error" role="alert"></p>
+      <div class="acciones-dialogo">
+        <button id="pg-guardar" class="btn principal" type="button">Guardar datos de pago</button>
+        <button id="pg-quitar" class="btn peligro" type="button" hidden>Quitar los de esta sucursal</button>
+        <button id="pg-cerrar" class="btn" type="button">Cerrar</button>
+      </div>
+    </div>
+  </dialog>
+
   <dialog id="dlg-carriles" class="pagina">
     <div class="formulario dialogo cr-dialogo">
       <h2>Carriles de cocina</h2>
@@ -645,6 +672,26 @@
         </label>
         <div id="cp-lista" class="lote-lista"></div>
         <p id="cp-nota" class="ayuda" hidden></p>
+        <h4 class="cp-sub">Tipos de pedido</h4>
+        <p class="ayuda">Los botones <strong>Comer aquí / Para llevar / Recoger</strong> de la pantalla del cliente. No dependen de los carriles de cocina.</p>
+        <label class="ct-fila">¿Para quién?
+          <select id="ct-ambito"></select>
+        </label>
+        <div id="ct-mods" class="lote-lista">
+          <label class="lote-op"><input type="checkbox" data-mod="aqui"><span>🍽 Comer aquí</span></label>
+          <label class="lote-op"><input type="checkbox" data-mod="llevar"><span>🥡 Para llevar</span></label>
+          <label class="lote-op"><input type="checkbox" data-mod="recoger"><span>🛍 Recoger</span></label>
+        </div>
+        <label class="lote-op">
+          <input id="ct-mixto" type="checkbox">
+          <span><strong>Elegir plato por plato:</strong> en un pedido para comer aquí, el cliente puede poner un plato para llevar y otro no (necesita «Comer aquí» y «Para llevar»)</span>
+        </label>
+        <p id="ct-nota" class="ayuda" hidden></p>
+        <p id="ct-error" class="msg-error" role="alert"></p>
+        <div class="ex-botones">
+          <button id="ct-guardar" class="btn principal" type="button">Guardar tipos de pedido</button>
+          <button id="ct-ir-pago" class="btn" type="button">💳 Datos de pago por transferencia…</button>
+        </div>
         <h4 class="cp-sub">Pestañas que ve el cliente</h4>
         <p class="ayuda">Elige qué pestañas aparecen: <strong>Menú</strong>, <strong>Mi pedido</strong> y <strong>Pagar</strong>. Debe quedar al menos una. Si solo queda una, desaparece la barra de pestañas. Sin <strong>Menú</strong>, el cliente no puede armar pedidos.</p>
         <div id="cp-pestanas"></div>
@@ -660,9 +707,9 @@
 
   <div id="toast" class="toast" role="status" hidden></div>
 
-  <script src="../js/comun.js?v=1795491965"></script>
-  <script src="../js/shell.js?v=1795491965"></script>
+  <script src="../js/comun.js?v=1795492614"></script>
+  <script src="../js/shell.js?v=1795492614"></script>
   <script src="../js/vendor/qrcode.js"></script>
-  <script src="../js/admin.js?v=1795491965"></script>
+  <script src="../js/admin.js?v=1795492614"></script>
 </body>
 </html>

@@ -11,14 +11,14 @@
   <meta name="theme-color" content="#0a6b4e">
   <meta name="mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-capable" content="yes">
-  <script src="js/pwa.js?v=1795491965" defer></script>
+  <script src="js/pwa.js?v=1795492614" defer></script>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Outfit:wght@600;700;800&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="css/estilos.css?v=1795491965">
-  <link rel="stylesheet" href="css/admin.css?v=1795491965">
-  <link rel="stylesheet" href="css/pedidos.css?v=1795491965">
-  <link rel="stylesheet" href="css/cliente.css?v=1795491965">
+  <link rel="stylesheet" href="css/estilos.css?v=1795492614">
+  <link rel="stylesheet" href="css/admin.css?v=1795492614">
+  <link rel="stylesheet" href="css/pedidos.css?v=1795492614">
+  <link rel="stylesheet" href="css/cliente.css?v=1795492614">
   <link rel="stylesheet" href="api/tema.php">
 </head>
 <body>
@@ -139,8 +139,12 @@
       </form>
     </section>
 
-    <!-- ===== Pagar por transferencia (página propia; la CLABE se cambia en js/cliente.js: CLABE_TRANSFERENCIA) ===== -->
+    <!-- ===== Pagar por transferencia (página propia; los datos de pago se configuran en el panel de administración) ===== -->
     <section id="vista-pagar" class="vista-pagar" hidden>
+    <section id="sin-pago" class="transferencia" hidden>
+      <strong class="transf-titulo">📲 Pagar por transferencia</strong>
+      <p class="ayuda">Por ahora paga en caja al recoger tu pedido.</p>
+    </section>
     <section id="transferencias" class="transferencia" aria-label="Pago por transferencia">
       <strong class="transf-titulo">📲 Pagar por transferencia</strong>
       <div class="transf-fila">
@@ -150,8 +154,8 @@
         </div>
         <button id="clabe-copiar" class="btn" type="button">Copiar</button>
       </div>
-      <span class="transf-dato"><b>Beneficiario:</b> Valentín Cacho</span>
-      <span class="transf-dato"><b>Institución:</b> Mercado Pago W</span>
+      <span id="transf-benef" class="transf-dato" hidden><b>Beneficiario:</b> <span></span></span>
+      <span id="transf-inst" class="transf-dato" hidden><b>Institución:</b> <span></span></span>
       <form id="concepto-form" class="transf-buscar" autocomplete="off">
         <label for="concepto-numero" class="transf-etq">Concepto: escribe tu número de pedido</label>
         <div class="transf-fila">
@@ -231,8 +235,8 @@
 
   <div id="toast" class="toast" role="status" hidden></div>
 
-  <script src="js/comun.js?v=1795491965"></script>
-  <script src="js/eventos.js?v=1795491965"></script>
-  <script src="js/cliente.js?v=1795491965"></script>
+  <script src="js/comun.js?v=1795492614"></script>
+  <script src="js/eventos.js?v=1795492614"></script>
+  <script src="js/cliente.js?v=1795492614"></script>
 </body>
 </html>

@@ -21,6 +21,8 @@ import { rutasTiempos } from './admin/tiempos.js';
 import { rutasCaja } from './caja.js';
 import { rutasCocina } from './cocina.js';
 import { rutasClientePedidos } from './admin/clientePedidos.js';
+import { rutasClienteConfig } from './admin/clienteConfig.js';
+import { cargarAjustesCliente, configEfectiva } from '../clienteConfig.js';
 import { rutasMarca } from './admin/marca.js';
 import { rutasReportes } from './admin/reportes.js';
 import { rutasCliente } from './cliente.js';
@@ -40,7 +42,7 @@ export async function rutasEmpresa(app: FastifyInstance): Promise<void> {
   await app.register(rutasEventos);
   await app.register(rutasManifiesto);
   // Menú y administración del catálogo (cada archivo documenta sus reglas y permisos)
-  for (const grupo of [rutasPerfil, rutasMenu, rutasCategorias, rutasEstaciones, rutasExtras, rutasAdminProductos, rutasAdminImportar, rutasSucursales, rutasAdminMesas, rutasUsuarios, rutasOrdenes, rutasCocina, rutasCaja, rutasPrioridades, rutasTiempos, rutasMarca, rutasReportes, rutasCliente, rutasTema, rutasClientePedidos]) {
+  for (const grupo of [rutasPerfil, rutasMenu, rutasCategorias, rutasEstaciones, rutasExtras, rutasAdminProductos, rutasAdminImportar, rutasSucursales, rutasAdminMesas, rutasUsuarios, rutasOrdenes, rutasCocina, rutasCaja, rutasPrioridades, rutasTiempos, rutasMarca, rutasReportes, rutasCliente, rutasTema, rutasClientePedidos, rutasClienteConfig]) {
     await app.register(grupo);
   }
 
@@ -48,12 +50,13 @@ export async function rutasEmpresa(app: FastifyInstance): Promise<void> {
   app.get('/negocio', async (req) => {
     const estado = await estadoPedidosCliente(req.negocio.id);
     const pest = await pestanasCliente(req.negocio.id);
+    const ajustesCliente = await cargarAjustesCliente(req.negocio.id);
     return {
       ok: true,
       negocio: { nombre: req.negocio.nombre, slug: req.negocio.slug },
       // `pedidos`: ¿el cliente puede levantar su pedido desde el QR en esa sucursal, o solo ver el menú?
       // `ver_pedido` / `ver_pagar`: ¿se muestran las pestañas "Mi pedido" y "Pagar"?
-      sucursales: (await sucursalesActivas(req.negocio.id)).map((s) => ({ id: s.id, slug: s.slug, nombre: s.nombre, pedidos: efectivo(estado, s.id), ver_pedido: pestanasDe(pest, s.id).verPedido, ver_pagar: pestanasDe(pest, s.id).verPagar, ver_menu: pestanasDe(pest, s.id).verMenu })),
+      sucursales: (await sucursalesActivas(req.negocio.id)).map((s) => ({ id: s.id, slug: s.slug, nombre: s.nombre, pedidos: efectivo(estado, s.id), ver_pedido: pestanasDe(pest, s.id).verPedido, ver_pagar: pestanasDe(pest, s.id).verPagar, ver_menu: pestanasDe(pest, s.id).verMenu, ...(() => { const c = configEfectiva(ajustesCliente, s.id); return { modalidades: c.modalidades, mixto: c.mixto, pago: c.pago }; })() })),
     };
   });
 

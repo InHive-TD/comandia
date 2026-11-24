@@ -7,8 +7,8 @@
 
 const API = 'api/';
 
-/* CLABE interbancaria para pagar por transferencia (se muestra hasta arriba para copiarla). Cámbiala aquí. */
-const CLABE_TRANSFERENCIA = '722969028984294414';
+/* Datos de pago por transferencia: vienen de la configuración de la sucursal (panel de administración). */
+let CLABE_TRANSFERENCIA = '';
 const $ = (id) => document.getElementById(id);
 const ESTADO_ITEM = { pendiente: 'Pendiente', preparando: 'Preparando', listo: 'Listo' };
 const CLAVE_LS = 'taqueria_pedidos';
@@ -34,6 +34,31 @@ const actualizarEspera = montarEspera($('espera-previa'), API + 'cliente/espera.
   oculto: !!destino,
 }));
 cuando.onChange = actualizarEspera;
+let modalidadesOk = ['aqui', 'llevar', 'recoger'];   // tipos de pedido que esta sucursal ofrece
+let mixtoOk = false;                                  // ¿se puede elegir plato por plato (uno aquí y otro para llevar)?
+const platosLlevar = new Set();                       // platos marcados «para llevar» dentro de un pedido para comer aquí
+const mixtoPosible = () => mixtoOk && (destino ? destino.modalidad === 'aqui' : modalidad === 'aqui');
+const esLlevar = (n) => mixtoPosible() && platosLlevar.has(n);
+function aplicarTipos(suc) {
+  modalidadesOk = Array.isArray(suc.modalidades) && suc.modalidades.length ? suc.modalidades : ['aqui', 'llevar', 'recoger'];
+  mixtoOk = suc.mixto === true;
+  document.querySelectorAll('#campos-cliente .mod-btn').forEach((b) => { b.hidden = !modalidadesOk.includes(b.dataset.mod); });
+  document.querySelector('#campos-cliente .modalidad').hidden = modalidadesOk.length < 2;   // con un solo tipo no hay nada que elegir
+  document.querySelector('#campos-cliente .modalidad').style.gridTemplateColumns = `repeat(${modalidadesOk.length}, minmax(0, 1fr))`;
+  fijarModalidad(modalidadesOk.includes(modalidad) ? modalidad : modalidadesOk[0]);
+}
+function aplicarPago(suc) {
+  const p = suc.pago;
+  CLABE_TRANSFERENCIA = p ? p.clabe : '';
+  const caja = document.getElementById('clabe');
+  if (caja) caja.textContent = CLABE_TRANSFERENCIA.replace(/(\d{4})(?=\d)/g, '$1 ');
+  $('transferencias').hidden = !p;
+  $('sin-pago').hidden = !!p;
+  for (const [id, valor] of [['transf-benef', p && p.beneficiario], ['transf-inst', p && p.institucion]]) {
+    $(id).hidden = !valor;
+    if (valor) $(id).querySelector('span').textContent = valor;
+  }
+}
 function fijarModalidad(m) {
   modalidad = m;
   document.querySelectorAll('#campos-cliente .mod-btn').forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.mod === m)));
@@ -109,6 +134,8 @@ async function cargarNegocio() {
   mostrar('vista-cargando');
   sucursalPublica = Number(elegida);
   aplicarPestanas(suc);
+  aplicarTipos(suc);
+  aplicarPago(suc);
   aplicarModoPedidos();
   // Con varias sucursales se muestra, fija y bien visible, en cuál está el cliente (no es un selector).
   const fija = $('sucursal-fija');
@@ -172,7 +199,8 @@ function fijarConcepto(nombre) {
 function guardarContacto(nombre, telefono) { try { localStorage.setItem(claveLS('taqueria_contacto'), JSON.stringify({ nombre, telefono })); } catch { /* nada */ } }
 
 function irANuevoPedido() {
-  fijarModalidad('aqui');
+  platosLlevar.clear();
+  fijarModalidad(modalidadesOk.includes('aqui') ? 'aqui' : modalidadesOk[0]);
   cuando.fijar(null);
   destino = null;
   claveNueva = null;
@@ -380,6 +408,15 @@ function pintarPlatos() {
     mas.addEventListener('click', () => { platoActual = maxPlato() + 1; pintarCarrito(); });
     caja.append(mas);
   }
+  // Interruptor del plato activo: 🍽 Aquí / 🥡 Para llevar (solo en pedidos para comer aquí y si la sucursal lo permite)
+  if (mixtoPosible()) {
+    const llevar = esLlevar(platoActual);
+    const t = el('button', 'btn plato-llevar' + (llevar ? ' activo' : ''), llevar ? `🥡 Plato ${platoActual} es para llevar ✓ (quitar)` : `🥡 Poner plato ${platoActual} para llevar`);
+    t.type = 'button';
+    t.setAttribute('aria-pressed', String(llevar));
+    t.addEventListener('click', () => { if (platosLlevar.has(platoActual)) platosLlevar.delete(platoActual); else platosLlevar.add(platoActual); pintarCarrito(); });
+    caja.append(t);
+  }
 }
 
 /* Cierra la hoja del pedido (celular) y lleva al inicio del menú */
@@ -405,7 +442,7 @@ function pintarCarrito() {
   for (const l of [...carrito].sort((a, b) => a.plato - b.plato)) {
     if (hayVarios && l.plato !== ultimo) {
       const piezas = carrito.filter((x) => x.plato === l.plato).reduce((n, x) => n + x.cantidad, 0);
-      caja.append(el('h3', 'plato-titulo', `Plato ${l.plato} · ${piezas} pza`));
+      caja.append(el('h3', 'plato-titulo' + (esLlevar(l.plato) ? ' llevar' : ''), `Plato ${l.plato} · ${piezas} pza` + (esLlevar(l.plato) ? ' · 🥡 PARA LLEVAR' : '')));
     }
     ultimo = l.plato;
     const fila = el('div', 'linea');
@@ -441,7 +478,7 @@ function pintarCarrito() {
 $('telefono').addEventListener('input', () => { $('promos-fila').hidden = $('telefono').value.trim() === ''; });
 $('ver-aviso').addEventListener('click', (ev) => { ev.preventDefault(); $('dlg-aviso').showModal(); });
 $('aviso-cerrar').addEventListener('click', () => $('dlg-aviso').close());
-$('btn-vaciar').addEventListener('click', async () => { if (carrito.length === 0 || await confirmar('¿Vaciar tu pedido?', { si: 'Vaciar', peligro: true })) { carrito = []; platoActual = destino ? platosBase() : 1; pintarCarrito(); } });
+$('btn-vaciar').addEventListener('click', async () => { if (carrito.length === 0 || await confirmar('¿Vaciar tu pedido?', { si: 'Vaciar', peligro: true })) { carrito = []; platosLlevar.clear(); platoActual = destino ? platosBase() : 1; pintarCarrito(); } });
 $('barra-carrito').addEventListener('click', () => $('carrito').classList.add('abierto'));
 $('btn-cerrar-carrito').addEventListener('click', () => $('carrito').classList.remove('abierto'));
 $('agregando-volver').addEventListener('click', verMisPedidos);
@@ -455,7 +492,7 @@ function verMisPedidos() {
   refrescar();
 }
 
-const itemsParaEnviar = () => carrito.map((l) => ({ producto_id: l.producto.id, cantidad: l.cantidad, extras: l.extras.map((x) => x.id), notas: l.notas, plato: l.plato }));
+const itemsParaEnviar = () => carrito.map((l) => ({ producto_id: l.producto.id, cantidad: l.cantidad, extras: l.extras.map((x) => x.id), notas: l.notas, plato: l.plato, llevar: esLlevar(l.plato) }));
 
 $('btn-levantar').addEventListener('click', async () => {
   if (enviando) return;
@@ -490,7 +527,7 @@ $('btn-levantar').addEventListener('click', async () => {
       $('notas-orden').value = '';
       // el teléfono y el nombre se quedan para el siguiente pedido
     }
-    destino = null; claveNueva = null; carrito = []; platoActual = 1;
+    destino = null; claveNueva = null; carrito = []; platosLlevar.clear(); platoActual = 1;
     $('carrito').classList.remove('abierto');
     await refrescar();
     mostrar('vista-mis');
@@ -683,6 +720,7 @@ function agregarAPedido(o) {
   if (!pedidosActivos) { avisar('Por ahora los pedidos se toman en el mostrador.', true); return; }
   destino = o;
   carrito = [];
+  platosLlevar.clear(); (o.items || []).filter((i) => i.llevar).forEach((i) => platosLlevar.add(i.plato));
   platoActual = platosBase();
   $('pedido-error').textContent = '';
   pintarCarrito();

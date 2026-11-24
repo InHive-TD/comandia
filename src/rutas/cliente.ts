@@ -15,6 +15,7 @@
  * bajar ni quitar desde aquí (evita pedir de más y luego "arrepentirse"); solo cocina o caja.
  * Límites por dirección IP para evitar abuso (se guardan solo con un hash, nunca la IP).
  */
+import { configClienteDe } from '../clienteConfig.js';
 import { createHash } from 'node:crypto';
 import type { FastifyInstance, FastifyRequest } from 'fastify';
 import { cuerpoJson, exigirMetodo, fijarSucursalAuto, fijarSucursalPublica } from '../auth.js';
@@ -119,6 +120,10 @@ async function intentos(c: Cx, etiqueta: string, ip: string): Promise<number> {
 }
 const limite = (): ErrorHttp => new ErrorHttp(429, 'limite', 'Demasiadas consultas. Espera unos minutos e inténtalo de nuevo.');
 
+/** Si la sucursal no permite elegir plato por plato, se ignora cualquier "para llevar" suelto que mande el celular. */
+const soloSiMixto = (items: unknown, permitido: boolean): unknown =>
+  permitido || !Array.isArray(items) ? items : items.map((r) => (r && typeof r === 'object' ? { ...(r as object), llevar: false } : r));
+
 export async function rutasCliente(app: FastifyInstance): Promise<void> {
   // ------------------------------------------------------------------ /cliente/pedido
   app.route({
@@ -209,6 +214,8 @@ export async function rutasCliente(app: FastifyInstance): Promise<void> {
         await fijarSucursalPublica(req);
         const c = contexto(req);
         await exigirPedidosActivos(c);
+        const cfg = await configClienteDe(nid, c.sid);
+        if (!cfg.modalidades.includes(modalidad)) throw fallo('Ese tipo de pedido no está disponible. Elige otro.');
         const ip = sha(`${req.ip}|taqueria|${nid}`);
         await ejecutar('DELETE FROM intentos_pedido WHERE creado_en < NOW() - INTERVAL 1 DAY');
         const rato = await c.filas(`SELECT COUNT(*) AS n FROM intentos_pedido WHERE negocio_id = ? AND ip_hash = ? AND creado_en > NOW() - INTERVAL ${MINUTOS_RATO} MINUTE`, [nid, ip]);
@@ -217,7 +224,7 @@ export async function rutasCliente(app: FastifyInstance): Promise<void> {
         if (Number(hora[0]?.['n']) >= MAX_ACTIVOS_POR_IP * 2) throw fallo('Ya tienes varios pedidos recientes. Acércate a caja si necesitas algo más.', 429);
 
         const horaPrometida = await calcularHoraPrometida(c, datos);
-        const [lineas, total] = await validarLineas(c, datos['items']);
+        const [lineas, total] = await validarLineas(c, soloSiMixto(datos['items'], cfg.mixto));
         await crearOrden(c, { cliente: nombre, notas, lineas, total, origen: 'qr', creadoPor: null, clave, telefono, modalidad, horaPrometida });
         await ejecutar('INSERT INTO intentos_pedido (negocio_id, sucursal_id, ip_hash) VALUES (?, ?, ?)', [nid, c.sid, ip]);
         if (telefono !== null) {
@@ -245,7 +252,7 @@ export async function rutasCliente(app: FastifyInstance): Promise<void> {
       switch (accion) {
         case 'agregar': {
           await exigirPedidosActivos(c);
-          const [lineas, total] = await validarLineas(c, datos['items']);
+          const [lineas, total] = await validarLineas(c, soloSiMixto(datos['items'], (await configClienteDe(nid, c.sid)).mixto));
           await agregarAOrden(c, ordenId, lineas, total);
           break;
         }

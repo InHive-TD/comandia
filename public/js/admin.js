@@ -483,7 +483,7 @@ function marcarMenu(idBoton) {
 /** Muestra una sección como página: cierra la que estuviera abierta y oculta la lista de productos. */
 /* Cada sección tiene su propia dirección: /<empresa>/admin/usuarios, /extras… (Inicio es solo /<empresa>/admin/).
    Se puede recargar, guardar en favoritos y usar "atrás". Las direcciones no llevan "#". */
-const RUTAS = { inicio: 'btn-reportes', platillos: 'btn-productos', categorias: 'btn-categorias', extras: 'btn-extras', 'carga-masiva': 'btn-carga', sucursales: 'btn-sucursales', usuarios: 'btn-usuarios', 'ajustes-cocina': 'btn-prioridades', 'ajustes-pedidos': 'btn-pedidos-qr', 'ajustes-toma': 'btn-toma-pedidos', 'ajustes-carriles': 'btn-carriles', apariencia: 'btn-apariencia' };
+const RUTAS = { inicio: 'btn-reportes', platillos: 'btn-productos', categorias: 'btn-categorias', extras: 'btn-extras', 'carga-masiva': 'btn-carga', sucursales: 'btn-sucursales', usuarios: 'btn-usuarios', 'ajustes-cocina': 'btn-prioridades', 'ajustes-pedidos': 'btn-pedidos-qr', 'ajustes-pago': 'btn-pago', 'ajustes-toma': 'btn-toma-pedidos', 'ajustes-carriles': 'btn-carriles', apariencia: 'btn-apariencia' };
 const BASE_ADMIN = location.pathname.replace(/\/admin(\/.*)?$/, '/admin/');   // "/lavale/admin/"
 const seccionDeLaDireccion = () => {
   const n = (location.pathname.startsWith(BASE_ADMIN) ? location.pathname.slice(BASE_ADMIN.length).replace(/\/+$/, '') : '') || 'inicio';
@@ -1837,9 +1837,98 @@ $('cr-cerrar').addEventListener('click', () => dlgCarriles.close());
 const dlgPedidosQr = $('dlg-pedidos-qr');
 $('btn-pedidos-qr').addEventListener('click', async () => {
   $('cp-error').textContent = '';
-  try { await cargarClientePedidos(); } catch (err) { avisar(err.message, true); return; }
+  try { await cargarClientePedidos(); await cargarCfgCliente(); } catch (err) { avisar(err.message, true); return; }
   abrirPagina(dlgPedidosQr, 'btn-pedidos-qr');
 });
+
+/* Tipos de pedido, plato por plato y datos de pago: por empresa (dueño) y por sucursal (dueño o gerente) */
+let cfgCliente = null;   // lo que manda el servidor: { puede_general, general, sucursales: [{ id, nombre, propio, efectivo }] }
+const TODOS_TIPOS = ['aqui', 'llevar', 'recoger'];
+
+async function cargarCfgCliente() {
+  const r = await pedir(API + 'admin/cliente-config.php');
+  const antes = { tipos: $('ct-ambito').value, pago: $('pg-ambito').value };
+  cfgCliente = r;
+  for (const sel of [$('ct-ambito'), $('pg-ambito')]) {
+    sel.replaceChildren();
+    if (r.puede_general) sel.append(new Option('Toda la empresa (valor por defecto)', 'general'));
+    for (const s of r.sucursales) sel.append(new Option(s.nombre, String(s.id)));
+  }
+  const elige = (sel, v) => { if ([...sel.options].some((o) => o.value === v)) sel.value = v; };
+  elige($('ct-ambito'), antes.tipos); elige($('pg-ambito'), antes.pago);
+  ctPintar(); pgPintar();
+}
+const cfgAmbito = (sel) => (sel.value === 'general' ? { ambito: 'general' } : { ambito: 'sucursal', sucursal_id: Number(sel.value) });
+
+function ctPintar() {
+  const v = $('ct-ambito').value;
+  const suc = cfgCliente.sucursales.find((s) => String(s.id) === v);
+  const mods = v === 'general' ? (cfgCliente.general.modalidades || TODOS_TIPOS) : suc.efectivo.modalidades;
+  const mixto = v === 'general' ? (cfgCliente.general.mixto ?? true) : (suc.propio.mixto ?? suc.efectivo.mixto);
+  document.querySelectorAll('#ct-mods input').forEach((x) => { x.checked = mods.includes(x.dataset.mod); });
+  $('ct-mixto').checked = mixto && mods.includes('aqui') && mods.includes('llevar');
+  $('ct-mixto').disabled = !(mods.includes('aqui') && mods.includes('llevar'));
+  const heredado = suc && suc.propio.modalidades === null && suc.propio.mixto === null;
+  $('ct-nota').hidden = !heredado;
+  $('ct-nota').textContent = heredado ? 'Esta sucursal usa la configuración de la empresa. Al guardar, tendrá la suya.' : '';
+}
+$('ct-ambito').addEventListener('change', ctPintar);
+$('ct-mods').addEventListener('change', (ev) => {
+  const marcados = [...document.querySelectorAll('#ct-mods input')].filter((x) => x.checked);
+  if (marcados.length === 0) { ev.target.checked = true; avisar('Deja al menos un tipo de pedido.', true); }
+  const m = [...document.querySelectorAll('#ct-mods input')].filter((x) => x.checked).map((x) => x.dataset.mod);
+  const dos = m.includes('aqui') && m.includes('llevar');
+  $('ct-mixto').disabled = !dos;
+  if (!dos) $('ct-mixto').checked = false;
+});
+$('ct-guardar').addEventListener('click', async () => {
+  $('ct-error').textContent = '';
+  const modalidades = [...document.querySelectorAll('#ct-mods input')].filter((x) => x.checked).map((x) => x.dataset.mod);
+  try {
+    await enviarJson(API + 'admin/cliente-config.php', { accion: 'tipos', ...cfgAmbito($('ct-ambito')), modalidades, mixto: $('ct-mixto').checked });
+    avisar('Tipos de pedido guardados');
+    await cargarCfgCliente();
+  } catch (err) { $('ct-error').textContent = err.message; }
+});
+
+const dlgPago = $('dlg-pago');
+function pgPintar() {
+  const v = $('pg-ambito').value;
+  const suc = cfgCliente.sucursales.find((s) => String(s.id) === v);
+  const propio = v === 'general' ? cfgCliente.general.pago : suc.propio.pago;
+  const mostrado = propio || (suc && suc.efectivo.pago) || null;
+  $('pg-clabe').value = mostrado ? mostrado.clabe : '';
+  $('pg-benef').value = mostrado ? mostrado.beneficiario : '';
+  $('pg-inst').value = mostrado ? mostrado.institucion : '';
+  $('pg-quitar').hidden = !(suc && propio);
+  $('pg-nota').hidden = !(suc && !propio);
+  $('pg-nota').textContent = suc && !propio ? (mostrado ? 'Esta sucursal usa los datos de la empresa. Al guardar, tendrá los suyos.' : 'Esta sucursal todavía no tiene datos de pago: el cliente ve «paga en caja».') : '';
+}
+$('pg-ambito').addEventListener('change', pgPintar);
+$('pg-guardar').addEventListener('click', async () => {
+  $('pg-error').textContent = '';
+  try {
+    await enviarJson(API + 'admin/cliente-config.php', { accion: 'pago', ...cfgAmbito($('pg-ambito')), clabe: $('pg-clabe').value, beneficiario: $('pg-benef').value, institucion: $('pg-inst').value });
+    avisar('Datos de pago guardados');
+    await cargarCfgCliente();
+  } catch (err) { $('pg-error').textContent = err.message; }
+});
+$('pg-quitar').addEventListener('click', async () => {
+  $('pg-error').textContent = '';
+  try {
+    await enviarJson(API + 'admin/cliente-config.php', { accion: 'pago_quitar', ...cfgAmbito($('pg-ambito')) });
+    avisar('Esta sucursal volvió a usar los datos de la empresa');
+    await cargarCfgCliente();
+  } catch (err) { $('pg-error').textContent = err.message; }
+});
+async function abrirPago() {
+  $('pg-error').textContent = '';
+  try { await cargarCfgCliente(); } catch (err) { avisar(err.message, true); return; }
+  abrirPagina(dlgPago, 'btn-pago');
+}
+$('btn-pago').addEventListener('click', abrirPago);
+$('ct-ir-pago').addEventListener('click', abrirPago);
+$('pg-cerrar').addEventListener('click', () => dlgPago.close());
 $('cp-cerrar').addEventListener('click', () => dlgPedidosQr.close());
 
 

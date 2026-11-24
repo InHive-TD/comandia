@@ -771,3 +771,6 @@ body.en-panel .panel-lateral { min-height: 100vh; grid-template-columns: 240px m
 .i-carriles { --ico: url("data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 24 24%22 fill=%22none%22 stroke=%22black%22 stroke-width=%222%22 stroke-linecap=%22round%22 stroke-linejoin=%22round%22%3E%3Crect x=%223%22 y=%223%22 width=%225%22 height=%2218%22 rx=%221%22/%3E%3Crect x=%2210%22 y=%223%22 width=%225%22 height=%2218%22 rx=%221%22/%3E%3Crect x=%2217%22 y=%223%22 width=%224%22 height=%2218%22 rx=%221%22/%3E%3C/svg%3E"); }
 .cr-activo { display: inline-flex; align-items: center; gap: 6px; font-weight: 700; margin-left: auto; min-height: 44px; }
 .cr-activo input { width: 22px; height: 22px; }
+
+.i-pago { --ico: url("data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 24 24%22 fill=%22none%22 stroke=%22black%22 stroke-width=%222%22 stroke-linecap=%22round%22 stroke-linejoin=%22round%22%3E%3Crect x=%222%22 y=%225%22 width=%2220%22 height=%2214%22 rx=%222%22/%3E%3Cpath d=%22M2 10h20M6 15h4%22/%3E%3C/svg%3E"); }
+.ct-fila { display: block; margin-bottom: 8px; }
