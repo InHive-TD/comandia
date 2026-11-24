@@ -505,12 +505,12 @@ window.addEventListener('popstate', () => {
 });
 let volverA = 'inicio';   // a dónde regresa al cerrar una página: 'platillos' (formulario y categorías) o 'inicio' (reportes)
 function abrirPagina(dlg, idBoton) {
-  volverA = (dlg === dlgProducto || dlg === dlgCategorias) ? 'platillos' : 'inicio';
+  volverA = (dlg === dlgProducto || dlg === dlgCategorias || dlg.id === 'dlg-carga') ? 'platillos' : 'inicio';
   for (const o of paginasPortal) if (o !== dlg && o.open) o.close();
   $('vista-platillos').hidden = true;
   if (!dlg.open) dlg.show();          // show() = no modal
   fijarRuta(dlg === dlgProducto ? 'btn-productos' : idBoton);
-  marcarMenu(idBoton === 'btn-categorias' ? 'btn-productos' : idBoton);   // Categorías de platillos cuelga de Platillos
+  marcarMenu(idBoton === 'btn-categorias' || idBoton === 'btn-carga' ? 'btn-productos' : idBoton);   // Categorías de platillos cuelga de Platillos
   window.scrollTo({ top: 0 });
 }
 
