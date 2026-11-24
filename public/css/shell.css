@@ -37,7 +37,7 @@ body.shell-pagina:has(#vista-login:not([hidden])) .panel-lateral { display: bloc
 .barra-acciones .btn-icono { min-width: 44px; font-size: 1.15rem; padding: 6px 10px; }
 .barra-acciones .btn[aria-pressed="true"] { background: var(--color-suave); border-color: var(--color-principal); }
 
-/* Interruptor contraer / expandir (solo escritorio) */
+/* Botón para volver a mostrar el menú oculto (solo se ve cuando está oculto) */
 .btn-compactar { width: 40px; height: 40px; flex: none; border: 1px solid var(--color-borde); border-radius: 10px; background: var(--color-tarjeta); color: var(--color-oscuro); cursor: pointer; display: grid; place-items: center; padding: 0; }
 .btn-compactar::before { content: ''; width: 20px; height: 20px; background: currentColor; transition: transform .2s;
   -webkit-mask: url("data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 24 24%22 fill=%22none%22 stroke=%22black%22 stroke-width=%222%22 stroke-linecap=%22round%22 stroke-linejoin=%22round%22%3E%3Crect x=%223%22 y=%224%22 width=%2218%22 height=%2216%22 rx=%222%22/%3E%3Cpath d=%22M9 4v16%22/%3E%3C/svg%3E") center / contain no-repeat;
@@ -69,3 +69,16 @@ body.shell-pagina:has(#vista-login:not([hidden])) .panel-lateral { display: bloc
   .quien-barra { max-width: 100%; }
   :root { --alto-encab: 58px; }   /* alto de la barra fija del celular (la usan las franjas pegajosas de Tomar pedidos) */
 }
+
+/* Interruptor "Contraer menú" dentro de la barra lateral (escritorio) */
+.menu-lateral .menu-pie-toggle { margin-top: 8px; opacity: .85; }
+.i-contraer { --ico: url("data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 24 24%22 fill=%22none%22 stroke=%22black%22 stroke-width=%222%22 stroke-linecap=%22round%22 stroke-linejoin=%22round%22%3E%3Crect x=%223%22 y=%224%22 width=%2218%22 height=%2216%22 rx=%222%22/%3E%3Cpath d=%22M9 4v16M16 10l-2 2 2 2%22/%3E%3C/svg%3E"); }
+body.menu-compacto .i-contraer { --ico: url("data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 24 24%22 fill=%22none%22 stroke=%22black%22 stroke-width=%222%22 stroke-linecap=%22round%22 stroke-linejoin=%22round%22%3E%3Crect x=%223%22 y=%224%22 width=%2218%22 height=%2216%22 rx=%222%22/%3E%3Cpath d=%22M9 4v16M13 10l2 2-2 2%22/%3E%3C/svg%3E"); }
+#menu-mostrar { display: none; }
+@media (min-width: 901px) {
+  /* Menú oculto por completo (Cocina): la columna desaparece y vuelve con el botón de la barra superior */
+  body.en-panel.menu-oculto .panel-lateral { grid-template-columns: 0 minmax(0, 1fr); }
+  body.menu-oculto .menu-lateral { overflow: hidden; visibility: hidden; }
+  body.menu-oculto #menu-mostrar { display: grid; }
+}
+@media (max-width: 900px) { .menu-lateral .menu-pie-toggle { display: none; } }

@@ -13,14 +13,14 @@
   const fijarCompacto = (v) => {
     document.body.classList.toggle('menu-compacto', v);
     const b = document.getElementById('menu-compactar');
-    if (b) { b.setAttribute('aria-pressed', String(v)); b.title = v ? 'Expandir menú' : 'Contraer menú'; b.setAttribute('aria-label', b.title); }
+    if (b) { b.setAttribute('aria-pressed', String(v)); b.title = v ? 'Expandir menú' : 'Contraer menú'; b.setAttribute('aria-label', b.title); b.textContent = b.title; }
   };
   const pref = leerPref();
   const iniciarCompacto = pref === null ? window.innerWidth < 1200 : pref === '1';
 
   function crearInterruptor() {
     const b = document.createElement('button');
-    b.id = 'menu-compactar'; b.type = 'button'; b.className = 'btn-compactar';
+    b.id = 'menu-compactar'; b.type = 'button'; b.className = 'btn nav-ico i-contraer menu-pie-toggle';
     b.addEventListener('click', () => {
       const v = !document.body.classList.contains('menu-compacto');
       fijarCompacto(v); guardarPref(v);
@@ -33,8 +33,8 @@
   /* ---- Panel del administrador: solo el interruptor ---- */
   const menuAdmin = document.getElementById('menu-principal');
   if (menuAdmin) {
-    const barra = document.querySelector('.barra-panel');
-    if (barra) barra.prepend(crearInterruptor());
+    const pieAdmin = menuAdmin.querySelector('.menu-usuario');
+    if (pieAdmin) pieAdmin.before(crearInterruptor());
     document.body.classList.add('shell-admin');
     ponerTitulos(menuAdmin);
     fijarCompacto(iniciarCompacto);
@@ -96,7 +96,7 @@
     salir.className = 'btn-salir-menu'; salir.textContent = ''; salir.title = 'Salir'; salir.setAttribute('aria-label', 'Salir');
     usuarioCaja.append(salir);
   }
-  caja.append(marca, lista, usuarioCaja);
+  caja.append(marca, lista, crearInterruptor(), usuarioCaja);
   nav.append(caja);
 
   // Barra superior: título de la pantalla, sucursal y las acciones propias (sonido, ver por nombre…)
@@ -110,7 +110,10 @@
   const titulo = nodo('h2', '', titulos[pagina] || ''); titulo.id = 'titulo-seccion';
   const acc = nodo('div', 'barra-acciones');
   for (const n of acciones) { n.classList.remove('claro'); n.classList.add('accion-barra'); acc.append(n); }
-  barra.append(crearInterruptor(), titulo);
+  // Botón para volver a mostrar el menú cuando se oculta por completo (Cocina)
+  const mostrar = nodo('button', 'btn-compactar'); mostrar.id = 'menu-mostrar'; mostrar.type = 'button'; mostrar.title = 'Mostrar menú'; mostrar.setAttribute('aria-label', 'Mostrar menú');
+  mostrar.addEventListener('click', () => document.body.classList.remove('menu-oculto'));
+  barra.append(mostrar, titulo);
   if (quien) { quien.classList.add('chip-sucursal', 'quien-barra'); barra.append(quien); }
   barra.append(acc);
   derecha.append(movil, barra, main);
@@ -132,6 +135,15 @@
   nav.addEventListener('click', (ev) => { if (ev.target.closest('.nav-ico')) abrirMenu(false); });
   document.addEventListener('keydown', (ev) => { if (ev.key === 'Escape') abrirMenu(false); });
   celular.addEventListener('change', () => abrirMenu(false));
+
+  // Cocina: al tocar cualquier otra parte de la pantalla el menú se oculta por completo (más espacio para las comandas)
+  if (pagina === 'cocina') {
+    document.addEventListener('click', (ev) => {
+      if (celular.matches || document.body.classList.contains('menu-oculto')) return;
+      if (ev.target.closest('.menu-lateral, .barra-panel, dialog, #toast, #sonido-flotante')) return;
+      document.body.classList.add('menu-oculto');
+    });
+  }
 
   // En Tomar pedidos el título sigue a la pestaña activa (Tomar pedido / Preparando)
   if (pagina === 'pedidos') {
