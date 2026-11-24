@@ -71,7 +71,7 @@ input[type="file"] { padding: 9px 10px; }
 
 .codigo {
   background: var(--color-vino);
-  color: #ffeec2;
+  color: #fff;
   padding: 12px 14px;
   border-radius: 10px;
   overflow-x: auto;
