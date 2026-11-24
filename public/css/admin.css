@@ -796,7 +796,7 @@ body.en-panel .panel-lateral { min-height: 100vh; grid-template-columns: 240px m
 .chip.ex-res.todos { background: #dff2e1; color: #1f5c2b; }
 .chip.ex-res.algunos { background: #fff0b3; color: #6b4b00; }
 
-.ver-pagina-fila { display: flex; justify-content: flex-end; margin-bottom: 6px; }
+.ver-pagina-fila { display: flex; justify-content: flex-start; margin-bottom: 6px; }
 .ver-pagina { text-decoration: none; font-weight: 700; }
 
 /* Grupos del menú que se expanden hacia abajo (Interfaces → Cliente / Pedidos / Cocina) */

@@ -11,13 +11,13 @@
   <meta name="theme-color" content="#0a6b4e">
   <meta name="mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-capable" content="yes">
-  <script src="../js/pwa.js?v=1795494097" defer></script>
+  <script src="../js/pwa.js?v=1795494204" defer></script>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Outfit:wght@600;700;800&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="../css/estilos.css?v=1795494097">
-  <link rel="stylesheet" href="../css/admin.css?v=1795494097">
-  <link rel="stylesheet" href="../css/shell.css?v=1795494097">
+  <link rel="stylesheet" href="../css/estilos.css?v=1795494204">
+  <link rel="stylesheet" href="../css/admin.css?v=1795494204">
+  <link rel="stylesheet" href="../css/shell.css?v=1795494204">
   <link rel="stylesheet" href="../api/tema.php">
 </head>
 <body>
@@ -69,11 +69,6 @@
         <div class="menu-fijo">
         <button id="btn-reportes" class="btn nav-ico i-reportes" type="button">Inicio · Reportes</button>
 
-        <p class="menu-grupo">Operación</p>
-        <a class="btn nav-ico i-pedidos" href="../pedidos/">Tomar pedidos</a>
-        <a class="btn nav-ico i-cocina" href="../cocina/">Cocina</a>
-        <a class="btn nav-ico i-caja" href="../caja/">Caja y propinas</a>
-
         <!-- Todo lo que se configura vive en "Ajustes", agrupado por para qué sirve. Los id de los botones no cambian. -->
         <p class="menu-grupo menu-ajustes">Ajustes</p>
         <p class="menu-sub">Menú</p>
@@ -91,6 +86,12 @@
           <button class="nav-sum" type="button" aria-expanded="false">Pedidos</button>
           <div class="menu-desp-items">
             <button id="btn-toma-pedidos" data-titulo="Interfaz de pedidos · Configuración general" class="btn nav-ico i-pedidos" type="button">Configuración general</button>
+          </div>
+        </div>
+        <div class="menu-desp" data-grupo="caja">
+          <button class="nav-sum" type="button" aria-expanded="false">Caja</button>
+          <div class="menu-desp-items">
+            <button id="btn-caja-cfg" data-titulo="Interfaz de caja · Configuración general" class="btn nav-ico i-caja" type="button">Configuración general</button>
           </div>
         </div>
         <div class="menu-desp" data-grupo="cocina">
@@ -376,9 +377,18 @@
   </dialog>
 
   <!-- Carriles de cocina: cómo se acomodan los pedidos en la pantalla de Cocina (solo el dueño) -->
+  <dialog id="dlg-caja" class="pagina">
+    <div class="formulario dialogo">
+      <div class="ver-pagina-fila"><a class="btn chico ver-pagina" data-pagina="caja" href="#" target="_blank" rel="noopener" title="Se abre en otra pestaña para ver los cambios">👁 Ver interfaz de caja ↗</a></div>
+      <h2>Interfaz de caja · Configuración general</h2>
+      <p class="ayuda">Desde aquí abres la pantalla de caja (cobros y propinas). Por ahora no tiene ajustes propios; cuando los tenga, aparecerán en esta página.</p>
+      <div class="acciones-dialogo"><button id="caja-cerrar" class="btn" type="button">Cerrar</button></div>
+    </div>
+  </dialog>
+
   <dialog id="dlg-pago" class="pagina">
     <div class="formulario dialogo">
-            <div class="ver-pagina-fila"><a class="btn chico ver-pagina" data-pagina="cliente" href="#" target="_blank" rel="noopener" title="Se abre en otra pestaña para ver los cambios">👁 Ver la pantalla del cliente ↗</a></div>
+            <div class="ver-pagina-fila"><a class="btn chico ver-pagina" data-pagina="cliente" href="#" target="_blank" rel="noopener" title="Se abre en otra pestaña para ver los cambios">👁 Ver interfaz de cliente ↗</a></div>
       <h2>Interfaz del cliente · Datos de pago</h2>
       <p class="ayuda">Es lo que el cliente ve en la pestaña <strong>Pagar</strong>: la clave interbancaria (CLABE), el beneficiario y la institución. Cada sucursal puede tener los suyos; si no, usa los de la empresa.</p>
       <label>¿Para quién?
@@ -411,7 +421,7 @@
 
   <dialog id="dlg-carriles" class="pagina">
     <div class="formulario dialogo cr-dialogo">
-            <div class="ver-pagina-fila"><a class="btn chico ver-pagina" data-pagina="cocina" href="#" target="_blank" rel="noopener" title="Se abre en otra pestaña para ver los cambios">👁 Ver la pantalla de cocina ↗</a></div>
+            <div class="ver-pagina-fila"><a class="btn chico ver-pagina" data-pagina="cocina" href="#" target="_blank" rel="noopener" title="Se abre en otra pestaña para ver los cambios">👁 Ver interfaz de cocina ↗</a></div>
       <h2>Interfaz de cocina · Carriles</h2>
       <p class="ayuda">Los carriles son las columnas de la pantalla de Cocina. Cada pedido va al <strong>primer carril</strong> cuya regla cumple (de arriba hacia abajo). Si en un grupo no marcas nada, ese grupo no filtra. Lo que no entre en ningún carril se muestra en “Otros”.</p>
       <div class="cr-ambito">
@@ -618,7 +628,7 @@
   <!-- Ajustes de cocina -->
   <dialog id="dlg-prioridades" class="pagina">
     <div class="formulario dialogo">
-            <div class="ver-pagina-fila"><a class="btn chico ver-pagina" data-pagina="cocina" href="#" target="_blank" rel="noopener" title="Se abre en otra pestaña para ver los cambios">👁 Ver la pantalla de cocina ↗</a></div>
+            <div class="ver-pagina-fila"><a class="btn chico ver-pagina" data-pagina="cocina" href="#" target="_blank" rel="noopener" title="Se abre en otra pestaña para ver los cambios">👁 Ver interfaz de cocina ↗</a></div>
       <h2>Interfaz de cocina · Configuración general</h2>
       <p class="ayuda">En cocina los pedidos <strong>para comer aquí</strong> se preparan primero, por orden de llegada; los <strong>para llevar</strong> y los de <strong>recoger</strong> van después, también por orden de llegada.</p>
       <label>📅 Pedidos agendados: pasan a la comanda de cocina (min) antes de la hora
@@ -648,7 +658,7 @@
 
   <dialog id="dlg-toma-pedidos" class="pagina">
     <div class="formulario dialogo">
-            <div class="ver-pagina-fila"><a class="btn chico ver-pagina" data-pagina="pedidos" href="#" target="_blank" rel="noopener" title="Se abre en otra pestaña para ver los cambios">👁 Ver la pantalla de pedidos ↗</a></div>
+            <div class="ver-pagina-fila"><a class="btn chico ver-pagina" data-pagina="pedidos" href="#" target="_blank" rel="noopener" title="Se abre en otra pestaña para ver los cambios">👁 Ver interfaz de pedidos ↗</a></div>
       <h2>Interfaz de pedidos · Configuración general</h2>
       <h3 class="cp-sub">🍽 Pedir por mesa o por nombre</h3>
       <p class="ayuda">Si marcas “por mesa”, al levantar un pedido “Aquí” la mesa es obligatoria y el nombre del cliente es opcional (si no lo escriben, el pedido se llama “Mesa N”). Para llevar y recoger siempre se pide el nombre. Las mesas se crean en “Sucursales y mesas”.</p>
@@ -722,7 +732,7 @@
 
   <dialog id="dlg-pedidos-qr" class="pagina">
     <div class="formulario dialogo">
-            <div class="ver-pagina-fila"><a class="btn chico ver-pagina" data-pagina="cliente" href="#" target="_blank" rel="noopener" title="Se abre en otra pestaña para ver los cambios">👁 Ver la pantalla del cliente ↗</a></div>
+            <div class="ver-pagina-fila"><a class="btn chico ver-pagina" data-pagina="cliente" href="#" target="_blank" rel="noopener" title="Se abre en otra pestaña para ver los cambios">👁 Ver interfaz de cliente ↗</a></div>
       <h2>Interfaz del cliente · Configuración general</h2>
       <div>
         <p class="ayuda">Si está <strong>activado</strong>, el cliente escanea el QR, arma y envía su propio pedido. Si está <strong>desactivado</strong>, solo puede ver el menú (y consultar sus pedidos) y pide en el mostrador.</p>
@@ -767,9 +777,9 @@
 
   <div id="toast" class="toast" role="status" hidden></div>
 
-  <script src="../js/comun.js?v=1795494097"></script>
-  <script src="../js/shell.js?v=1795494097"></script>
+  <script src="../js/comun.js?v=1795494204"></script>
+  <script src="../js/shell.js?v=1795494204"></script>
   <script src="../js/vendor/qrcode.js"></script>
-  <script src="../js/admin.js?v=1795494097"></script>
+  <script src="../js/admin.js?v=1795494204"></script>
 </body>
 </html>
