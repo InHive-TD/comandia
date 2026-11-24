@@ -66,6 +66,7 @@ async function vistaOrden(base: Cx, o: Fila): Promise<Record<string, unknown>> {
   if (enFila) {
     const mio = Number(o['prioritario'] ?? 0);
     const marca = o['editado_en'] ?? o['creado_en'];
+    const esAqui = String(o['modalidad']) === 'aqui' ? 1 : 0;   // se compara aquí y no en SQL: un parámetro de texto contra 'aqui' falla si la base mezcla codificaciones (collations)
     const r = await c.filas(
       `SELECT COUNT(*) AS n FROM ordenes
         WHERE negocio_id = ${c.nid} AND sucursal_id = ${c.sid} AND estado IN ('nueva','preparando') AND id <> ?
@@ -74,9 +75,9 @@ async function vistaOrden(base: Cx, o: Fila): Promise<Record<string, unknown>> {
           AND (
             (? = 0 AND prioritario = 1)
             OR (? = 1 AND prioritario = 1 AND COALESCE(editado_en, creado_en) < ?)
-            OR (? = 0 AND prioritario = 0 AND ((modalidad = 'aqui' AND ? <> 'aqui') OR ((modalidad = 'aqui') = (? = 'aqui') AND (creado_en < ? OR (creado_en = ? AND id < ?)))))
+            OR (? = 0 AND prioritario = 0 AND ((modalidad = 'aqui' AND ? = 0) OR ((modalidad = 'aqui') = ? AND (creado_en < ? OR (creado_en = ? AND id < ?)))))
           )`,
-      [o['id'], mio, mio, marca, mio, o['modalidad'], o['modalidad'], o['creado_en'], o['creado_en'], o['id']],
+      [o['id'], mio, mio, marca, mio, esAqui, esAqui, o['creado_en'], o['creado_en'], o['id']],
     );
     delante = Number(r[0]?.['n']);
   }
