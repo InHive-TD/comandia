@@ -50,22 +50,25 @@ export async function clientePuedePedir(negocioId: number, sucursalId: number): 
 export interface PestanasCliente {
   verPedido: boolean;
   verPagar: boolean;
+  /** Pestaña "Menú" (si se oculta, el cliente no puede armar pedidos: solo consulta sus pedidos o paga). */
+  verMenu: boolean;
 }
 
 export async function pestanasCliente(negocioId: number): Promise<Map<number, PestanasCliente>> {
-  const r = await filas("SELECT clave, valor FROM ajustes WHERE negocio_id = ? AND (clave LIKE 'cliente\\_ver\\_pedido@%' OR clave LIKE 'cliente\\_ver\\_pagar@%')", [negocioId]);
+  const r = await filas("SELECT clave, valor FROM ajustes WHERE negocio_id = ? AND (clave LIKE 'cliente\\_ver\\_pedido@%' OR clave LIKE 'cliente\\_ver\\_pagar@%' OR clave LIKE 'cliente\\_ver\\_menu@%')", [negocioId]);
   const mapa = new Map<number, PestanasCliente>();
   for (const f of r) {
     const [campo, idTexto] = String(f['clave']).split('@');
     const id = Number(idTexto);
     if (!(id > 0)) continue;
-    const actual = mapa.get(id) ?? { verPedido: true, verPagar: true };
+    const actual = mapa.get(id) ?? { verPedido: true, verPagar: true, verMenu: true };
     const visible = String(f['valor']) !== '0';
     if (campo === 'cliente_ver_pedido') actual.verPedido = visible;
     else if (campo === 'cliente_ver_pagar') actual.verPagar = visible;
+    else if (campo === 'cliente_ver_menu') actual.verMenu = visible;
     mapa.set(id, actual);
   }
   return mapa;
 }
 
-export const pestanasDe = (m: Map<number, PestanasCliente>, sucursalId: number): PestanasCliente => m.get(sucursalId) ?? { verPedido: true, verPagar: true };
+export const pestanasDe = (m: Map<number, PestanasCliente>, sucursalId: number): PestanasCliente => m.get(sucursalId) ?? { verPedido: true, verPagar: true, verMenu: true };

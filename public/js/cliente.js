@@ -118,20 +118,23 @@ async function cargarNegocio() {
 
 /* Pestañas "Mi pedido" y "Pagar": cada sucursal puede ocultarlas. Si se ocultan las dos, desaparece toda la barra
    (la de "Menú" sola no sirve de nada) y el menú sube hasta arriba. */
-let verPedido = true, verPagar = true;
+let verPedido = true, verPagar = true, verMenu = true;
 function aplicarPestanas(suc) {
+  verMenu = suc.ver_menu !== false;
   verPedido = suc.ver_pedido !== false;
   verPagar = suc.ver_pagar !== false;
+  if (!verMenu && !verPedido && !verPagar) verMenu = true;   // por seguridad, nunca queda la pantalla vacía
+  $('nav-menu').hidden = !verMenu;
   $('nav-pedido').hidden = !verPedido;
   $('nav-pagar').hidden = !verPagar;
-  document.querySelector('.cliente-nav').hidden = !verPedido && !verPagar;
+  document.querySelector('.cliente-nav').hidden = [verMenu, verPedido, verPagar].filter(Boolean).length < 2;   // con una sola pestaña, la barra no sirve
 }
 
 /* Si en esta sucursal el cliente no puede pedir (lo desactivó el dueño o el gerente), la pantalla queda en "solo menú":
    se ven los productos, pero sin carrito ni botones para agregar. El servidor también rechaza esos pedidos. */
 function aplicarModoPedidos() {
   const suc = sucursalesNegocio.find((s) => s.id === sucursalPublica);
-  pedidosActivos = !suc || suc.pedidos !== false;
+  pedidosActivos = (!suc || suc.pedidos !== false) && verMenu;   // sin la pestaña Menú no se arman pedidos
   document.body.classList.toggle('solo-menu', !pedidosActivos);
   $('subtitulo-texto').textContent = 'Menú sucursal';
 }
@@ -178,6 +181,10 @@ function irANuevoPedido() {
   $('pedido-error').textContent = '';
   recordarContacto();
   pintarCarrito();
+  if (!verMenu) {   // esta sucursal ocultó el menú: se abre la primera pestaña que sí muestra
+    if (verPedido) { mostrar('vista-mis'); pintarMis(); } else mostrar('vista-pagar');
+    return;
+  }
   mostrar('vista-pedido');
 }
 

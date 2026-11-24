@@ -53,7 +53,7 @@ export async function rutasEmpresa(app: FastifyInstance): Promise<void> {
       negocio: { nombre: req.negocio.nombre, slug: req.negocio.slug },
       // `pedidos`: ¿el cliente puede levantar su pedido desde el QR en esa sucursal, o solo ver el menú?
       // `ver_pedido` / `ver_pagar`: ¿se muestran las pestañas "Mi pedido" y "Pagar"?
-      sucursales: (await sucursalesActivas(req.negocio.id)).map((s) => ({ id: s.id, slug: s.slug, nombre: s.nombre, pedidos: efectivo(estado, s.id), ver_pedido: pestanasDe(pest, s.id).verPedido, ver_pagar: pestanasDe(pest, s.id).verPagar })),
+      sucursales: (await sucursalesActivas(req.negocio.id)).map((s) => ({ id: s.id, slug: s.slug, nombre: s.nombre, pedidos: efectivo(estado, s.id), ver_pedido: pestanasDe(pest, s.id).verPedido, ver_pagar: pestanasDe(pest, s.id).verPagar, ver_menu: pestanasDe(pest, s.id).verMenu })),
     };
   });
 

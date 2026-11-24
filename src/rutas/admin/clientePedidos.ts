@@ -1,10 +1,10 @@
 /**
  * Interruptores de "el cliente puede levantar su propio pedido desde el QR" (o solo ver el menú).
  *
- *   GET  /admin/cliente-pedidos → { general, puede_general, sucursales: [{ id, nombre, activo, efectivo, ver_pedido, ver_pagar }] }
+ *   GET  /admin/cliente-pedidos → { general, puede_general, sucursales: [{ id, nombre, activo, efectivo, ver_pedido, ver_pagar, ver_menu }] }
  *   POST { accion: 'general',  activo: true|false }                  solo el dueño: interruptor de TODA la empresa
  *   POST { accion: 'sucursal', sucursal_id, activo: true|false }     el dueño (cualquier sucursal) o el gerente (solo la suya)
- *   POST { accion: 'pestanas', sucursal_id, ver_pedido, ver_pagar }  muestra u oculta las pestañas "Mi pedido" y "Pagar" del cliente
+ *   POST { accion: 'pestanas', sucursal_id, ver_menu, ver_pedido, ver_pagar }  muestra u oculta las pestañas "Menú", "Mi pedido" y "Pagar" del cliente (al menos una debe quedar visible)
  *
  * Reglas: si el dueño lo apaga para toda la empresa, el gerente ya no puede encenderlo en su sucursal.
  * El gerente siempre trabaja sobre su sucursal, aunque mande otro sucursal_id.
@@ -38,7 +38,7 @@ export async function rutasClientePedidos(app: FastifyInstance): Promise<void> {
           general: e.general,
           puede_general: alcance === null,
           sucursales: sucs.map((s) => ({ id: Number(s['id']), nombre: s['nombre'], activo: e.porSucursal.get(Number(s['id'])) ?? true, efectivo: efectivo(e, Number(s['id'])),
-            ver_pedido: pestanasDe(pest, Number(s['id'])).verPedido, ver_pagar: pestanasDe(pest, Number(s['id'])).verPagar,
+            ver_pedido: pestanasDe(pest, Number(s['id'])).verPedido, ver_pagar: pestanasDe(pest, Number(s['id'])).verPagar, ver_menu: pestanasDe(pest, Number(s['id'])).verMenu,
           })),
         };
       };
@@ -67,6 +67,9 @@ export async function rutasClientePedidos(app: FastifyInstance): Promise<void> {
           const sid = alcance ?? entero(d['sucursal_id']);
           const s = await filas('SELECT id FROM sucursales WHERE id = ? AND negocio_id = ?', [sid, nid]);
           if (s.length === 0) throw new ErrorHttp(404, 'validacion', 'Esa sucursal no existe.');
+          const vm = d['ver_menu'] === undefined ? true : noVacio(d['ver_menu']);
+          if (!vm && !noVacio(d['ver_pedido']) && !noVacio(d['ver_pagar'])) throw fallo('Deja al menos una pestaña visible para el cliente (Menú, Mi pedido o Pagar).');
+          await guardar(nid, `cliente_ver_menu@${sid}`, vm);
           await guardar(nid, `cliente_ver_pedido@${sid}`, noVacio(d['ver_pedido']));
           await guardar(nid, `cliente_ver_pagar@${sid}`, noVacio(d['ver_pagar']));
           return estado();
