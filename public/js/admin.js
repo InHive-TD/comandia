@@ -1776,8 +1776,6 @@ function campoCosto(precioInicial = 0) {
   };
 }
 
-const costoNuevo = campoCosto(0);
-$('x-costo-caja').append(...costoNuevo.caja.children);
 
 /**
  * Tarjetas de extras, agrupadas en secciones (por "grupo"). Cada tarjeta muestra de un vistazo:
@@ -1786,7 +1784,6 @@ $('x-costo-caja').append(...costoNuevo.caja.children);
  *     en TODOS los platillos de esa categoría; para elegir platillo por platillo se hace desde el producto;
  *   · "Editar" abre el formulario de esa tarjeta (nombre, código, grupo, costo, activo) con su botón Guardar.
  */
-const extraAbierto = new Set();   // tarjetas con el formulario de edición desplegado
 
 function pintarExtras() {
   // Sugerencias de grupo (los que ya existen)
@@ -1820,7 +1817,6 @@ function pintarExtras() {
 }
 
 function tarjetaExtra(x) {
-  const abierta = extraAbierto.has(x.id);
   const tarjeta = el('article', 'ex-tarjeta' + (x.activo ? '' : ' inactivo'));
 
   // Cabecera: nombre, código y precio
@@ -1873,45 +1869,19 @@ function tarjetaExtra(x) {
   const usado = productos.filter((p) => p.extras.includes(x.id)).length;
   const pie = el('div', 'ex-pie');
   pie.append(el('span', 'ex-cuenta', usado === 0 ? 'Aún no está en ningún platillo' : `En ${usado} platillo${usado === 1 ? '' : 's'}`));
-  const editar = el('button', 'btn chico', abierta ? 'Cerrar edición' : '✎ Editar');
+  const editar = el('button', 'btn chico', '✎ Editar');
   editar.type = 'button';
-  editar.addEventListener('click', () => { if (abierta) extraAbierto.delete(x.id); else extraAbierto.add(x.id); pintarExtras(); });
+  editar.addEventListener('click', () => abrirFormExtra(x));
   const borrar = el('button', 'btn chico peligro', '🗑');
   borrar.type = 'button'; borrar.title = 'Eliminar extra'; borrar.setAttribute('aria-label', 'Eliminar extra');
   borrar.addEventListener('click', async () => {
     if (await confirmar(`¿Eliminar el extra “${x.nombre}”? Se quita de todos los platillos.`, { si: 'Eliminar', peligro: true })) {
-      extraAbierto.delete(x.id);
       accionExtra({ accion: 'eliminar', id: x.id }, 'Extra eliminado');
     }
   });
   pie.append(editar, borrar);
   tarjeta.append(pie);
 
-  // Formulario de edición (desplegable)
-  if (abierta) {
-    const form = el('div', 'ex-editar');
-    const campo = (texto, input) => { const l = el('label', '', texto); l.append(input); return l; };
-    const nombre = document.createElement('input');
-    nombre.type = 'text'; nombre.maxLength = 60; nombre.value = x.nombre;
-    const codigo = document.createElement('input');
-    codigo.type = 'text'; codigo.className = 'cod'; codigo.maxLength = 20; codigo.value = x.codigo || ''; codigo.placeholder = 'Ej. XQ';
-    const grupo = document.createElement('input');
-    grupo.type = 'text'; grupo.maxLength = 40; grupo.setAttribute('list', 'lista-grupos'); grupo.autocomplete = 'off'; grupo.value = x.grupo || ''; grupo.placeholder = 'Ej. Salsas';
-    const costo = campoCosto(x.precio);
-    const activo = el('label', 'switch');
-    const casilla = document.createElement('input');
-    casilla.type = 'checkbox'; casilla.checked = x.activo;
-    activo.append(casilla, el('span', 'slider'), el('span', '', 'Disponible para pedir'));
-    const guardar = el('button', 'btn principal', 'Guardar cambios');
-    guardar.type = 'button';
-    guardar.addEventListener('click', () => accionExtra(
-      { accion: 'actualizar', id: x.id, nombre: nombre.value.trim(), codigo: codigo.value.trim(), grupo: grupo.value.trim(), precio: costo.valor(), activo: casilla.checked },
-      'Extra actualizado'));
-    const costoFila = el('div', 'ex-campo');
-    costoFila.append(el('span', 'ex-etq', '¿Se cobra aparte?'), costo.caja);
-    form.append(campo('Nombre', nombre), costoFila, campo('Código para la cocina', codigo), campo('Grupo', grupo), activo, guardar);
-    tarjeta.append(form);
-  }
   return tarjeta;
 }
 
@@ -1957,7 +1927,6 @@ $('ex-sec-form').addEventListener('submit', async (ev) => {
 
 /** Cierra los paneles de arriba (nuevo extra, variantes, secciones) para que solo haya uno abierto a la vez. */
 function cerrarPanelesExtras() {
-  $('form-nuevo-extra').hidden = true; $('ex-nuevo-abrir').hidden = false;
   $('form-variantes').hidden = true;
   $('ex-secciones').hidden = true;
 }
@@ -2119,19 +2088,71 @@ $('btn-extras').addEventListener('click', () => {
   abrirPagina(dlgExtras, 'btn-extras');
 });
 $('x-cerrar').addEventListener('click', () => dlgExtras.close());
-$('ex-nuevo-abrir').addEventListener('click', () => { $('form-nuevo-extra').hidden = false; $('ex-nuevo-abrir').hidden = true; $('x-nombre').focus(); });
-$('ex-nuevo-cancelar').addEventListener('click', () => { $('form-nuevo-extra').hidden = true; $('ex-nuevo-abrir').hidden = false; });
-$('form-nuevo-extra').addEventListener('submit', async (ev) => {
-  ev.preventDefault();
-  await accionExtra({
-    accion: 'crear', nombre: $('x-nombre').value.trim(), codigo: $('x-codigo').value.trim(),
-    grupo: $('x-grupo').value.trim(), precio: costoNuevo.valor(),
-  }, 'Extra creado');
-  if (!$('x-error').textContent) {
-    $('x-nombre').value = ''; $('x-codigo').value = '';
-    costoNuevo.reiniciar();        // el grupo se conserva: se suelen agregar varios seguidos; el formulario sigue abierto para el siguiente
-    $('x-nombre').focus();
+/* ---- Ventana para crear o editar un extra ---- */
+const dlgExtraForm = $('dlg-extra-form');
+let efExtra = null;       // el extra que se edita (null = nuevo)
+let efCosto = null;
+
+function pintarOpcionesGrupo(actual) {
+  const sel = $('ef-grupo');
+  sel.replaceChildren(new Option('Sin sección (Otros)', ''));
+  const nombres = [...gruposExtras];
+  if (actual && !nombres.includes(actual)) nombres.push(actual);
+  for (const g of nombres) sel.append(new Option(g, g));
+  sel.append(new Option('＋ Nueva sección…', '__nueva'));
+  sel.value = actual || '';
+  $('ef-grupo-nuevo').hidden = true; $('ef-grupo-nuevo').value = '';
+}
+$('ef-grupo').addEventListener('change', () => {
+  const nueva = $('ef-grupo').value === '__nueva';
+  $('ef-grupo-nuevo').hidden = !nueva;
+  if (nueva) $('ef-grupo-nuevo').focus();
+});
+
+function abrirFormExtra(x) {
+  efExtra = x || null;
+  $('ef-titulo').textContent = x ? 'Editar extra' : 'Nuevo extra';
+  $('ef-nombre').value = x ? x.nombre : '';
+  $('ef-codigo').value = x ? (x.codigo || '') : '';
+  efCosto = campoCosto(x ? x.precio : 0);
+  $('ef-costo-caja').replaceChildren(...efCosto.caja.children);
+  pintarOpcionesGrupo(x ? (x.grupo || '') : '');
+  $('ef-activo-fila').hidden = !x;
+  $('ef-activo').checked = x ? x.activo : true;
+  $('ef-otro').hidden = !!x;
+  $('ef-error').textContent = '';
+  dlgExtraForm.showModal();
+  $('ef-nombre').focus();
+}
+
+async function guardarFormExtra() {
+  $('ef-error').textContent = '';
+  const nombre = $('ef-nombre').value.trim();
+  if (!nombre) { $('ef-error').textContent = 'Escribe cómo se llama el extra.'; $('ef-nombre').focus(); return false; }
+  const g = $('ef-grupo').value === '__nueva' ? $('ef-grupo-nuevo').value.trim() : $('ef-grupo').value;
+  if ($('ef-grupo').value === '__nueva' && !g) { $('ef-error').textContent = 'Escribe el nombre de la nueva sección.'; $('ef-grupo-nuevo').focus(); return false; }
+  const cuerpo = { accion: efExtra ? 'actualizar' : 'crear', nombre, codigo: $('ef-codigo').value.trim(), grupo: g, precio: efCosto.valor() };
+  if (efExtra) { cuerpo.id = efExtra.id; cuerpo.activo = $('ef-activo').checked; }
+  try {
+    await enviarJson(API + 'admin/extras.php', cuerpo);
+    await cargarCatalogo();
+    pintarExtras();
+    avisar(efExtra ? 'Extra actualizado' : 'Extra creado');
+    return true;
+  } catch (err) {
+    $('ef-error').textContent = err.message;
+    return false;
   }
+}
+$('ex-nuevo-abrir').addEventListener('click', () => abrirFormExtra(null));
+$('ef-cancelar').addEventListener('click', () => dlgExtraForm.close());
+$('form-extra').addEventListener('submit', async (ev) => {
+  ev.preventDefault();
+  if (await guardarFormExtra()) dlgExtraForm.close();
+});
+$('ef-otro').addEventListener('click', async () => {
+  const grupo = $('ef-grupo').value === '__nueva' ? $('ef-grupo-nuevo').value.trim() : $('ef-grupo').value;
+  if (await guardarFormExtra()) { abrirFormExtra(null); pintarOpcionesGrupo(grupo); }   // la misma sección se conserva para el siguiente
 });
 
 iniciar();

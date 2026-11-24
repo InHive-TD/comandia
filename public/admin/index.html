@@ -11,12 +11,12 @@
   <meta name="theme-color" content="#0a6b4e">
   <meta name="mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-capable" content="yes">
-  <script src="../js/pwa.js?v=1795487996" defer></script>
+  <script src="../js/pwa.js?v=1795489050" defer></script>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Outfit:wght@600;700;800&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="../css/estilos.css?v=1795487996">
-  <link rel="stylesheet" href="../css/admin.css?v=1795487996">
+  <link rel="stylesheet" href="../css/estilos.css?v=1795489050">
+  <link rel="stylesheet" href="../css/admin.css?v=1795489050">
   <link rel="stylesheet" href="../api/tema.php">
 </head>
 <body>
@@ -262,30 +262,6 @@
           <button id="var-cancelar" class="btn" type="button">Cancelar</button>
         </div>
       </form>
-      <form id="form-nuevo-extra" class="ex-nuevo" hidden autocomplete="off">
-        <label>¿Cómo se llama?
-          <input id="x-nombre" type="text" maxlength="60" placeholder="Ej. Con queso, Sin cebolla, Orden doble" required>
-        </label>
-        <div class="ex-campo">
-          <span class="ex-etq">¿Se cobra aparte?</span>
-          <div id="x-costo-caja" class="costo"></div>
-        </div>
-        <details class="ex-mas">
-          <summary>Más opciones (opcional)</summary>
-          <label>Código para la cocina
-            <input id="x-codigo" type="text" maxlength="20" autocapitalize="characters" autocomplete="off" placeholder="Ej. XQ" aria-label="Código (ej. XQ)">
-            <small>Abreviatura que verá la cocina en la comanda (XQ = extra queso).</small>
-          </label>
-          <label>Grupo
-            <input id="x-grupo" type="text" maxlength="40" list="lista-grupos" autocomplete="off" placeholder="Ej. Salsas, Quesos, Sin ingrediente" aria-label="Grupo">
-            <small>Sirve para ordenarlos en secciones al elegirlos.</small>
-          </label>
-        </details>
-        <div class="ex-acciones">
-          <button class="btn principal" type="submit">Guardar extra</button>
-          <button id="ex-nuevo-cancelar" class="btn" type="button">Cancelar</button>
-        </div>
-      </form>
       <datalist id="lista-grupos"></datalist>
 
       <div id="lista-extras" class="ex-lista"></div>
@@ -295,6 +271,39 @@
         <button id="x-cerrar" class="btn" type="button">Cerrar</button>
       </div>
     </div>
+  </dialog>
+
+
+  <!-- Crear o editar UN extra: ventana propia con su botón Guardar arriba -->
+  <dialog id="dlg-extra-form">
+    <form id="form-extra" class="formulario dialogo" autocomplete="off">
+      <h2 id="ef-titulo">Nuevo extra</h2>
+      <label>¿Cómo se llama?
+        <input id="ef-nombre" type="text" maxlength="60" placeholder="Ej. Con queso, Sin cebolla, Orden doble" required>
+      </label>
+      <div class="ex-campo">
+        <span class="ex-etq">¿Se cobra aparte?</span>
+        <div id="ef-costo-caja" class="costo"></div>
+      </div>
+      <label>Código para la cocina
+        <input id="ef-codigo" type="text" maxlength="20" autocapitalize="characters" placeholder="Ej. XQ">
+        <small>Abreviatura que verá la cocina en la comanda (XQ = extra queso).</small>
+      </label>
+      <label>Sección
+        <select id="ef-grupo"></select>
+        <small>Sirve para ordenarlos en secciones al elegirlos (Quitar, Aparte, Salsas…).</small>
+      </label>
+      <input id="ef-grupo-nuevo" type="text" maxlength="40" placeholder="Nombre de la nueva sección" aria-label="Nombre de la nueva sección" hidden>
+      <label id="ef-activo-fila" class="switch" hidden>
+        <input id="ef-activo" type="checkbox" checked><span class="slider"></span><span>Disponible para pedir</span>
+      </label>
+      <p id="ef-error" class="msg-error" role="alert"></p>
+      <div class="acciones-dialogo">
+        <button id="ef-guardar" class="btn principal" type="submit">Guardar</button>
+        <button id="ef-otro" class="btn" type="button" hidden>Guardar y crear otro</button>
+        <button id="ef-cancelar" class="btn" type="button">Cancelar</button>
+      </div>
+    </form>
   </dialog>
 
   <!-- Usuarios del equipo -->
@@ -605,8 +614,8 @@
 
   <div id="toast" class="toast" role="status" hidden></div>
 
-  <script src="../js/comun.js?v=1795487996"></script>
+  <script src="../js/comun.js?v=1795489050"></script>
   <script src="../js/vendor/qrcode.js"></script>
-  <script src="../js/admin.js?v=1795487996"></script>
+  <script src="../js/admin.js?v=1795489050"></script>
 </body>
 </html>
