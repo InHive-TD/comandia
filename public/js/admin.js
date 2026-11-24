@@ -2106,7 +2106,7 @@ function tarjetaExtra(x) {
   tarjeta.append(cab);
 
   // Dónde aparece (solo informativo; se cambia desde «Editar»)
-  if (categorias.length) tarjeta.append(resumenDisponibilidad(x.id));
+  if (categorias.length) tarjeta.append(resumenDisponibilidad((p) => p.extras.includes(x.id)));
 
   // Pie: cuántos platillos lo llevan + editar / eliminar
   const usado = productos.filter((p) => p.extras.includes(x.id)).length;
@@ -2129,16 +2129,16 @@ function tarjetaExtra(x) {
 }
 
 /** Resumen de solo lectura: en qué categorías aparece el extra y en cuántos platillos de cada una. */
-function resumenDisponibilidad(extraId) {
+function resumenDisponibilidad(tiene) {
   const caja = el('div', 'ex-resumen');
   const total = productos.length;
-  const con = productos.filter((p) => p.extras.includes(extraId)).length;
+  const con = productos.filter(tiene).length;
   if (con === 0) { caja.append(el('span', 'ex-etq', 'Aún no está en ningún platillo')); return caja; }
   caja.append(el('span', 'ex-etq', 'Aparece en:'));
   if (con === total) { caja.append(el('span', 'chip ex-res todos', `Todos los platillos (${total})`)); return caja; }
   for (const c of categorias) {
     const deCat = productos.filter((p) => p.categoria_id === c.id);
-    const n = deCat.filter((p) => p.extras.includes(extraId)).length;
+    const n = deCat.filter(tiene).length;
     if (n === 0) continue;
     caja.append(el('span', 'chip ex-res' + (n === deCat.length ? ' todos' : ' algunos'), n === deCat.length ? `${c.nombre} (${n})` : `${c.nombre} ${n}/${deCat.length}`));
   }
@@ -2187,10 +2187,10 @@ function epPintar() {
   $('ep-guardar').disabled = cambios === 0;
 }
 function abrirExtraPlatillos(x) {
-  epExtra = x;
-  epOriginal = new Set(productos.filter((p) => p.extras.includes(x.id)).map((p) => p.id));
-  epMarcados = new Set(epOriginal);
-  $('ep-titulo').textContent = `¿En qué platillos aparece «${x.nombre}»?`;
+  epExtra = x;   // null = extra nuevo: la elección queda en el formulario y se guarda junto con el extra
+  epOriginal = x ? new Set(productos.filter((p) => p.extras.includes(x.id)).map((p) => p.id)) : new Set();
+  epMarcados = x ? new Set(epOriginal) : new Set(efSel);
+  $('ep-titulo').textContent = x ? `¿En qué platillos aparece «${x.nombre}»?` : '¿En qué platillos aparece el extra nuevo?';
   $('ep-buscar').value = '';
   $('ep-error').textContent = '';
   epPintar();
@@ -2203,6 +2203,7 @@ $('ep-cancelar').addEventListener('click', () => dlgEP.close());
 $('ep-x').addEventListener('click', () => dlgEP.close());
 $('ep-guardar').addEventListener('click', async () => {
   $('ep-error').textContent = '';
+  if (!epExtra) { efSel = new Set(epMarcados); dlgEP.close(); efDonde(); return; }
   const agregar = [...epMarcados].filter((id) => !epOriginal.has(id));
   const quitar = [...epOriginal].filter((id) => !epMarcados.has(id));
   try {
@@ -2450,12 +2451,12 @@ $('ef-grupo').addEventListener('change', () => {
 });
 
 /** Sección «Disponible en» del formulario de edición: resumen + elegir platillos + igualar precio. */
+let efSel = new Set();   // platillos elegidos para un extra NUEVO (todavía no existe en el servidor)
 function efDonde() {
-  if (!efExtra) return;
-  $('ef-resumen').replaceChildren(resumenDisponibilidad(efExtra.id));
-  $('ef-igualar').hidden = !productos.some((p) => p.extras_precios && p.extras_precios[efExtra.id] !== undefined);
+  $('ef-resumen').replaceChildren(resumenDisponibilidad(efExtra ? (p) => p.extras.includes(efExtra.id) : (p) => efSel.has(p.id)));
+  $('ef-igualar').hidden = !efExtra || !productos.some((p) => p.extras_precios && p.extras_precios[efExtra.id] !== undefined);
 }
-$('ef-elegir').addEventListener('click', () => { if (efExtra) abrirExtraPlatillos(efExtra); });
+$('ef-elegir').addEventListener('click', () => abrirExtraPlatillos(efExtra));
 $('ef-igualar').addEventListener('click', async () => {
   if (!efExtra) return;
   $('ef-error').textContent = '';
@@ -2478,7 +2479,7 @@ function abrirFormExtra(x) {
   $('ef-activo').checked = x ? x.activo : true;
   $('ef-otro').hidden = !!x;
   $('ef-error').textContent = '';
-  $('ef-donde').hidden = !x;
+  efSel = new Set();
   efDonde();
   dlgExtraForm.showModal();
   $('ef-nombre').focus();
@@ -2490,13 +2491,15 @@ async function guardarFormExtra() {
   if (!nombre) { $('ef-error').textContent = 'Escribe cómo se llama el extra.'; $('ef-nombre').focus(); return false; }
   const g = $('ef-grupo').value === '__nueva' ? $('ef-grupo-nuevo').value.trim() : $('ef-grupo').value;
   if ($('ef-grupo').value === '__nueva' && !g) { $('ef-error').textContent = 'Escribe el nombre de la nueva sección.'; $('ef-grupo-nuevo').focus(); return false; }
+  if (!efExtra && efSel.size === 0) { $('ef-error').textContent = 'Elige en qué platillos va a aparecer este extra (botón «Elegir platillos…»).'; return false; }
   const cuerpo = { accion: efExtra ? 'actualizar' : 'crear', nombre, codigo: $('ef-codigo').value.trim(), grupo: g, precio: efCosto.valor() };
   if (efExtra) { cuerpo.id = efExtra.id; cuerpo.activo = $('ef-activo').checked; }
   try {
-    await enviarJson(API + 'admin/extras.php', cuerpo);
+    const r = await enviarJson(API + 'admin/extras.php', cuerpo);
+    if (!efExtra) await enviarJson(API + 'admin/extras.php', { accion: 'asignar_platillos', id: r.id, agregar: [...efSel], quitar: [] });
     await cargarCatalogo();
     pintarExtras();
-    avisar(efExtra ? 'Extra actualizado' : 'Extra creado');
+    avisar(efExtra ? 'Extra actualizado' : `Extra creado en ${efSel.size} platillo${efSel.size === 1 ? '' : 's'}`);
     return true;
   } catch (err) {
     $('ef-error').textContent = err.message;
@@ -2511,7 +2514,8 @@ $('form-extra').addEventListener('submit', async (ev) => {
 });
 $('ef-otro').addEventListener('click', async () => {
   const grupo = $('ef-grupo').value === '__nueva' ? $('ef-grupo-nuevo').value.trim() : $('ef-grupo').value;
-  if (await guardarFormExtra()) { abrirFormExtra(null); pintarOpcionesGrupo(grupo); }   // la misma sección se conserva para el siguiente
+  const sel = new Set(efSel);
+  if (await guardarFormExtra()) { abrirFormExtra(null); pintarOpcionesGrupo(grupo); efSel = sel; efDonde(); }   // la misma sección se conserva para el siguiente
 });
 
 iniciar();
