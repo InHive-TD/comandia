@@ -73,7 +73,9 @@ async function entrar(usuario) {
   esGerente = usuario.rol === 'gerente';
   pintarUsuario(usuario);
   for (const id of ['btn-categorias', 'btn-extras', 'btn-apariencia']) { const b = $(id); if (b) b.hidden = esGerente; }
-  $('btn-sucursales').textContent = esGerente ? 'Mi sucursal y mesas' : 'Sucursales y mesas';
+  $('btn-sucursales').textContent = esGerente ? 'Mi sucursal' : 'Sucursales';
+  document.querySelector('.menu-desp[data-grupo="sucursales"] .nav-sum').textContent = esGerente ? 'Mi sucursal y mesas' : 'Sucursales y mesas';
+  $('btn-sucursales').dataset.titulo = esGerente ? 'Mi sucursal y mesas' : 'Sucursales y mesas';
   mostrar('vista-panel');
   await cargarCatalogo();
   // Entra a la sección de la dirección (#usuarios…) si es válida y permitida; si no, al Inicio (reportes)

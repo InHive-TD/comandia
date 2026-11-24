@@ -11,14 +11,14 @@
   <meta name="theme-color" content="#0a6b4e">
   <meta name="mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-capable" content="yes">
-  <script src="../js/pwa.js?v=1795549194" defer></script>
+  <script src="../js/pwa.js?v=1795549400" defer></script>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Outfit:wght@600;700;800&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="../css/estilos.css?v=1795549194">
-  <link rel="stylesheet" href="../css/plano.css?v=1795549194">
-  <link rel="stylesheet" href="../css/admin.css?v=1795549194">
-  <link rel="stylesheet" href="../css/shell.css?v=1795549194">
+  <link rel="stylesheet" href="../css/estilos.css?v=1795549400">
+  <link rel="stylesheet" href="../css/plano.css?v=1795549400">
+  <link rel="stylesheet" href="../css/admin.css?v=1795549400">
+  <link rel="stylesheet" href="../css/shell.css?v=1795549400">
   <link rel="stylesheet" href="../api/tema.php">
 </head>
 <body>
@@ -87,7 +87,6 @@
           <button class="nav-sum" type="button" aria-expanded="false">Pedidos</button>
           <div class="menu-desp-items">
             <button id="btn-toma-pedidos" data-titulo="Ajustes de pedidos" class="btn nav-ico i-pedidos" type="button">Ajustes</button>
-            <button id="btn-plano" data-titulo="Plano de mesas" class="btn nav-ico i-plano" type="button">Plano de mesas</button>
           </div>
         </div>
         <div class="menu-desp" data-grupo="caja">
@@ -104,7 +103,13 @@
           </div>
         </div>
         <p class="menu-sub">Negocio</p>
-        <button id="btn-sucursales" class="btn nav-ico i-sucursales" type="button">Sucursales y mesas</button>
+        <div class="menu-desp" data-grupo="sucursales">
+          <button class="nav-sum" type="button" aria-expanded="false">Sucursales y mesas</button>
+          <div class="menu-desp-items">
+            <button id="btn-sucursales" data-titulo="Sucursales y mesas" class="btn nav-ico i-sucursales" type="button">Sucursales</button>
+            <button id="btn-plano" data-titulo="Plano de mesas" class="btn nav-ico i-plano" type="button">Plano de mesas</button>
+          </div>
+        </div>
         <button id="btn-usuarios" class="btn nav-ico i-usuarios" type="button">Usuarios</button>
         <button id="btn-apariencia" class="btn nav-ico i-apariencia" type="button">Apariencia</button>
       </div>
@@ -844,9 +849,10 @@
 
   <div id="toast" class="toast" role="status" hidden></div>
 
-  <script src="../js/comun.js?v=1795549194"></script>
-  <script src="../js/shell.js?v=1795549194"></script>
+  <script src="../js/comun.js?v=1795549400"></script>
+  <script src="../js/selectorMesa.js?v=1795549400"></script>
+  <script src="../js/shell.js?v=1795549400"></script>
   <script src="../js/vendor/qrcode.js"></script>
-  <script src="../js/admin.js?v=1795549194"></script>
+  <script src="../js/admin.js?v=1795549400"></script>
 </body>
 </html>
