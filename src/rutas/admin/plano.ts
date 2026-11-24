@@ -134,6 +134,34 @@ export async function rutasAdminPlano(app: FastifyInstance): Promise<void> {
           });
           return estado(sid);
         }
+        case 'ejemplo': {
+          // Plano de muestra para probar: «Piso 1» con 10 mesas (4 redondas, 2 largas, 4 cuadradas). Reusa mesas que ya se llamen igual.
+          const sid = await sucursalPropia(entero(d['sucursal_id']));
+          const diseno: [string, number, number, string][] = [
+            ['1', 18, 22, 'redonda'], ['2', 40, 22, 'redonda'], ['3', 62, 22, 'redonda'], ['4', 84, 22, 'redonda'],
+            ['5', 28, 52, 'larga'], ['6', 72, 52, 'larga'],
+            ['7', 14, 80, 'cuadrada'], ['8', 38, 80, 'cuadrada'], ['9', 62, 80, 'cuadrada'], ['10', 86, 80, 'cuadrada'],
+          ];
+          await transaccion(async (t) => {
+            const z0 = (await t.filas('SELECT id FROM zonas WHERE sucursal_id = ? AND nombre = ?', [sid, 'Piso 1']))[0];
+            let zid: number;
+            if (z0) zid = Number(z0['id']);
+            else {
+              const sig = (await t.filas('SELECT COALESCE(MAX(orden), 0) + 1 AS n FROM zonas WHERE sucursal_id = ?', [sid]))[0];
+              zid = (await t.ejecutar('INSERT INTO zonas (negocio_id, sucursal_id, nombre, orden) VALUES (?, ?, ?, ?)', [nid, sid, 'Piso 1', Number(sig?.['n'])])).insertId;
+            }
+            for (const [nombre, x, y, forma] of diseno) {
+              const m = (await t.filas('SELECT id FROM mesas WHERE sucursal_id = ? AND nombre = ?', [sid, nombre]))[0];
+              if (m) await t.ejecutar('UPDATE mesas SET activa = 1, zona_id = ?, pos_x = ?, pos_y = ?, forma = ? WHERE id = ?', [zid, x, y, forma, Number(m['id'])]);
+              else {
+                const sig = (await t.filas('SELECT COALESCE(MAX(orden), 0) + 1 AS n FROM mesas WHERE sucursal_id = ?', [sid]))[0];
+                await t.ejecutar('INSERT INTO mesas (negocio_id, sucursal_id, nombre, orden, zona_id, pos_x, pos_y, forma) VALUES (?, ?, ?, ?, ?, ?, ?, ?)', [nid, sid, nombre, Number(sig?.['n']), zid, x, y, forma]);
+              }
+            }
+          });
+          await guardarAjuste(`plano_mesas@${sid}`, '1');
+          return estado(sid);
+        }
         default:
           throw fallo('Acción no reconocida.');
       }

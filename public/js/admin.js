@@ -2633,6 +2633,11 @@ function plPintar() {
   const nueva = el('button', 'btn', '＋ Zona'); nueva.type = 'button';
   nueva.addEventListener('click', plNuevaZona);
   tabs.append(nueva);
+  if (pl.zonas.length === 0) {
+    const ej = el('button', 'btn', '✨ Cargar plano de ejemplo'); ej.type = 'button';
+    ej.addEventListener('click', plEjemplo);
+    tabs.append(ej);
+  }
   $('pl-zona-acc').hidden = plZona === null;
 
   // Lienzo
@@ -2708,6 +2713,11 @@ function plToken(m) {
 
 async function plConfirmarDescartar() {
   return !plSucio || (await confirmar('Tienes cambios sin guardar en el plano. Si sigues, se pierden.', { si: 'Descartar cambios', peligro: true }));
+}
+async function plEjemplo() {
+  if (!(await confirmar('Esto crea la zona «Piso 1» con 10 mesas de muestra (1 al 10) y activa el plano en esta sucursal. Después puedes moverlas, renombrarlas o quitarlas.', { si: 'Crear ejemplo' }))) return;
+  try { plAplicar(await enviarJson(API + 'admin/plano.php', { accion: 'ejemplo', sucursal_id: pl.sucursal }), false); avisar('Plano de ejemplo creado'); }
+  catch (err) { $('pl-error').textContent = err.message; }
 }
 async function plNuevaZona() {
   const nombre = await pedirTexto('Nombre de la nueva zona (ej. Piso 1, Patio, Comedor principal):', { si: 'Crear zona' });
