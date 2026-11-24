@@ -72,7 +72,7 @@ async function entrar(usuario) {
   }
   esGerente = usuario.rol === 'gerente';
   pintarUsuario(usuario);
-  for (const id of ['btn-categorias', 'btn-extras', 'btn-apariencia', 'btn-carriles']) { const b = $(id); if (b) b.hidden = esGerente; }
+  for (const id of ['btn-categorias', 'btn-extras', 'btn-apariencia']) { const b = $(id); if (b) b.hidden = esGerente; }
   $('btn-sucursales').textContent = esGerente ? 'Mi sucursal y mesas' : 'Sucursales y mesas';
   mostrar('vista-panel');
   await cargarCatalogo();
@@ -1720,9 +1720,14 @@ function crCargarAmbito() {
 }
 
 function crPintar() {
-  const hereda = $('cr-heredar').checked;
-  $('cr-heredado').hidden = !hereda || $('cr-ambito').value === 'general';
+  const editar = crEstado.puede_editar;
+  const hereda = !editar || $('cr-heredar').checked;     // el gerente solo ve las definiciones; el dueño edita si la sucursal no hereda
+  const suc = crEstado.sucursales.find((s) => String(s.id) === $('cr-ambito').value);
+  $('cr-heredado').hidden = !editar || !$('cr-heredar').checked || $('cr-ambito').value === 'general';
   $('cr-acciones').hidden = hereda;
+  $('cr-guardar').hidden = !editar;
+  $('cr-heredar-fila').hidden = !editar;
+  $('cr-ambito').closest('label').hidden = !editar;
   const caja = $('cr-lista');
   caja.replaceChildren();
   crLista.forEach((c, n) => {
@@ -1737,6 +1742,21 @@ function crPintar() {
     color.value = c.color;
     color.addEventListener('change', () => { c.color = color.value; });
     cab.append(el('span', 'cr-num', String(n + 1)), nombre, color);
+    if (suc) {   // en una sucursal: interruptor para mostrar u ocultar este carril solo ahí (se guarda al momento)
+      const interr = el('label', 'cr-activo');
+      const sw = document.createElement('input'); sw.type = 'checkbox'; sw.checked = !suc.apagados.includes(c.id);
+      sw.addEventListener('change', async () => {
+        $('cr-error').textContent = '';
+        try {
+          const r = await enviarJson(API + 'admin/prioridades.php', { accion: 'carril_activo', sucursal_id: suc.id, carril_id: c.id, activo: sw.checked });
+          const nuevo = r.carriles.sucursales.find((x) => x.id === suc.id);
+          if (nuevo) suc.apagados = nuevo.apagados;
+          avisar(sw.checked ? 'Carril activado en esta sucursal' : 'Carril desactivado en esta sucursal');
+        } catch (err) { sw.checked = !sw.checked; $('cr-error').textContent = err.message; }
+      });
+      interr.append(sw, el('span', '', 'Activo'));
+      cab.append(interr);
+    }
     if (!hereda) {
       const mover = (d) => { const j = n + d; if (j < 0 || j >= crLista.length) return; [crLista[n], crLista[j]] = [crLista[j], crLista[n]]; crPintar(); };
       const sube = el('button', 'btn chico', '↑'); sube.type = 'button'; sube.title = 'Subir'; sube.disabled = n === 0; sube.addEventListener('click', () => mover(-1));
@@ -1770,9 +1790,10 @@ function crPintar() {
 async function abrirCarriles() {
   $('cr-error').textContent = '';
   try { crEstado = (await pedir(API + 'admin/prioridades.php')).carriles; } catch (err) { avisar(err.message, true); return; }
-  if (!crEstado) { avisar('Solo el dueño de la empresa puede cambiar los carriles.', true); return; }
+  if (!crEstado) { avisar('No se pudieron cargar los carriles.', true); return; }
   const sel = $('cr-ambito');
-  sel.replaceChildren(new Option('Toda la empresa', 'general'));
+  sel.replaceChildren();
+  if (crEstado.puede_editar) sel.append(new Option('Toda la empresa', 'general'));
   for (const s of crEstado.sucursales) sel.append(new Option('Sucursal · ' + s.nombre, String(s.id)));
   crCargarAmbito();
   abrirPagina(dlgCarriles, 'btn-carriles');

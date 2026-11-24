@@ -89,28 +89,44 @@ function carrilesGuardados(valor: unknown): Carril[] | null {
   } catch { return null; }
 }
 
-/** Carriles que usa la sucursal: los suyos, o los de la empresa, o los de siempre (Comer aquí / Para llevar). */
-export async function carrilesEn(nid: number, sid: number): Promise<Carril[]> {
-  const r = await filas("SELECT clave, valor FROM ajustes WHERE negocio_id = ? AND clave IN ('cocina_carriles', ?)", [nid, `cocina_carriles@${sid}`]);
-  const propio = r.find((f) => f['clave'] === `cocina_carriles@${sid}`);
-  const general = r.find((f) => f['clave'] === 'cocina_carriles');
-  return (propio && carrilesGuardados(propio['valor'])) || (general && carrilesGuardados(general['valor'])) || CARRILES_DEFECTO;
+/** Ids de carriles que la sucursal tiene apagados (cocina_carriles_off@ID). */
+function carrilesApagados(valor: unknown): string[] {
+  try { const l = JSON.parse(String(valor)); return Array.isArray(l) ? l.map(String).slice(0, MAX_CARRILES * 2) : []; } catch { return []; }
 }
 
-/** Estado para el panel del dueño: lo de la empresa, lo de cada sucursal y las listas para elegir reglas. */
-async function estadoCarriles(nid: number) {
+/** Carriles configurados para la sucursal (los suyos, o los de la empresa, o los de siempre), sin quitar los apagados. */
+async function carrilesConfigurados(nid: number, sid: number): Promise<{ lista: Carril[]; apagados: string[] }> {
+  const r = await filas("SELECT clave, valor FROM ajustes WHERE negocio_id = ? AND clave IN ('cocina_carriles', ?, ?)", [nid, `cocina_carriles@${sid}`, `cocina_carriles_off@${sid}`]);
+  const propio = r.find((f) => f['clave'] === `cocina_carriles@${sid}`);
+  const general = r.find((f) => f['clave'] === 'cocina_carriles');
+  const off = r.find((f) => f['clave'] === `cocina_carriles_off@${sid}`);
+  const lista = (propio && carrilesGuardados(propio['valor'])) || (general && carrilesGuardados(general['valor'])) || CARRILES_DEFECTO;
+  return { lista, apagados: off ? carrilesApagados(off['valor']) : [] };
+}
+
+/** Carriles que se muestran en la pantalla de Cocina de la sucursal: los configurados menos los que apagó (siempre queda al menos uno). */
+export async function carrilesEn(nid: number, sid: number): Promise<Carril[]> {
+  const { lista, apagados } = await carrilesConfigurados(nid, sid);
+  const activos = lista.filter((c) => !apagados.includes(c.id));
+  return activos.length ? activos : lista;
+}
+
+/** Estado para el panel: el dueño ve y edita todo; el gerente solo ve (y enciende/apaga) los de su sucursal. */
+async function estadoCarriles(nid: number, alcance: number | null) {
   const ajustes = await filas("SELECT clave, valor FROM ajustes WHERE negocio_id = ? AND clave LIKE 'cocina_carriles%'", [nid]);
   const g = ajustes.find((f) => f['clave'] === 'cocina_carriles');
   const general = (g && carrilesGuardados(g['valor'])) || null;
-  const sucs = await filas('SELECT id, nombre FROM sucursales WHERE negocio_id = ? AND activa = 1 ORDER BY orden, id', [nid]);
+  const sucs = await filas(`SELECT id, nombre FROM sucursales WHERE negocio_id = ? AND activa = 1${alcance !== null ? ` AND id = ${Math.trunc(alcance)}` : ''} ORDER BY orden, id`, [nid]);
   const sucursales = sucs.map((s) => {
-    const p = ajustes.find((f) => f['clave'] === `cocina_carriles@${Number(s['id'])}`);
+    const sid = Number(s['id']);
+    const p = ajustes.find((f) => f['clave'] === `cocina_carriles@${sid}`);
+    const off = ajustes.find((f) => f['clave'] === `cocina_carriles_off@${sid}`);
     const propios = (p && carrilesGuardados(p['valor'])) || null;
-    return { id: Number(s['id']), nombre: s['nombre'], propio: propios !== null, carriles: propios ?? general ?? CARRILES_DEFECTO };
+    return { id: sid, nombre: s['nombre'], propio: propios !== null, carriles: propios ?? general ?? CARRILES_DEFECTO, apagados: off ? carrilesApagados(off['valor']) : [] };
   });
   const estaciones = (await filas('SELECT id, nombre FROM estaciones WHERE negocio_id = ? ORDER BY orden, id', [nid])).map((e) => ({ id: Number(e['id']), nombre: e['nombre'] }));
   const categorias = (await filas('SELECT nombre FROM categorias WHERE negocio_id = ? ORDER BY orden, id', [nid])).map((k) => String(k['nombre']));
-  return { general: general ?? CARRILES_DEFECTO, general_propio: general !== null, defecto: CARRILES_DEFECTO, sucursales, estaciones, categorias };
+  return { puede_editar: alcance === null, general: general ?? CARRILES_DEFECTO, general_propio: general !== null, defecto: CARRILES_DEFECTO, sucursales, estaciones, categorias };
 }
 
 /** Estado para el panel: interruptor general de Cocina horizontal y el efectivo de cada sucursal (el gerente solo ve la suya). */
@@ -158,13 +174,13 @@ export async function rutasPrioridades(app: FastifyInstance): Promise<void> {
         ).map((f) => ({ id: Number(f['id']), nombre: f['nombre'], categoria_id: Number(f['categoria_id']), categoria: f['categoria'], prioridades: niveles.get(Number(f['id'])) ?? {} }));
         const general = alcance === null;
         return { ok: true, estaciones, productos, modalidad: await bonosModalidad(c, general), min_preparacion: await minutosPreparacion(c, general), lote: await categoriasLote(c, general), lote_productos: await productosLote(c, general), general,
-          codigo_rapido: await estadoCodigoRapido(c.nid, alcance), cocina_horizontal: await estadoCocinaHorizontal(c.nid, alcance), pedir_por_mesa: await estadoPedirPorMesa(c.nid, alcance), carriles: alcance === null ? await estadoCarriles(c.nid) : null };
+          codigo_rapido: await estadoCodigoRapido(c.nid, alcance), cocina_horizontal: await estadoCocinaHorizontal(c.nid, alcance), pedir_por_mesa: await estadoPedirPorMesa(c.nid, alcance), carriles: await estadoCarriles(c.nid, alcance) };
       }
 
       exigirMetodo(req, 'POST');
       const datos = cuerpoJson(req);
       const accion = String(datos['accion'] ?? '');
-      if (alcance !== null && !['lote', 'modalidad', 'codigo_rapido', 'cocina_horizontal', 'pedir_por_mesa'].includes(accion)) throw new ErrorHttp(403, 'validacion', 'Solo el dueño de la empresa puede cambiar esto.');
+      if (alcance !== null && !['lote', 'modalidad', 'codigo_rapido', 'cocina_horizontal', 'pedir_por_mesa', 'carril_activo'].includes(accion)) throw new ErrorHttp(403, 'validacion', 'Solo el dueño de la empresa puede cambiar esto.');
       const guardar = (clave: string, valor: string) =>
         c.ejecutar('INSERT INTO ajustes (negocio_id, clave, valor) VALUES (?, ?, ?) ON DUPLICATE KEY UPDATE valor = VALUES(valor)', [c.nid, clave, valor]);
 
@@ -185,6 +201,20 @@ export async function rutasPrioridades(app: FastifyInstance): Promise<void> {
         return { ok: true, codigo_rapido: await estadoCodigoRapido(c.nid, alcance) };
       }
 
+      // Encender / apagar un carril en UNA sucursal: el dueño en cualquiera y el gerente en la suya. No cambia la definición del carril.
+      if (accion === 'carril_activo') {
+        const sid = alcance ?? entero(datos['sucursal_id']);
+        if ((await c.filas('SELECT id FROM sucursales WHERE id = ? AND negocio_id = ?', [sid, c.nid])).length === 0) throw new ErrorHttp(404, 'validacion', 'Esa sucursal no existe.');
+        const { lista, apagados } = await carrilesConfigurados(c.nid, sid);
+        const id = String(datos['carril_id'] ?? '');
+        if (!lista.some((k) => k.id === id)) throw new ErrorHttp(400, 'validacion', 'Ese carril aún no está guardado. Guarda los carriles primero.');
+        const nuevo = new Set(apagados.filter((x) => lista.some((k) => k.id === x)));
+        if (noVacio(datos['activo'])) nuevo.delete(id); else nuevo.add(id);
+        if (lista.every((k) => nuevo.has(k.id))) throw new ErrorHttp(400, 'validacion', 'Debe quedar al menos un carril activo.');
+        await guardar(`cocina_carriles_off@${sid}`, JSON.stringify([...nuevo]));
+        return { ok: true, carriles: await estadoCarriles(c.nid, alcance) };
+      }
+
       // Carriles de cocina: solo el dueño (el gerente no está en la lista de acciones permitidas de arriba).
       if (accion === 'carriles') {
         const clave = datos['ambito'] === 'general' ? 'cocina_carriles' : `cocina_carriles@${entero(datos['sucursal_id'])}`;
@@ -194,7 +224,7 @@ export async function rutasPrioridades(app: FastifyInstance): Promise<void> {
         }
         if (noVacio(datos['heredar'])) {   // sucursal: volver a usar los de la empresa · empresa: volver a los de siempre
           await c.ejecutar('DELETE FROM ajustes WHERE negocio_id = ? AND clave = ?', [c.nid, clave]);
-          return { ok: true, carriles: await estadoCarriles(c.nid) };
+          return { ok: true, carriles: await estadoCarriles(c.nid, alcance) };
         }
         const bruto = Array.isArray(datos['carriles']) ? (datos['carriles'] as Record<string, unknown>[]) : [];
         if (bruto.length < 1 || bruto.length > MAX_CARRILES) throw new ErrorHttp(400, 'validacion', `Crea entre 1 y ${MAX_CARRILES} carriles.`);
@@ -216,7 +246,7 @@ export async function rutasPrioridades(app: FastifyInstance): Promise<void> {
           };
         });
         await guardar(clave, JSON.stringify(lista));
-        return { ok: true, carriles: await estadoCarriles(c.nid) };
+        return { ok: true, carriles: await estadoCarriles(c.nid, alcance) };
       }
 
       if (accion === 'pedir_por_mesa') {
