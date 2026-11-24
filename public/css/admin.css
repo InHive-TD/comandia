@@ -810,3 +810,9 @@ body.en-panel .panel-lateral { min-height: 100vh; grid-template-columns: 240px m
 .menu-desp.tiene-activo > .nav-sum { color: #fff; }
 body.menu-compacto .nav-sum { display: none; }
 body.menu-compacto .menu-desp-items { display: block; padding-left: 0; }
+
+/* Menú de Ajustes más compacto: letra un poco más chica y menos espacio entre opciones */
+.menu-lateral .menu-ajustes ~ .menu-sub { font-size: .62rem; }
+.nav-sum { font-size: .84rem; min-height: 30px; padding: 4px 10px; }
+.menu-desp-items { padding-left: 8px; }
+.menu-desp-items .nav-ico { font-size: .82rem; min-height: 30px; padding: 3px 8px; gap: 8px; white-space: nowrap; }
