@@ -5,55 +5,72 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Comandia · Pedidos, cocina y caja para taquerías, fondas y restaurantes</title>
   <meta name="description" content="Comandia: menú con QR, pedidos en tiempo real, tablero de cocina y caja para taquerías, fondas y restaurantes con una o varias sucursales.">
-  <link rel="icon" type="image/png" href="img/favicon.png">
+  <meta name="theme-color" content="#0A6B4E">
+  <link rel="icon" type="image/svg+xml" href="img/favicon.svg">
+  <link rel="icon" type="image/png" sizes="64x64" href="img/favicon.png">
+  <link rel="apple-touch-icon" href="img/apple-touch-icon.png">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Outfit:wght@600;700;800&display=swap" rel="stylesheet">
   <style>
-    :root { --vino:#601020; --oro:#f8c000; --verde:#2f7d3a; --crema:#fff7e0; --texto:#2a1015; --azul:#3f8fcb; }
+    :root { --esmeralda:#0A6B4E; --mandarina:#FF7A30; --tinta:#10241C; --fondo:#F3F7F4; --menta:#DDEFE6; --borde:#E1E8E3; --texto:#2B4036; --suave:#4E6358; }
     * { box-sizing: border-box; }
     html { scroll-behavior: smooth; }
-    body { margin:0; font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; color:var(--texto); background:var(--crema); line-height:1.55; }
+    body { margin:0; font-family: Inter, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; color:var(--texto); background:var(--fondo); line-height:1.6; }
+    h1,h2,h3,.marca { font-family: Outfit, Inter, system-ui, sans-serif; color:var(--tinta); }
     a { color:inherit; }
     .ancho { max-width:1080px; margin:0 auto; padding:0 20px; }
-    header.top { background:var(--vino); color:#fff; border-bottom:4px solid var(--oro); }
-    header.top .ancho { display:flex; align-items:center; justify-content:space-between; gap:12px; padding-top:12px; padding-bottom:12px; }
-    .logo { display:flex; align-items:center; gap:10px; font-weight:800; font-size:1.35rem; letter-spacing:.3px; text-decoration:none; }
-    .logo img { width:40px; height:40px; border-radius:10px; }
-    nav a { color:#fff; text-decoration:none; margin-left:18px; font-size:.95rem; opacity:.92; }
-    nav a:hover { opacity:1; text-decoration:underline; }
-    .btn { display:inline-block; background:var(--verde); color:#fff; text-decoration:none; font-weight:700; padding:13px 24px; border-radius:10px; border:0; font-size:1rem; }
-    .btn:hover { filter:brightness(1.08); }
-    .btn.claro { background:#fff; color:var(--vino); border:2px solid var(--vino); }
-    .hero { padding:64px 0 56px; text-align:center; background:linear-gradient(180deg,#fff 0%,var(--crema) 100%); }
-    .hero h1 { font-size:clamp(2rem,5vw,3.2rem); line-height:1.12; margin:0 0 16px; color:var(--vino); }
-    .hero p.sub { font-size:1.2rem; max-width:680px; margin:0 auto 28px; }
+    header.top { background:var(--esmeralda); color:#fff; }
+    header.top .ancho { display:flex; align-items:center; justify-content:space-between; gap:12px; padding-top:14px; padding-bottom:14px; }
+    .logo { display:flex; align-items:center; gap:10px; text-decoration:none; }
+    .logo .simbolo { width:40px; height:40px; }
+    .marca { font-weight:800; font-size:1.7rem; letter-spacing:-.04em; line-height:1; color:#fff; }
+    .marca b { color:var(--mandarina); font-weight:800; }
+    nav a { color:#fff; text-decoration:none; margin-left:22px; font-size:.95rem; font-weight:500; opacity:.92; }
+    nav a:hover { opacity:1; text-decoration:underline; text-underline-offset:4px; }
+    .btn { display:inline-block; background:var(--mandarina); color:var(--tinta); text-decoration:none; font-weight:600; padding:14px 26px; border-radius:12px; border:2px solid var(--mandarina); font-size:1rem; transition:filter .15s; }
+    .btn:hover { filter:brightness(1.06); }
+    .btn.claro { background:transparent; color:var(--esmeralda); border-color:var(--esmeralda); }
+    .btn.claro:hover { background:var(--menta); filter:none; }
+    .hero { padding:72px 0 64px; text-align:center; }
+    .hero .simbolo { width:84px; height:84px; margin-bottom:20px; }
+    .hero h1 { font-size:clamp(2.1rem,5.2vw,3.4rem); font-weight:800; letter-spacing:-.03em; line-height:1.08; margin:0 0 18px; }
+    .hero h1 em { font-style:normal; color:var(--esmeralda); }
+    .hero p.sub { font-size:1.15rem; max-width:660px; margin:0 auto 30px; color:var(--texto); }
     .hero .acciones { display:flex; gap:12px; justify-content:center; flex-wrap:wrap; }
-    section { padding:56px 0; }
-    section h2 { font-size:clamp(1.5rem,3.5vw,2.1rem); color:var(--vino); margin:0 0 8px; text-align:center; }
-    section p.lead { text-align:center; max-width:640px; margin:0 auto 32px; opacity:.85; }
-    .rejilla { display:grid; grid-template-columns:repeat(auto-fit,minmax(240px,1fr)); gap:18px; }
-    .tarjeta { background:#fff; border-radius:14px; padding:22px; box-shadow:0 1px 4px rgba(96,16,32,.12); border-top:4px solid var(--oro); }
-    .tarjeta .ico { font-size:2rem; }
-    .tarjeta h3 { margin:8px 0 6px; font-size:1.1rem; color:var(--vino); }
+    section { padding:60px 0; }
+    section h2 { font-size:clamp(1.6rem,3.6vw,2.2rem); font-weight:700; letter-spacing:-.02em; margin:0 0 8px; text-align:center; }
+    section p.lead { text-align:center; max-width:640px; margin:0 auto 34px; color:var(--suave); }
+    .rejilla { display:grid; grid-template-columns:repeat(auto-fit,minmax(250px,1fr)); gap:18px; }
+    .tarjeta { background:#fff; border:1px solid var(--borde); border-radius:16px; padding:24px; }
+    .tarjeta .ico { width:44px; height:44px; padding:10px; background:var(--menta); border-radius:12px; }
+    .tarjeta h3 { margin:14px 0 6px; font-size:1.15rem; font-weight:700; }
     .tarjeta p { margin:0; font-size:.97rem; }
-    .pasos { counter-reset:p; display:grid; grid-template-columns:repeat(auto-fit,minmax(200px,1fr)); gap:18px; }
-    .paso { background:#fff; border-radius:14px; padding:22px 18px 18px; position:relative; }
-    .paso::before { counter-increment:p; content:counter(p); position:absolute; top:-14px; left:18px; background:var(--vino); color:var(--oro); font-weight:800; width:32px; height:32px; border-radius:50%; display:grid; place-items:center; }
-    .paso h3 { margin:6px 0 4px; font-size:1.05rem; }
+    #como { background:var(--menta); }
+    .pasos { counter-reset:p; display:grid; grid-template-columns:repeat(auto-fit,minmax(210px,1fr)); gap:20px; }
+    .paso { background:#fff; border-radius:16px; padding:28px 20px 20px; position:relative; }
+    .paso::before { counter-increment:p; content:counter(p); position:absolute; top:-16px; left:20px; background:var(--mandarina); color:var(--tinta); font-family:Outfit,sans-serif; font-weight:800; width:34px; height:34px; border-radius:50%; display:grid; place-items:center; }
+    .paso h3 { margin:0 0 4px; font-size:1.08rem; }
     .paso p { margin:0; font-size:.95rem; }
-    .banda { background:var(--vino); color:#fff; }
-    .banda h2 { color:var(--oro); }
-    .banda p.lead { color:#fff; }
-    .ejemplo { background:#fff; color:var(--texto); border-radius:16px; padding:28px; text-align:center; max-width:640px; margin:0 auto; }
-    .ejemplo h3 { margin:0 0 6px; color:var(--vino); font-size:1.3rem; }
-    .precios { background:#fff; border:2px dashed var(--oro); border-radius:16px; padding:28px; text-align:center; max-width:680px; margin:0 auto; }
-    .precios strong { color:var(--vino); }
-    footer { background:#2a1015; color:#e8d9c0; padding:28px 0; font-size:.9rem; text-align:center; }
-    @media (max-width:640px) { nav a { margin-left:10px; font-size:.85rem; } .hero { padding:44px 0 40px; } }
+    .banda { background:var(--esmeralda); }
+    .banda h2 { color:#fff; }
+    .banda p.lead { color:#D6EBE1; }
+    .ejemplo { background:#fff; border-radius:18px; padding:30px; text-align:center; max-width:640px; margin:0 auto; }
+    .ejemplo h3 { margin:0 0 6px; font-size:1.35rem; }
+    .ejemplo p { margin:6px 0 14px; }
+    .precios { background:#fff; border:2px dashed #C9D6CE; border-radius:18px; padding:30px; text-align:center; max-width:680px; margin:0 auto; }
+    .precios strong { color:var(--esmeralda); }
+    footer { background:var(--tinta); color:#C9D6CE; padding:32px 0; font-size:.9rem; text-align:center; }
+    footer .logo { justify-content:center; margin-bottom:8px; }
+    footer .simbolo { width:30px; height:30px; }
+    footer .marca { font-size:1.3rem; }
+    @media (max-width:640px) { nav a { margin-left:12px; font-size:.85rem; } .hero { padding:48px 0 44px; } .marca { font-size:1.45rem; } }
   </style>
 </head>
 <body>
   <header class="top">
     <div class="ancho">
-      <a class="logo" href="/"><img src="img/comandia.png" alt=""><span>Comandia</span></a>
+      <a class="logo" href="/" aria-label="Comandia"><svg class="simbolo" viewBox="0 0 120 120" aria-hidden="true"><path d="M18 80A42 42 0 0 1 102 80Z" fill="#FF7A30"/><rect x="8" y="84" width="104" height="12" rx="6" fill="#F3F7F4"/><circle cx="60" cy="30" r="8" fill="#F3F7F4"/></svg><span class="marca">coman<b>dia</b></span></a>
       <nav>
         <a href="#funciones">Funciones</a>
         <a href="#como">Cómo funciona</a>
@@ -64,7 +81,8 @@
 
   <div class="hero">
     <div class="ancho">
-      <h1>Los pedidos de tu negocio, en orden</h1>
+      <svg class="simbolo" viewBox="0 0 120 120" aria-hidden="true"><path d="M18 80A42 42 0 0 1 102 80Z" fill="#FF7A30"/><rect x="8" y="84" width="104" height="12" rx="6" fill="#0A6B4E"/><circle cx="60" cy="30" r="8" fill="#0A6B4E"/></svg>
+      <h1>Los pedidos de tu negocio, <em>en orden</em></h1>
       <p class="sub">Tus clientes piden desde su celular con un código QR. Tu cocina ve cada pedido al instante y tu caja cobra sin enredos. Hecho para taquerías, fondas y restaurantes.</p>
       <div class="acciones">
         <a class="btn" href="/lavale/">Ver un negocio real usando Comandia</a>
@@ -73,22 +91,22 @@
     </div>
   </div>
 
-  <section id="funciones">
+  <section id="funciones" style="background:#fff">
     <div class="ancho">
       <h2>Todo lo que necesitas para recibir pedidos</h2>
       <p class="lead">Un solo sistema para el cliente, la cocina y la caja.</p>
       <div class="rejilla">
-        <div class="tarjeta"><div class="ico">📱</div><h3>Menú con QR</h3><p>El cliente escanea, ve tu menú con fotos, elige sus platillos, sus extras y deja su nombre y teléfono. No necesita instalar nada.</p></div>
-        <div class="tarjeta"><div class="ico">🔥</div><h3>Tablero de cocina</h3><p>Los pedidos llegan a la cocina con su hora y el tiempo que llevan esperando, para atender primero al más atrasado.</p></div>
-        <div class="tarjeta"><div class="ico">💵</div><h3>Caja y cobro</h3><p>Entrega y cobra en el mismo lugar. Pagos en efectivo, tarjeta o transferencia, divididos en partes y con propina aparte.</p></div>
-        <div class="tarjeta"><div class="ico">⏱️</div><h3>Tiempos estimados</h3><p>El cliente ve cuánto tarda su pedido y sigue su avance hasta que está listo, sin preguntar en el mostrador.</p></div>
-        <div class="tarjeta"><div class="ico">🏪</div><h3>Una o varias sucursales</h3><p>Cada sucursal tiene su propio QR, su cocina y su caja. Tu menú se administra desde un solo lugar.</p></div>
-        <div class="tarjeta"><div class="ico">🎨</div><h3>Con tu marca</h3><p>Tu logo y tus colores en todas las pantallas. Tu menú, tus fotos y tus precios son solo tuyos.</p></div>
+        <div class="tarjeta"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="#0A6B4E" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><path d="M14 14h3v3h-3zM20 14v.01M14 20h3M20 17v4"/></svg><h3>Menú con QR</h3><p>El cliente escanea, ve tu menú con fotos, elige sus platillos, sus extras y deja su nombre y teléfono. No necesita instalar nada.</p></div>
+        <div class="tarjeta"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="#0A6B4E" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 13h12v6a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2zM6 13a4 4 0 0 1 1-7.7A5 5 0 0 1 17 6a4 4 0 0 1 1 7"/></svg><h3>Tablero de cocina</h3><p>Los pedidos llegan a la cocina con su hora y el tiempo que llevan esperando, para atender primero al más atrasado.</p></div>
+        <div class="tarjeta"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="#0A6B4E" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="2" y="6" width="20" height="12" rx="2"/><circle cx="12" cy="12" r="2.5"/><path d="M6 12h.01M18 12h.01"/></svg><h3>Caja y cobro</h3><p>Entrega y cobra en el mismo lugar. Pagos en efectivo, tarjeta o transferencia, divididos en partes y con propina aparte.</p></div>
+        <div class="tarjeta"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="#0A6B4E" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="13" r="8"/><path d="M12 9v4l2.5 2M9 2h6"/></svg><h3>Tiempos estimados</h3><p>El cliente ve cuánto tarda su pedido y sigue su avance hasta que está listo, sin preguntar en el mostrador.</p></div>
+        <div class="tarjeta"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="#0A6B4E" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 10l1.5-6h15L21 10M3 10v10h18V10M3 10c0 1.7 1.3 3 3 3s3-1.3 3-3c0 1.7 1.3 3 3 3s3-1.3 3-3c0 1.7 1.3 3 3 3s3-1.3 3-3M10 20v-4h4v4"/></svg><h3>Una o varias sucursales</h3><p>Cada sucursal tiene su propio QR, su cocina y su caja. Tu menú se administra desde un solo lugar.</p></div>
+        <div class="tarjeta"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="#0A6B4E" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3a9 9 0 1 0 0 18c1.1 0 2-.9 2-2 0-.6-.2-1-.6-1.4-.3-.4-.5-.8-.5-1.3 0-1.1.9-2 2-2H17a4 4 0 0 0 4-4c0-4.4-4-7.3-9-7.3z"/><circle cx="7.5" cy="11" r="1"/><circle cx="10.5" cy="7" r="1"/><circle cx="15.5" cy="7.5" r="1"/></svg><h3>Con tu marca</h3><p>Tu logo y tus colores en todas las pantallas. Tu menú, tus fotos y tus precios son solo tuyos.</p></div>
       </div>
     </div>
   </section>
 
-  <section id="como" style="background:#fff3cc">
+  <section id="como">
     <div class="ancho">
       <h2>Así funciona</h2>
       <p class="lead">De la mesa a la cocina a la caja, en cuatro pasos.</p>
@@ -108,7 +126,7 @@
       <div class="ejemplo">
         <h3>Los Tacos D'La Vale</h3>
         <p>Entra a su pantalla de pedidos y mira cómo ve el menú un cliente.</p>
-        <p><a class="btn" href="/lavale/">Abrir el menú de ejemplo</a></p>
+        <a class="btn" href="/lavale/">Abrir el menú de ejemplo</a>
       </div>
     </div>
   </section>
@@ -125,7 +143,10 @@
   </section>
 
   <footer>
-    <div class="ancho">Comandia · Pedidos, cocina y caja para tu negocio</div>
+    <div class="ancho">
+      <div class="logo"><svg class="simbolo" viewBox="0 0 120 120" aria-hidden="true"><path d="M18 80A42 42 0 0 1 102 80Z" fill="#FF7A30"/><rect x="8" y="84" width="104" height="12" rx="6" fill="#F3F7F4"/><circle cx="60" cy="30" r="8" fill="#F3F7F4"/></svg><span class="marca">coman<b>dia</b></span></div>
+      Pedidos, cocina y caja para tu negocio
+    </div>
   </footer>
 </body>
 </html>
