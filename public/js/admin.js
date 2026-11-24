@@ -2592,6 +2592,7 @@ let plZona = null;             // id de la zona que se está viendo
 let plSel = null;              // id de la mesa seleccionada
 let plSucio = false;           // ¿hay posiciones sin guardar?
 let plPoli = new Map();        // forma de cada zona (id → [[x,y],…] o null = rectángulo), con lo que aún no se guarda
+let plAncho = new Map();       // ancho real (m) de cada zona, con lo que aún no se guarda
 let plForma = false;           // ¿se está dibujando la forma de la zona?
 let plPunto = null;            // punto del contorno elegido
 
@@ -2605,13 +2606,14 @@ async function plCargar(sid, conservar = false) {
 function plAplicar(r, conservar) {
   const locales = new Map(plMesas.map((m) => [m.id, m]));
   const mismaSucursal = pl && pl.sucursal === r.sucursal;
-  const previas = plPoli;
+  const previas = plPoli; const previasAncho = plAncho;
   pl = r;
   plPoli = new Map(r.zonas.map((z) => [z.id, conservar && mismaSucursal && plSucio && previas.has(z.id) ? previas.get(z.id) : z.poligono]));
+  plAncho = new Map(r.zonas.map((z) => [z.id, conservar && mismaSucursal && plSucio && previasAncho.has(z.id) ? previasAncho.get(z.id) : z.ancho_m]));
   plMesas = r.mesas.map((m) => {
     const l = conservar && mismaSucursal ? locales.get(m.id) : null;
     // lo que el usuario movió y aún no guardó se conserva, salvo que su zona ya no exista
-    return l && plSucio && (l.zona_id === null || r.zonas.some((z) => z.id === l.zona_id)) ? { ...m, zona_id: l.zona_id, x: l.x, y: l.y, forma: l.forma, escala: l.escala } : { ...m };
+    return l && plSucio && (l.zona_id === null || r.zonas.some((z) => z.id === l.zona_id)) ? { ...m, zona_id: l.zona_id, x: l.x, y: l.y, forma: l.forma, ancho_cm: l.ancho_cm, alto_cm: l.alto_cm } : { ...m };
   });
   if (!conservar || !mismaSucursal) plMarcarSucio(false);
   if (!r.zonas.some((z) => z.id === plZona)) plZona = r.zonas.length ? r.zonas[0].id : null;
@@ -2667,7 +2669,13 @@ function plPintar() {
   if (m) {
     $('pl-sel-nombre').textContent = 'Mesa ' + m.nombre;
     document.querySelectorAll('#pl-edicion [data-forma]').forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.forma === m.forma)));
+    const [w, h] = medidasMesa(m);
+    $('pl-ancho-et').textContent = m.forma === 'redonda' ? 'Diámetro (cm)' : m.forma === 'cuadrada' ? 'Lado (cm)' : 'Ancho (cm)';
+    $('pl-ancho').value = String(w);
+    $('pl-alto-fila').hidden = m.forma !== 'rectangular';
+    $('pl-alto').value = String(h);
   }
+  $('pl-zona-ancho').value = plZona === null ? '' : String(plAncho.get(plZona) || 10);
 
   // Mesas sin ubicar
   const sin = $('pl-sin');
@@ -2692,7 +2700,7 @@ function plPintar() {
 function plToken(m) {
   const b = el('button', 'plano-mesa editable ' + m.forma + (m.id === plSel ? ' sel' : '') + (m.activa ? '' : ' inactiva'), m.nombre);
   b.type = 'button';
-  b.style.left = m.x + '%'; b.style.top = m.y + '%'; b.style.setProperty('--e', String(m.escala || 1));
+  b.style.left = m.x + '%'; b.style.top = m.y + '%'; aplicarTamanoMesa(b, m, plAncho.get(plZona));
   if (plForma) { b.classList.add('fija'); return b; }
   let inicio = null;
   b.addEventListener('pointerdown', (ev) => {
@@ -2756,16 +2764,26 @@ $('pl-zona-eliminar').addEventListener('click', async () => {
 });
 document.querySelectorAll('#pl-edicion [data-forma]').forEach((b) => b.addEventListener('click', () => {
   const m = plMesas.find((x) => x.id === plSel);
-  if (m) { m.forma = b.dataset.forma; plMarcarSucio(); plPintar(); }
+  if (m) { m.forma = b.dataset.forma; if (m.forma === 'rectangular' && !m.alto_cm) m.alto_cm = 80; plMarcarSucio(); plPintar(); }
 }));
-const plCambiarTamano = (paso) => {
+const plMedida = (v) => Math.min(800, Math.max(30, Math.round(Number(v)) || 80));
+$('pl-ancho').addEventListener('change', () => {
   const m = plMesas.find((x) => x.id === plSel);
   if (!m) return;
-  m.escala = Math.min(2.5, Math.max(0.5, Math.round(((m.escala || 1) + paso) * 10) / 10));
+  m.ancho_cm = plMedida($('pl-ancho').value);
   plMarcarSucio(); plPintar();
-};
-$('pl-menos').addEventListener('click', () => plCambiarTamano(-0.2));
-$('pl-mas').addEventListener('click', () => plCambiarTamano(0.2));
+});
+$('pl-alto').addEventListener('change', () => {
+  const m = plMesas.find((x) => x.id === plSel);
+  if (!m) return;
+  m.alto_cm = plMedida($('pl-alto').value);
+  plMarcarSucio(); plPintar();
+});
+$('pl-zona-ancho').addEventListener('change', () => {
+  if (plZona === null) return;
+  plAncho.set(plZona, Math.min(100, Math.max(2, Math.round((Number($('pl-zona-ancho').value) || 10) * 10) / 10)));
+  plMarcarSucio(); plPintar();
+});
 $('pl-quitar').addEventListener('click', () => {
   const m = plMesas.find((x) => x.id === plSel);
   if (m) { m.zona_id = null; m.x = null; m.y = null; plSel = null; plMarcarSucio(); plPintar(); }
@@ -2785,7 +2803,7 @@ $('pl-nueva').addEventListener('submit', async (ev) => {
 $('pl-guardar').addEventListener('click', async () => {
   $('pl-error').textContent = '';
   try {
-    const r = await enviarJson(API + 'admin/plano.php', { accion: 'guardar', sucursal_id: pl.sucursal, mesas: plMesas.map((m) => ({ id: m.id, zona_id: m.zona_id, x: m.x, y: m.y, forma: m.forma, escala: m.escala || 1 })), zonas: pl.zonas.map((z) => ({ id: z.id, poligono: plPoli.get(z.id) || null })) });
+    const r = await enviarJson(API + 'admin/plano.php', { accion: 'guardar', sucursal_id: pl.sucursal, mesas: plMesas.map((m) => ({ id: m.id, zona_id: m.zona_id, x: m.x, y: m.y, forma: m.forma, ancho_cm: m.ancho_cm || null, alto_cm: m.forma === 'rectangular' ? (m.alto_cm || null) : null })), zonas: pl.zonas.map((z) => ({ id: z.id, poligono: plPoli.get(z.id) || null, ancho_m: plAncho.get(z.id) || 10 })) });
     plMarcarSucio(false);
     plAplicar(r, false);
     avisar('Plano guardado');
@@ -2806,7 +2824,7 @@ $('pl-general').addEventListener('change', async () => {
 });
 $('btn-plano').addEventListener('click', async () => {
   $('pl-error').textContent = '';
-  plMarcarSucio(false); plMesas = []; pl = null; plZona = null; plSel = null; plForma = false; plPunto = null; plPoli = new Map();
+  plMarcarSucio(false); plMesas = []; pl = null; plZona = null; plSel = null; plForma = false; plPunto = null; plPoli = new Map(); plAncho = new Map();
   try { await plCargar(0); } catch (err) { avisar(err.message, true); return; }
   abrirPagina(dlgPlano, 'btn-plano');
   actualizarEnlacesPagina();

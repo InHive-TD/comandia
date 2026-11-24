@@ -23,19 +23,22 @@ export function leerPoligono(v: unknown): [number, number][] | null {
   } catch { return null; }
 }
 
-export const FORMAS_MESA = ['cuadrada', 'redonda', 'larga'] as const;
+export const FORMAS_MESA = ['cuadrada', 'redonda', 'rectangular'] as const;
+/** «larga» era el nombre anterior de la rectangular. */
+export const formaMesa = (v: unknown): string => (v === 'larga' ? 'rectangular' : (FORMAS_MESA as readonly string[]).includes(String(v)) ? String(v) : 'cuadrada');
 
 /** Mesas de una sucursal con su lugar en el plano, y sus zonas (en orden). */
 export async function planoDe(nid: number, sid: number, soloActivas: boolean) {
-  const zonas = await filas('SELECT id, nombre, orden, poligono FROM zonas WHERE negocio_id = ? AND sucursal_id = ? ORDER BY orden, id', [nid, sid]);
-  const mesas = await filas(`SELECT id, nombre, activa, zona_id, pos_x, pos_y, forma, escala FROM mesas WHERE negocio_id = ? AND sucursal_id = ?${soloActivas ? ' AND activa = 1' : ''} ORDER BY orden, id`, [nid, sid]);
+  const zonas = await filas('SELECT id, nombre, orden, poligono, ancho_m FROM zonas WHERE negocio_id = ? AND sucursal_id = ? ORDER BY orden, id', [nid, sid]);
+  const mesas = await filas(`SELECT id, nombre, activa, zona_id, pos_x, pos_y, forma, ancho_cm, alto_cm FROM mesas WHERE negocio_id = ? AND sucursal_id = ?${soloActivas ? ' AND activa = 1' : ''} ORDER BY orden, id`, [nid, sid]);
   return {
-    zonas: zonas.map((z) => ({ id: Number(z['id']), nombre: String(z['nombre']), poligono: leerPoligono(z['poligono']) })),
+    zonas: zonas.map((z) => ({ id: Number(z['id']), nombre: String(z['nombre']), poligono: leerPoligono(z['poligono']), ancho_m: Number(z['ancho_m'] ?? 10) })),
     mesas: mesas.map((m) => ({
       id: Number(m['id']), nombre: String(m['nombre']), activa: Boolean(Number(m['activa'])),
       zona_id: m['zona_id'] === null ? null : Number(m['zona_id']),
       x: m['pos_x'] === null ? null : Number(m['pos_x']), y: m['pos_y'] === null ? null : Number(m['pos_y']),
-      forma: String(m['forma'] ?? 'cuadrada'), escala: Number(m['escala'] ?? 1),
+      forma: formaMesa(m['forma']),
+      ancho_cm: m['ancho_cm'] === null ? null : Number(m['ancho_cm']), alto_cm: m['alto_cm'] === null ? null : Number(m['alto_cm']),
     })),
   };
 }

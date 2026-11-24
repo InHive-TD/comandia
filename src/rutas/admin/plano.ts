@@ -4,7 +4,7 @@
  *   GET  /admin/plano?sucursal=ID → { puede_general, general_activo, sucursales, sucursal, activo, activo_propio, zonas, mesas }
  *   POST { accion: 'activar', ambito: 'general'|'sucursal', sucursal_id?, activo }   usar (o no) el plano al elegir mesa
  *        { accion: 'zona_crear', sucursal_id, nombre } · { accion: 'zona_renombrar', id, nombre } · { accion: 'zona_eliminar', id }
- *        { accion: 'guardar', sucursal_id, mesas: [{ id, zona_id|null, x, y, forma, escala }], zonas?: [{ id, poligono|null }] }
+ *        { accion: 'guardar', sucursal_id, mesas: [{ id, zona_id|null, x, y, forma, ancho_cm, alto_cm }], zonas?: [{ id, poligono|null, ancho_m }] }
  *
  * El dueño trabaja con cualquier sucursal; el gerente solo con la suya. Quitar una zona NO borra sus mesas: quedan «sin ubicar».
  */
@@ -12,7 +12,7 @@ import type { FastifyInstance } from 'fastify';
 import { cuerpoJson, exigirMetodo, requerirGestion } from '../../auth.js';
 import { ejecutar, fila, filas, transaccion } from '../../db.js';
 import { ErrorHttp, fallo } from '../../errores.js';
-import { FORMAS_MESA, leerPoligono, planoActivoEn, planoDe } from '../../plano.js';
+import { formaMesa, leerPoligono, planoActivoEn, planoDe } from '../../plano.js';
 import { esDuplicado, entero, largo, noVacio } from '../../util.js';
 
 export async function rutasAdminPlano(app: FastifyInstance): Promise<void> {
@@ -129,16 +129,17 @@ export async function rutasAdminPlano(app: FastifyInstance): Promise<void> {
               if (!zonasOk.has(zona)) throw fallo('Una de las zonas ya no existe. Recarga la página.');
               const x = Math.min(100, Math.max(0, Number(m['x']) || 0));
               const y = Math.min(100, Math.max(0, Number(m['y']) || 0));
-              const forma = (FORMAS_MESA as readonly string[]).includes(String(m['forma'])) ? String(m['forma']) : 'cuadrada';
-              const escala = Math.min(2.5, Math.max(0.5, Number(m['escala']) || 1));
-              await t.ejecutar('UPDATE mesas SET zona_id = ?, pos_x = ?, pos_y = ?, forma = ?, escala = ? WHERE id = ?', [zona, x.toFixed(2), y.toFixed(2), forma, escala.toFixed(2), id]);
+              const forma = formaMesa(m['forma']);
+              const medida = (v: unknown): number | null => (v === null || v === undefined || v === '' ? null : Math.min(800, Math.max(30, Math.round(Number(v)) || 0)) || null);
+              await t.ejecutar('UPDATE mesas SET zona_id = ?, pos_x = ?, pos_y = ?, forma = ?, ancho_cm = ?, alto_cm = ? WHERE id = ?', [zona, x.toFixed(2), y.toFixed(2), forma, medida(m['ancho_cm']), medida(m['alto_cm']), id]);
             }
             // Forma de cada zona (puntos del contorno); sin puntos válidos = rectángulo
             for (const z of Array.isArray(d['zonas']) ? (d['zonas'] as Record<string, unknown>[]) : []) {
               const zid = entero(z['id']);
               if (!zonasOk.has(zid)) continue;
               const poli = leerPoligono(z['poligono']);
-              await t.ejecutar('UPDATE zonas SET poligono = ? WHERE id = ?', [poli ? JSON.stringify(poli) : null, zid]);
+              const ancho = Math.min(100, Math.max(2, Number(z['ancho_m']) || 10));
+              await t.ejecutar('UPDATE zonas SET poligono = ?, ancho_m = ? WHERE id = ?', [poli ? JSON.stringify(poli) : null, ancho.toFixed(1), zid]);
             }
           });
           return estado(sid);
@@ -148,7 +149,7 @@ export async function rutasAdminPlano(app: FastifyInstance): Promise<void> {
           const sid = await sucursalPropia(entero(d['sucursal_id']));
           const diseno: [string, number, number, string][] = [
             ['1', 18, 22, 'redonda'], ['2', 40, 22, 'redonda'], ['3', 62, 22, 'redonda'], ['4', 84, 22, 'redonda'],
-            ['5', 28, 52, 'larga'], ['6', 72, 52, 'larga'],
+            ['5', 28, 52, 'rectangular'], ['6', 72, 52, 'rectangular'],
             ['7', 14, 80, 'cuadrada'], ['8', 38, 80, 'cuadrada'], ['9', 62, 80, 'cuadrada'], ['10', 86, 80, 'cuadrada'],
           ];
           await transaccion(async (t) => {
