@@ -85,10 +85,14 @@
 @media (max-width: 899px) {
   .pedido { padding-bottom: 84px; }
   .carrito {
-    position: fixed; inset: 0; z-index: 8; border-radius: 0; border: 0; overflow: auto;
+    position: fixed; inset: 0; z-index: 40; border-radius: 0; border: 0; overflow: auto; overscroll-behavior: contain;
     align-content: start; transform: translateY(100%); visibility: hidden; transition: transform .2s, visibility .2s;
   }
   .carrito.abierto { transform: none; visibility: visible; }
+  /* Con la hoja del pedido abierta (pantalla completa) no se ve nada de la página: ni las pestañas ni las categorías, y la página de atrás no se desplaza */
+  body:has(.carrito.abierto) .cliente-nav, body:has(.carrito.abierto) .barra-carrito { display: none; }
+  body:has(.carrito.abierto) { overflow: hidden; }
+  .carrito { padding-bottom: max(14px, env(safe-area-inset-bottom)); }
 }
 
 /* ---------- Diálogos ---------- */
