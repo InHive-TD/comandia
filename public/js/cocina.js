@@ -172,7 +172,7 @@ async function iniciar() {
 }
 
 async function entrar(usuario) {
-  $('quien').textContent = usuario.nombre;
+  $('quien').textContent = document.body.dataset.shell ? '' : usuario.nombre;   // con el menú lateral el nombre va abajo, junto a la foto
   montarSucursal();
   silenciado = leer('cocina_silencio') === '1';
   etiquetaSonido();

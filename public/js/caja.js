@@ -55,7 +55,7 @@ async function iniciar() {
 }
 
 async function entrar(usuario) {
-  $('quien').textContent = usuario.nombre;
+  $('quien').textContent = document.body.dataset.shell ? '' : usuario.nombre;   // con el menú lateral el nombre va abajo, junto a la foto
   montarSucursal();
   if (!['caja', 'admin'].includes(usuario.rol)) {
     $('aviso-titulo').textContent = 'Esta pantalla es para caja';

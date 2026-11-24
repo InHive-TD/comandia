@@ -411,7 +411,7 @@ async function montarSucursal() {
     const r = await pedir(API + 'sucursal.php');
     if (!r.sucursales.length) return;
     if (r.sucursales.length === 1) {
-      quien.append(document.createTextNode(' · Sucursal ' + r.sucursales[0].nombre));
+      quien.append(document.createTextNode((document.body.dataset.shell ? '' : ' · ') + 'Sucursal ' + r.sucursales[0].nombre));
       return;
     }
     const sel = document.createElement('select');

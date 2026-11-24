@@ -1,0 +1,71 @@
+/* =====================================================================
+   Estructura de aplicación para Cocina, Caja y Tomar pedidos (misma que el administrador)
+   + interruptor "contraer / expandir menú" (escritorio). Usa las clases de admin.css.
+   ===================================================================== */
+.contenedor.ancho:has(> .panel-lateral) { max-width: none; }
+body.shell-pagina { min-height: 100vh; }
+body.shell-pagina .panel-lateral { display: grid; grid-template-columns: 240px minmax(0, 1fr); min-height: 100vh; transition: grid-template-columns .2s ease; }
+body.shell-pagina .panel-derecha > main.contenedor { max-width: none; width: 100%; margin: 0; padding: 18px 22px 48px; }
+body.shell-pagina .panel-derecha > main.contenedor > .angosta { margin: 24px auto; }
+body.shell-pagina .barra-panel { gap: 10px 12px; }
+.panel-derecha { min-width: 0; }
+
+/* Lista de secciones (equivale a .menu-fijo del administrador) */
+.menu-lateral .menu-lista { flex: 1; display: flex; flex-direction: column; gap: 2px; margin-top: 14px; }
+
+/* Sin sesión (formulario de entrada visible): nada de menú */
+body:has(#vista-login:not([hidden])) .menu-lateral,
+body:has(#vista-login:not([hidden])) .barra-panel,
+body:has(#vista-login:not([hidden])) .barra-movil { display: none; }
+body.shell-pagina:has(#vista-login:not([hidden])) .panel-lateral { display: block; }
+
+/* Iconos nuevos */
+.i-preparando { --ico: url("data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 24 24%22 fill=%22none%22 stroke=%22black%22 stroke-width=%222%22 stroke-linecap=%22round%22 stroke-linejoin=%22round%22%3E%3Ccircle cx=%2212%22 cy=%2212%22 r=%229%22/%3E%3Cpath d=%22M12 7v5l3 2%22/%3E%3C/svg%3E"); }
+.i-admin { --ico: url("data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 24 24%22 fill=%22none%22 stroke=%22black%22 stroke-width=%222%22 stroke-linecap=%22round%22 stroke-linejoin=%22round%22%3E%3Crect x=%223%22 y=%223%22 width=%227%22 height=%229%22 rx=%221%22/%3E%3Crect x=%2214%22 y=%223%22 width=%227%22 height=%225%22 rx=%221%22/%3E%3Crect x=%2214%22 y=%2212%22 width=%227%22 height=%229%22 rx=%221%22/%3E%3Crect x=%223%22 y=%2216%22 width=%227%22 height=%225%22 rx=%221%22/%3E%3C/svg%3E"); }
+.menu-lateral .nav-ico.activo { background: rgba(255,255,255,.17); }
+
+/* Barra superior: sucursal y acciones propias de cada pantalla */
+.quien-barra { flex-wrap: nowrap; }
+.quien-barra:empty { display: none; }
+.quien-barra .fila-sucursal { display: inline-flex; align-items: center; gap: 6px; }
+.quien-barra.quien-linea { display: inline-flex; }
+.quien-barra .sel-sucursal { min-height: 30px; }
+.quien-barra.sin-conexion { color: var(--color-error); border-color: var(--color-error); }
+.quien-barra.sin-conexion::before { background: var(--color-error); }
+.barra-acciones { display: flex; align-items: center; gap: 8px; margin-left: auto; flex-wrap: wrap; justify-content: flex-end; }
+.barra-acciones .btn { min-height: 40px; padding: 6px 14px; font-size: .92rem; white-space: nowrap; }
+.barra-acciones .btn-icono { min-width: 44px; font-size: 1.15rem; padding: 6px 10px; }
+.barra-acciones .btn[aria-pressed="true"] { background: var(--color-suave); border-color: var(--color-principal); }
+
+/* Interruptor contraer / expandir (solo escritorio) */
+.btn-compactar { width: 40px; height: 40px; flex: none; border: 1px solid var(--color-borde); border-radius: 10px; background: var(--color-tarjeta); color: var(--color-oscuro); cursor: pointer; display: grid; place-items: center; padding: 0; }
+.btn-compactar::before { content: ''; width: 20px; height: 20px; background: currentColor; transition: transform .2s;
+  -webkit-mask: url("data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 24 24%22 fill=%22none%22 stroke=%22black%22 stroke-width=%222%22 stroke-linecap=%22round%22 stroke-linejoin=%22round%22%3E%3Crect x=%223%22 y=%224%22 width=%2218%22 height=%2216%22 rx=%222%22/%3E%3Cpath d=%22M9 4v16%22/%3E%3C/svg%3E") center / contain no-repeat;
+  mask: url("data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 24 24%22 fill=%22none%22 stroke=%22black%22 stroke-width=%222%22 stroke-linecap=%22round%22 stroke-linejoin=%22round%22%3E%3Crect x=%223%22 y=%224%22 width=%2218%22 height=%2216%22 rx=%222%22/%3E%3Cpath d=%22M9 4v16%22/%3E%3C/svg%3E") center / contain no-repeat; }
+.btn-compactar:hover { background: var(--color-suave); }
+.btn-compactar:focus-visible { outline: 2px solid var(--color-principal); outline-offset: 2px; }
+
+/* ---------- Menú contraído (escritorio y tablet horizontal): solo iconos ---------- */
+@media (min-width: 901px) {
+  body.en-panel .panel-lateral { transition: grid-template-columns .2s ease; }
+  body.en-panel.menu-compacto .panel-lateral { grid-template-columns: 72px minmax(0, 1fr); }
+  body.menu-compacto .menu-caja { padding: 18px 8px 14px; }
+  body.menu-compacto .menu-marca { padding: 4px 0 12px; display: flex; justify-content: center; }
+  body.menu-compacto .marca-logo span, body.menu-compacto .menu-negocio { display: none; }
+  body.menu-compacto .menu-grupo, body.menu-compacto .menu-sub { display: none; }
+  body.menu-compacto .menu-lateral .nav-ico { font-size: 0; gap: 0; justify-content: center; padding: 0; min-height: 44px; }
+  body.menu-compacto .menu-lateral .nav-ico::before { width: 22px; height: 22px; }
+  body.menu-compacto .usuario-datos { display: none; }
+  body.menu-compacto .menu-usuario { flex-direction: column; gap: 6px; padding: 12px 0 0; }
+}
+/* En celular y tablet vertical el menú es una capa (☰): el interruptor de escritorio no se muestra */
+@media (max-width: 900px) {
+  .btn-compactar { display: none; }
+  body.shell-pagina .panel-lateral { display: block; }
+  body.shell-pagina .panel-derecha { min-height: 100vh; }
+  body.shell-pagina .panel-derecha > main.contenedor { padding: 12px 12px 40px; }
+  .menu-lateral .menu-lista { flex: 1; margin-top: 12px; }
+  .barra-acciones { margin-left: auto; }
+  .quien-barra { max-width: 100%; }
+  :root { --alto-encab: 58px; }   /* alto de la barra fija del celular (la usan las franjas pegajosas de Tomar pedidos) */
+}
