@@ -678,14 +678,62 @@ body.en-panel .panel-lateral { min-height: 100vh; grid-template-columns: 240px m
 .chip-sucursal::before { content: ''; width: 8px; height: 8px; border-radius: 50%; background: var(--color-ok); }
 .chip-sucursal[hidden] { display: none; }
 
-@media (max-width: 860px) {
-  body.en-panel .panel-lateral { grid-template-columns: 1fr; }
-  .menu-caja { position: static; min-height: 0; padding: 10px 10px 8px; }
-  .menu-marca { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 2px 6px 8px; }
-  .menu-negocio { margin: 0; max-width: 45%; text-align: right; }
-  .menu-lateral .menu-fijo { margin-top: 8px; flex: none; flex-direction: row; overflow-x: auto; padding: 0; gap: 6px; }
-  .menu-usuario { margin-top: 6px; padding-top: 8px; }
-  .menu-lateral .menu-ajustes { display: none; }
-  .barra-panel { position: static; padding: 12px 16px; }
-  .barra-panel h2 { font-size: 1.3rem; }
+/* ---------- Tablet (901–1100 px): barra lateral más angosta ---------- */
+@media (min-width: 901px) and (max-width: 1100px) {
+  body.en-panel .panel-lateral { grid-template-columns: 212px minmax(0, 1fr); }
+  .panel-contenido { padding: 18px 18px 40px; }
+  .barra-panel { padding: 12px 18px; }
+  .marca-logo span { font-size: 1.4rem; }
+}
+
+/* ---------- Escritorio: sin barra móvil ni velo ---------- */
+.barra-movil, .menu-velo { display: none; }
+
+/* ---------- Celular y tablet vertical (hasta 900 px): barra superior + menú que se desliza ---------- */
+@media (max-width: 900px) {
+  body.en-panel .panel-lateral { display: block; min-height: 100vh; }
+  .panel-derecha { min-height: 100vh; }
+  .panel-contenido { padding: 14px 14px 40px; max-width: 100%; }
+  .panel-contenido table { display: block; max-width: 100%; overflow-x: auto; }
+  dialog.pagina { box-sizing: border-box; max-width: 100%; min-width: 0; overflow-wrap: anywhere; }
+
+  /* Barra superior fija con ☰, marca y usuario */
+  .barra-movil { display: flex; position: sticky; top: 0; z-index: 30; align-items: center; gap: 12px; padding: max(8px, env(safe-area-inset-top)) 12px 8px; background: var(--color-vino); color: var(--texto-encabezado, #fff); }
+  .barra-movil .marca-logo { flex: 1; min-width: 0; }
+  .barra-movil .marca-logo svg { width: 30px; height: 30px; }
+  .barra-movil .marca-logo span { font-size: 1.4rem; }
+  .btn-menu { width: 44px; height: 44px; flex: none; border: 0; border-radius: 12px; background: rgba(255,255,255,.12); color: inherit; cursor: pointer; display: grid; place-items: center; }
+  .btn-menu::before { content: ''; width: 24px; height: 24px; background: currentColor; -webkit-mask: url("data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 24 24%22 fill=%22none%22 stroke=%22black%22 stroke-width=%222%22 stroke-linecap=%22round%22 stroke-linejoin=%22round%22%3E%3Cpath d=%22M4 6h16M4 12h16M4 18h16%22/%3E%3C/svg%3E") center / contain no-repeat; mask: url("data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 24 24%22 fill=%22none%22 stroke=%22black%22 stroke-width=%222%22 stroke-linecap=%22round%22 stroke-linejoin=%22round%22%3E%3Cpath d=%22M4 6h16M4 12h16M4 18h16%22/%3E%3C/svg%3E") center / contain no-repeat; }
+  .btn-menu:focus-visible { outline: 2px solid #fff; outline-offset: 2px; }
+  .avatar.chico { width: 34px; height: 34px; font-size: .8rem; }
+
+  .barra-panel { position: static; padding: 14px 16px; gap: 8px 12px; }
+  .barra-panel h2 { font-size: 1.3rem; flex: 1 1 auto; min-width: 0; }
+  .chip-sucursal { min-height: 32px; font-size: .85rem; }
+
+  /* Menú: capa que se desliza desde la izquierda (es una capa sobre la página, como una ventana emergente) */
+  .menu-lateral { position: fixed; top: 0; bottom: 0; left: 0; width: min(86vw, 310px); z-index: 50; overflow-y: auto; overscroll-behavior: contain;
+    transform: translateX(-104%); visibility: hidden; transition: transform .24s ease, visibility 0s linear .24s; }
+  body.menu-abierto .menu-lateral { transform: none; visibility: visible; transition: transform .24s ease, visibility 0s; box-shadow: 10px 0 40px rgba(0,0,0,.35); }
+  .menu-velo { display: block; position: fixed; inset: 0; z-index: 40; background: rgba(16,36,28,.55); opacity: 0; pointer-events: none; transition: opacity .2s; }
+  .menu-velo[hidden] { display: block; }
+  body.menu-abierto .menu-velo { opacity: 1; pointer-events: auto; }
+  body.menu-abierto { overflow: hidden; }
+
+  .menu-caja { position: static; min-height: 100%; padding: max(16px, env(safe-area-inset-top)) 12px max(14px, env(safe-area-inset-bottom)); }
+  .menu-marca { display: block; padding: 4px 8px 12px; }
+  .menu-negocio { margin-top: 6px; max-width: none; text-align: left; }
+  .menu-lateral .menu-fijo { flex: 1; flex-direction: column; align-items: stretch; overflow: visible; margin-top: 12px; gap: 2px; }
+  .menu-lateral .menu-grupo, .menu-lateral .menu-sub { display: block; }
+  .menu-lateral .menu-ajustes { display: block; margin-top: 12px; padding-top: 10px; }
+  .menu-lateral .btn { width: 100%; flex: none; white-space: normal; }
+  .menu-lateral .nav-ico { min-height: 46px; padding: 8px 12px; font-size: 1rem; }
+  .menu-usuario { margin-top: 12px; padding-top: 12px; }
+}
+
+/* Celular angosto */
+@media (max-width: 480px) {
+  .panel-contenido { padding: 12px 12px 36px; }
+  .barra-panel { padding: 12px; }
+  .barra-panel h2 { font-size: 1.2rem; }
 }

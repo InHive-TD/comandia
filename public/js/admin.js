@@ -84,9 +84,13 @@ async function entrar(usuario) {
 /** Barra lateral: usuario abajo (iniciales, nombre y rol) y, arriba a la derecha, la sucursal con la que se trabaja. */
 function pintarUsuario(usuario) {
   const partes = String(usuario.nombre || '').trim().split(/\s+/).filter(Boolean);
-  $('usuario-ini').textContent = ((partes[0] || '?')[0] + (partes.length > 1 ? partes[partes.length - 1][0] : '')).toUpperCase();
+  const iniciales = ((partes[0] || '?')[0] + (partes.length > 1 ? partes[partes.length - 1][0] : '')).toUpperCase();
+  $('usuario-ini').textContent = iniciales;
+  $('usuario-ini-movil').textContent = iniciales;
   $('usuario-nombre').textContent = usuario.nombre;
-  $('usuario-rol').textContent = usuario.rol === 'gerente' ? 'Gerente de sucursal' : 'Administrador';
+  const rol = usuario.rol === 'gerente' ? 'Gerente de sucursal' : 'Administrador';
+  $('usuario-rol').textContent = rol;
+  $('usuario-rol').hidden = rol.toLowerCase() === String(usuario.nombre).trim().toLowerCase();   // si el nombre ya dice el rol, no se repite
   const chip = $('chip-sucursal');
   chip.hidden = true;
   pedir(API + 'sesion.php').then((s) => {
@@ -98,6 +102,19 @@ function pintarUsuario(usuario) {
 }
 
 $('btn-salir-menu').addEventListener('click', () => $('btn-salir').click());
+
+/* Menú lateral como capa deslizable en celular y tablet vertical */
+function menuAbierto(abrir) {
+  document.body.classList.toggle('menu-abierto', abrir);
+  $('btn-menu').setAttribute('aria-expanded', String(abrir));
+  $('btn-menu').setAttribute('aria-label', abrir ? 'Cerrar menú' : 'Abrir menú');
+}
+$('btn-menu').addEventListener('click', () => menuAbierto(!document.body.classList.contains('menu-abierto')));
+$('menu-velo').addEventListener('click', () => menuAbierto(false));
+$('usuario-ini-movil').addEventListener('click', () => menuAbierto(true));
+document.addEventListener('keydown', (ev) => { if (ev.key === 'Escape') menuAbierto(false); });
+document.querySelector('.menu-lateral').addEventListener('click', (ev) => { if (ev.target.closest('.nav-ico')) menuAbierto(false); });
+window.matchMedia('(min-width: 901px)').addEventListener('change', (m) => { if (m.matches) menuAbierto(false); });
 
 $('form-login').addEventListener('submit', async (ev) => {
   ev.preventDefault();
