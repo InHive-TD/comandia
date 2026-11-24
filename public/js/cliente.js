@@ -262,8 +262,7 @@ function abrirDetalle(p) {
   $('dt-agregar').hidden = !puede;
   $('dt-agregar').onclick = () => {
     dlgDetalle.close();
-    if (p.extras.length) abrirOpciones(p);
-    else { agregarLinea(p, [], 1, ''); avisar(`${p.nombre} agregado`); }
+    abrirOpciones(p);   // misma ventana para todo: cantidad ＋/−, extras si los hay, y sigue abierta para agregar más (se sale con la ✕)
   };
   dlgDetalle.showModal();
 }
