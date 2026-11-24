@@ -25,7 +25,8 @@ export async function rutasAdminPlano(app: FastifyInstance): Promise<void> {
       const alcance = yo.alcance;
 
       const sucursalPropia = async (pedida: number): Promise<number> => {
-        const id = alcance ?? pedida;
+        let id = alcance ?? pedida;
+        if (!id) id = Number((await fila('SELECT id FROM sucursales WHERE negocio_id = ? AND activa = 1 ORDER BY orden, id LIMIT 1', [nid]))?.['id'] ?? 0);   // sin sucursal pedida: la primera
         const s = await fila('SELECT id FROM sucursales WHERE id = ? AND negocio_id = ?', [id, nid]);
         if (!s) throw new ErrorHttp(404, 'validacion', 'Esa sucursal no existe.');
         return id;
