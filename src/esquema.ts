@@ -11,14 +11,6 @@ async function esquemaSuave(paso: (c: PoolConnection) => Promise<void>): Promise
   const c = await bd().getConnection();
   try {
     await c.query('SET SESSION lock_wait_timeout = 8');
-    // Un ALTER que quedó a medias de un arranque anterior (o consultas esperando su candado) deja la tabla bloqueada
-    // y toda la app se cuelga: se cancelan los de esta misma base y usuario antes de seguir.
-    const [viejos] = await c.query<RowDataPacket[]>(
-      `SELECT ID FROM information_schema.PROCESSLIST
-        WHERE DB = DATABASE() AND USER = SUBSTRING_INDEX(CURRENT_USER(), '@', 1) AND ID <> CONNECTION_ID()
-          AND (INFO LIKE 'ALTER TABLE%' OR STATE LIKE 'Waiting for table metadata lock%')`,
-    );
-    for (const v of viejos) { try { await c.query(`KILL ${Number(v['ID'])}`); } catch { /* ya terminó */ } }
     await paso(c);
   } catch (e) {
     console.warn('Cambio de esquema omitido (se reintentará al reiniciar):', (e as Error).message);
@@ -31,7 +23,38 @@ async function esquemaSuave(paso: (c: PoolConnection) => Promise<void>): Promise
  * Tablas propias de la versión TypeScript. Se crean solas (es idempotente).
  * Las demás tablas vienen de database/schema.sql (o de una base que ya usó la versión PHP).
  */
+/**
+ * Un ALTER que quedó a medias de un arranque anterior (o consultas esperando su candado) deja la tabla bloqueada
+ * y toda la app se cuelga, incluso al leer information_schema. Se cancelan los de esta misma base y usuario ANTES de todo.
+ */
+async function liberarCandados(): Promise<void> {
+  try {
+    const c = await bd().getConnection();
+    try {
+      const [lista] = await c.query<RowDataPacket[]>('SHOW FULL PROCESSLIST');
+      const [yo] = await c.query<RowDataPacket[]>('SELECT CONNECTION_ID() AS id, DATABASE() AS bd');
+      const miId = Number(yo[0]?.['id']);
+      const miBd = String(yo[0]?.['bd']);
+      for (const p of lista) {
+        const id = Number(p['Id']);
+        if (id === miId || String(p['db']) !== miBd) continue;
+        const info = String(p['Info'] ?? '');
+        const estado = String(p['State'] ?? '');
+        if (/^\s*ALTER TABLE/i.test(info) || /metadata lock/i.test(estado)) {
+          console.warn(`Cancelando proceso colgado ${id}: ${estado} ${info.slice(0, 80)}`);
+          try { await c.query(`KILL ${id}`); } catch { /* ya terminó */ }
+        }
+      }
+    } finally {
+      c.release();
+    }
+  } catch (e) {
+    console.warn('No se pudo revisar procesos colgados:', (e as Error).message);
+  }
+}
+
 export async function asegurarEsquema(): Promise<void> {
+  await liberarCandados();
   const base = await fila(`SELECT COUNT(*) AS n FROM information_schema.TABLES WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'negocios'`);
   if (!base || Number(base['n']) === 0) {
     throw new Error('La base de datos no tiene las tablas de Comandia. Importa database/schema.sql primero.');
