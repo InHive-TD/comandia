@@ -155,7 +155,7 @@ function chipsPedido(o) {
   const c = el('div', 'cobro-chips');
   c.append(el('span', 'estado-chip' + (o.estado === 'entregada' ? ' entregada-chip' : ''), ESTADO_TXT[o.estado] || o.estado));
   c.append(el('span', 'chip-mod ' + infoMod(o.modalidad).clase, infoMod(o.modalidad).chip));
-  if (o.mesa) c.append(el('span', 'chip-mesa', '🪑 ' + o.mesa));
+  if (o.mesa) c.append(el('span', 'chip-mesa', '🪑 ' + etiquetaMesa(o)));
   if (o.telefono) c.append(el('span', 'estado-chip', '📞 ' + o.telefono));
   if (o.origen === 'qr') c.append(el('span', 'estado-chip', '📱 QR'));
   return c;

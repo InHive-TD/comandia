@@ -65,7 +65,7 @@ export async function rutasCaja(app: FastifyInstance): Promise<void> {
         else if (!fechaValida(fecha)) throw fallo('La fecha no es válida.');
 
         const ordenes = await c.filas(
-          `SELECT id, fecha_turno, turno, nombre_cliente, estado, total, modalidad, mesa, origen, creado_en, telefono, pago_previsto
+          `SELECT id, fecha_turno, turno, nombre_cliente, estado, total, modalidad, mesa, mesa_zona, origen, creado_en, telefono, pago_previsto
              FROM ordenes WHERE negocio_id = ? AND sucursal_id = ? AND fecha_turno = ? ORDER BY turno DESC LIMIT 500`,
           [c.nid, c.sid, fecha],
         );
@@ -132,7 +132,7 @@ export async function rutasCaja(app: FastifyInstance): Promise<void> {
           }
           return {
             id, turno: textoTurno(String(o['fecha_turno']), o['turno'] === null ? null : Number(o['turno'])), cliente: o['nombre_cliente'], estado: o['estado'],
-            modalidad: o['modalidad'], mesa: o['mesa'], pago_previsto: o['pago_previsto'], telefono: o['modalidad'] === 'recoger' ? o['telefono'] : null, origen: o['origen'],
+            modalidad: o['modalidad'], mesa: o['mesa'], mesa_zona: o['mesa_zona'], pago_previsto: o['pago_previsto'], telefono: o['modalidad'] === 'recoger' ? o['telefono'] : null, origen: o['origen'],
             hora: String(o['creado_en']).slice(11, 16), total, pagado: pagadoMonto, propina, saldo, devolver: redondear(devolver),
             items: itemsPorOrden.get(id) ?? [], cambios: cambiosPorOrden.get(id) ?? [], // nota de "pedido modificado" (qué se cambió)
             pagos,

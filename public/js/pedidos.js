@@ -827,7 +827,7 @@ async function refrescarEditar() {
 
 function pintarEditar() {
   const o = editandoOrden;
-  $('ed-titulo').textContent = `#${o.turno.slice(-3)} · ${o.nombre_cliente}` + (o.mesa ? ` · ${o.mesa}` : '');
+  $('ed-titulo').textContent = `#${o.turno.slice(-3)} · ${o.nombre_cliente}` + (o.mesa ? ` · ${etiquetaMesa(o)}` : '');
   $('ed-mesa-fila').hidden = !mesas.length;
   const sm = mesas.find((m) => m.nombre === o.mesa);
   $('ed-mesa').value = sm ? String(sm.id) : '';
@@ -989,7 +989,7 @@ function tarjetaSeg(o, lista, programada = false) {
   const izq = el('div', 'seg-izq');
   izq.append(el('div', 'seg-cliente', o.cliente + (o.origen === 'qr' ? ' 📱' : '')));
   const datos = el('div', 'seg-datos');
-  datos.append(el('span', 'seg-turno', '#' + o.turno.slice(-3)), chipModalidad(o.modalidad), ...(o.mesa ? [el('span', 'chip-mesa', '🪑 ' + o.mesa)] : []), el('span', '', 'Levantado ' + hora12(o.hora)), el('strong', '', dinero.format(o.total)), el('span', 'estado-chip' + (o.pagado ? '' : ' sin-pagar'), o.pagado ? 'Pagado ✓' : 'Sin pagar'));
+  datos.append(el('span', 'seg-turno', '#' + o.turno.slice(-3)), chipModalidad(o.modalidad), ...(o.mesa ? [el('span', 'chip-mesa', '🪑 ' + etiquetaMesa(o))] : []), el('span', '', 'Levantado ' + hora12(o.hora)), el('strong', '', dinero.format(o.total)), el('span', 'estado-chip' + (o.pagado ? '' : ' sin-pagar'), o.pagado ? 'Pagado ✓' : 'Sin pagar'));
   izq.append(datos);
   const t = el('div', 'seg-espera');
   if (programada) t.append(el('span', 'seg-min seg-prog', hora12(o.para)), el('span', 'seg-lbl', 'agendado'));

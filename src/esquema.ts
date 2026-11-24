@@ -43,6 +43,7 @@ export async function asegurarEsquema(): Promise<void> {
   await asegurarColumna('mesas', 'pos_x', 'DECIMAL(5,2) NULL');
   await asegurarColumna('mesas', 'pos_y', 'DECIMAL(5,2) NULL');
   await asegurarColumna('mesas', 'forma', "VARCHAR(12) NOT NULL DEFAULT 'cuadrada'");
+  await asegurarColumna('ordenes', 'mesa_zona', 'VARCHAR(40) NULL');   // zona de la mesa (Piso 1, Patio…) al levantar el pedido
   await asegurarColumna('mesas', 'ancho_cm', 'SMALLINT UNSIGNED NULL');   // medidas reales de la mesa (cm); NULL = las de su forma
   await asegurarColumna('mesas', 'alto_cm', 'SMALLINT UNSIGNED NULL');
   await asegurarColumna('zonas', 'ancho_m', 'DECIMAL(5,1) NOT NULL DEFAULT 10.0');   // ancho real del espacio que muestra el plano (m)

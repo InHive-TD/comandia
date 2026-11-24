@@ -363,6 +363,17 @@ function confirmar(mensaje, { si = 'Sí', no = 'Cancelar', peligro = false } = {
   });
 }
 
+/** Mesa de un pedido con su zona (si la tiene): «9 · Patio Centro». */
+const etiquetaMesa = (o) => (o.mesa ? o.mesa + (o.mesa_zona ? ' · ' + o.mesa_zona : '') : '');
+
+/** A quién pertenece un pedido: «Mesa 9 · Patio Centro» (si se llama por la mesa) o «Juan · 🪑 9 · Patio Centro». */
+function quienDe(o) {
+  const nombre = o.cliente || o.nombre_cliente || '';
+  if (!o.mesa) return nombre;
+  const auto = nombre === o.mesa || nombre.toLowerCase() === ('mesa ' + o.mesa).toLowerCase();
+  return auto ? nombre + (o.mesa_zona ? ' · ' + o.mesa_zona : '') : `${nombre} · 🪑 ${etiquetaMesa(o)}`;
+}
+
 /* Pedir un texto con ventana propia (reemplaza prompt()). Devuelve el texto o null si cancela. */
 function pedirTexto(mensaje, { si = 'Aceptar', no = 'Cancelar', tipo = 'text', minimo = 0, valor = '' } = {}) {
   return new Promise((resolver) => {

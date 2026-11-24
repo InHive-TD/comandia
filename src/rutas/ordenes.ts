@@ -40,7 +40,7 @@ export async function rutasOrdenes(app: FastifyInstance): Promise<void> {
 
       if (req.method === 'GET') {
         const ordenes = await filas(
-          `SELECT id, fecha_turno, turno, nombre_cliente, estado, pagado, total, notas, creado_en, modalidad, pago_previsto, mesa,
+          `SELECT id, fecha_turno, turno, nombre_cliente, estado, pagado, total, notas, creado_en, modalidad, pago_previsto, mesa, mesa_zona,
                   DATE_FORMAT(hora_prometida, '%H:%i') AS para
              FROM ordenes
             WHERE negocio_id = ? AND sucursal_id = ? AND (fecha_turno = CURDATE() OR estado IN ('nueva','preparando','lista'))
@@ -83,7 +83,7 @@ export async function rutasOrdenes(app: FastifyInstance): Promise<void> {
             id: Number(o['id']),
             turno: textoTurno(String(o['fecha_turno']), o['turno'] === null ? null : Number(o['turno'])),
             nombre_cliente: o['nombre_cliente'], estado: o['estado'], pagado: Boolean(Number(o['pagado'])), total: Number(o['total']),
-            notas: o['notas'], modalidad: o['modalidad'], mesa: o['mesa'], pago_previsto: o['pago_previsto'], para: o['para'], creado_en: o['creado_en'],
+            notas: o['notas'], modalidad: o['modalidad'], mesa: o['mesa'], mesa_zona: o['mesa_zona'], pago_previsto: o['pago_previsto'], para: o['para'], creado_en: o['creado_en'],
             items: porOrden.get(Number(o['id'])) ?? [],
           })),
         };

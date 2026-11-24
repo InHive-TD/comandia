@@ -60,7 +60,7 @@ export async function rutasCocina(app: FastifyInstance): Promise<void> {
         // La espera de un pedido programado cuenta desde que la cocina debía empezarlo (hora − tiempo de preparación):
         // si lo piden para dentro de 5 min y la cocina necesita 15, ya va "10 min atrasado" y sube en la fila.
         const ordenes = await c.filas(
-          `SELECT id, fecha_turno, turno, nombre_cliente, estado, notas, total, pagado, origen, modalidad, mesa, revision, prioritario,
+          `SELECT id, fecha_turno, turno, nombre_cliente, estado, notas, total, pagado, origen, modalidad, mesa, mesa_zona, revision, prioritario,
                   UNIX_TIMESTAMP(COALESCE(editado_en, creado_en)) AS prio_ts,
                   DATE_FORMAT(editado_en, '%H:%i') AS editado,
                   TIMESTAMPDIFF(SECOND, LEAST(COALESCE(activada_en, creado_en), COALESCE(hora_prometida - INTERVAL ${prep} MINUTE, creado_en)), NOW()) AS espera,
@@ -131,7 +131,7 @@ export async function rutasCocina(app: FastifyInstance): Promise<void> {
           const fila: FilaCocina = {
             id: Number(o['id']),
             turno: `${o['fecha_turno']}-${String(o['turno']).padStart(3, '0')}`,
-            cliente: o['nombre_cliente'], estado: o['estado'], notas: o['notas'], hora: o['hora'], origen: o['origen'], modalidad: String(o['modalidad']), mesa: o['mesa'],
+            cliente: o['nombre_cliente'], estado: o['estado'], notas: o['notas'], hora: o['hora'], origen: o['origen'], modalidad: String(o['modalidad']), mesa: o['mesa'], mesa_zona: o['mesa_zona'],
             total: Number(o['total']), pagado: Boolean(Number(o['pagado'])), revision: Number(o['revision']), editado: o['editado'], para: o['para'],
             faltan: o['faltan'] === null ? null : Number(o['faltan']), orden_ts: Number(o['orden_ts']), prioritario: Number(o['prioritario']) === 1, prio_ts: Number(o['prio_ts']),
             espera, puntaje: puntaje === null ? null : Math.round(puntaje * 10) / 10, items,
@@ -266,8 +266,8 @@ export async function rutasCocina(app: FastifyInstance): Promise<void> {
           // Cambia (o quita) la mesa de un pedido que sigue en curso.
           const mesa = await leerMesa(c, datos['mesa_id']);
           await c.ejecutar(
-            "UPDATE ordenes SET mesa_id = ?, mesa = ? WHERE id = ? AND negocio_id = ? AND sucursal_id = ? AND estado IN ('nueva','preparando','lista','entregada')",
-            [mesa?.id ?? null, mesa?.nombre ?? null, entero(datos['orden_id']), c.nid, c.sid],
+            "UPDATE ordenes SET mesa_id = ?, mesa = ?, mesa_zona = ? WHERE id = ? AND negocio_id = ? AND sucursal_id = ? AND estado IN ('nueva','preparando','lista','entregada')",
+            [mesa?.id ?? null, mesa?.nombre ?? null, mesa?.zona ?? null, entero(datos['orden_id']), c.nid, c.sid],
           );
           return { ok: true, mesa: mesa?.nombre ?? null };
         }

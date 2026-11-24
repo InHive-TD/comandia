@@ -491,15 +491,16 @@ export async function insertarLineas(c: Cx, ordenId: number, lineas: Linea[]): P
 export interface Mesa {
   id: number;
   nombre: string;
+  zona: string | null;
 }
 
 /** Valida la mesa elegida: debe ser una mesa activa de la sucursal actual. Devuelve null si no se eligió ninguna. */
 export async function leerMesa(c: Cx, v: unknown): Promise<Mesa | null> {
   const id = entero(v);
   if (id <= 0) return null;
-  const m = await una(c, 'SELECT id, nombre FROM mesas WHERE id = ? AND negocio_id = ? AND sucursal_id = ? AND activa = 1', [id, c.nid, c.sid]);
+  const m = await una(c, 'SELECT m.id, m.nombre, z.nombre AS zona FROM mesas m LEFT JOIN zonas z ON z.id = m.zona_id WHERE m.id = ? AND m.negocio_id = ? AND m.sucursal_id = ? AND m.activa = 1', [id, c.nid, c.sid]);
   if (!m) throw fallo('Esa mesa no existe en esta sucursal.', 400);
-  return { id: n(m['id']), nombre: String(m['nombre']) };
+  return { id: n(m['id']), nombre: String(m['nombre']), zona: m['zona'] === null || m['zona'] === undefined ? null : String(m['zona']) };
 }
 
 export interface OrdenCreada {
@@ -550,10 +551,10 @@ export async function crearOrden(c: Cx, d: DatosOrden): Promise<OrdenCreada> {
         }
         const r = await t.ejecutar(
           `INSERT INTO ordenes (negocio_id, sucursal_id, nombre_cliente, origen, estado, total, notas, fecha_turno, turno, creado_por, clave_cliente, telefono,
-                                modalidad, hora_prometida, estimado_min, posicion_cola, retrasados_delante, mesa_id, mesa)
-           VALUES (?, ?, ?, ?, 'nueva', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+                                modalidad, hora_prometida, estimado_min, posicion_cola, retrasados_delante, mesa_id, mesa, mesa_zona)
+           VALUES (?, ?, ?, ?, 'nueva', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
           [t.nid, t.sid, d.cliente, d.origen, d.total.toFixed(2), d.notas === '' ? null : d.notas, fecha, turno, d.creadoPor, d.clave ?? null, d.telefono ?? null,
-           modalidad, d.horaPrometida ?? null, estimado, posicion, retrasados, d.mesa?.id ?? null, d.mesa?.nombre ?? null],
+           modalidad, d.horaPrometida ?? null, estimado, posicion, retrasados, d.mesa?.id ?? null, d.mesa?.nombre ?? null, d.mesa?.zona ?? null],
         );
         await insertarLineas(t, r.insertId, d.lineas);
         return { id: r.insertId, turno: textoTurno(fecha, turno), nombre_cliente: d.cliente, total: d.total };

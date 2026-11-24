@@ -558,7 +558,7 @@ function comanda(o, carril = '') {
   const cab = el('div', 'com-cab');
   const quien = el('div', 'com-cliente', o.cliente);
   const datosLinea = el('div', 'com-datos');
-  datosLinea.append(el('span', 'com-turno', '#' + o.turno.slice(-3)), ...(o.mesa ? [el('span', 'chip-mesa', '🪑 ' + o.mesa)] : []));
+  datosLinea.append(el('span', 'com-turno', '#' + o.turno.slice(-3)), ...(o.mesa ? [el('span', 'chip-mesa', '🪑 ' + etiquetaMesa(o))] : []));
   const izq = el('div', 'com-izq');
   izq.append(quien, datosLinea);
   const espera = el('div', 'com-espera');
@@ -712,7 +712,7 @@ function pintarListas() {
   bloque.hidden = datos.listas.length === 0;
   $('cuenta-listas').textContent = `(${datos.listas.length})`;
   $('listas').replaceChildren(...datos.listas.map((o) => {
-    const c = el('button', 'chip-lista', `#${o.turno.slice(-3)} · ${o.cliente}`);
+    const c = el('button', 'chip-lista', `#${o.turno.slice(-3)} · ${quienDe(o)}`);
     c.type = 'button';
     c.addEventListener('click', () => abrirPedido(o.id));
     return c;
@@ -751,7 +751,7 @@ async function cambiarItem(o, i, nuevo, esDeshacer = false) {
 async function moverAListas(o) {
   try {
     await enviarJson(API + 'cocina.php', { accion: 'mover_listas', orden_id: o.id });
-    avisar(`Pedido #${o.turno.slice(-3)} de ${o.cliente} → listo para entregar`, async () => {
+    avisar(`Pedido #${o.turno.slice(-3)} de ${quienDe(o)} → listo para entregar`, async () => {
       try { await enviarJson(API + 'cocina.php', { accion: 'regresar_cocina', orden_id: o.id }); } catch (err) { avisar(err.message); }
       firma = ''; cargar();
     });
