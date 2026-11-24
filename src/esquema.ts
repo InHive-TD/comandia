@@ -11,6 +11,14 @@ async function esquemaSuave(paso: (c: PoolConnection) => Promise<void>): Promise
   const c = await bd().getConnection();
   try {
     await c.query('SET SESSION lock_wait_timeout = 8');
+    // Un ALTER que quedó a medias de un arranque anterior (o consultas esperando su candado) deja la tabla bloqueada
+    // y toda la app se cuelga: se cancelan los de esta misma base y usuario antes de seguir.
+    const [viejos] = await c.query<RowDataPacket[]>(
+      `SELECT ID FROM information_schema.PROCESSLIST
+        WHERE DB = DATABASE() AND USER = SUBSTRING_INDEX(CURRENT_USER(), '@', 1) AND ID <> CONNECTION_ID()
+          AND (INFO LIKE 'ALTER TABLE%' OR STATE LIKE 'Waiting for table metadata lock%')`,
+    );
+    for (const v of viejos) { try { await c.query(`KILL ${Number(v['ID'])}`); } catch { /* ya terminó */ } }
     await paso(c);
   } catch (e) {
     console.warn('Cambio de esquema omitido (se reintentará al reiniciar):', (e as Error).message);
