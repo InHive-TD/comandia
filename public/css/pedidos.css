@@ -93,8 +93,8 @@
   body:has(.carrito.abierto) .cliente-nav, body:has(.carrito.abierto) .barra-carrito { display: none; }
   body:has(.carrito.abierto) { overflow: hidden; }
   /* Pie de la hoja: aviso de error + botones, siempre visibles abajo y sin taparse entre sí */
-  .carrito-pie { position: sticky; bottom: 0; z-index: 4; display: grid; gap: 8px; margin: 0 -14px -14px; padding: 10px 14px max(12px, env(safe-area-inset-bottom)); background: var(--color-tarjeta); border-top: 1px solid var(--color-borde); box-shadow: 0 -6px 14px -8px rgba(16, 36, 28, .25); }
-  .carrito { padding-bottom: 14px; }
+  .carrito-pie { position: sticky; bottom: 0; z-index: 4; display: grid; gap: 8px; margin: 0 -14px; padding: 10px 14px max(12px, env(safe-area-inset-bottom)); background: var(--color-tarjeta); border-top: 1px solid var(--color-borde); box-shadow: 0 -6px 14px -8px rgba(16, 36, 28, .25); }
+  .carrito { padding-bottom: 0; }   /* el pie pegajoso llega hasta el borde: sin hueco debajo por donde asome el contenido */
 }
 
 /* ---------- Diálogos ---------- */
