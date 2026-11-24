@@ -11,13 +11,13 @@
   <meta name="theme-color" content="#0a6b4e">
   <meta name="mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-capable" content="yes">
-  <script src="../js/pwa.js?v=1795490401" defer></script>
+  <script src="../js/pwa.js?v=1795491038" defer></script>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Outfit:wght@600;700;800&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="../css/estilos.css?v=1795490401">
-  <link rel="stylesheet" href="../css/admin.css?v=1795490401">
-  <link rel="stylesheet" href="../css/shell.css?v=1795490401">
+  <link rel="stylesheet" href="../css/estilos.css?v=1795491038">
+  <link rel="stylesheet" href="../css/admin.css?v=1795491038">
+  <link rel="stylesheet" href="../css/shell.css?v=1795491038">
   <link rel="stylesheet" href="../api/tema.php">
 </head>
 <body>
@@ -82,6 +82,7 @@
         <button id="btn-carga" class="btn nav-ico i-carga" type="button">Carga masiva</button>
         <p class="menu-sub">Cocina y pedidos</p>
         <button id="btn-prioridades" data-titulo="Ajustes · Cocina" class="btn nav-ico i-cocina" type="button">Cocina</button>
+        <button id="btn-carriles" data-titulo="Ajustes · Carriles de cocina" class="btn nav-ico i-carriles" type="button">Carriles de cocina</button>
         <button id="btn-toma-pedidos" data-titulo="Ajustes · Tomar pedidos" class="btn nav-ico i-pedidos" type="button">Tomar pedidos</button>
         <button id="btn-pedidos-qr" data-titulo="Ajustes · Pedidos por QR" class="btn nav-ico i-qr" type="button">Pedidos por QR</button>
         <p class="menu-sub">Negocio</p>
@@ -321,6 +322,33 @@
         <button id="perfil-quitar" class="btn" type="button" hidden>Quitar foto</button>
       </div>
       <div class="acciones-dialogo"><button id="perfil-cerrar" class="btn" type="button">Cerrar</button></div>
+    </div>
+  </dialog>
+
+  <!-- Carriles de cocina: cómo se acomodan los pedidos en la pantalla de Cocina (solo el dueño) -->
+  <dialog id="dlg-carriles" class="pagina">
+    <div class="formulario dialogo cr-dialogo">
+      <h2>Carriles de cocina</h2>
+      <p class="ayuda">Los carriles son las columnas de la pantalla de Cocina. Cada pedido va al <strong>primer carril</strong> cuya regla cumple (de arriba hacia abajo). Si en un grupo no marcas nada, ese grupo no filtra. Lo que no entre en ningún carril se muestra en “Otros”.</p>
+      <div class="cr-ambito">
+        <label>¿Para quién?
+          <select id="cr-ambito"></select>
+        </label>
+        <label id="cr-heredar-fila" class="lote-op" hidden>
+          <input id="cr-heredar" type="checkbox"><span>Usar los carriles de toda la empresa</span>
+        </label>
+      </div>
+      <p id="cr-heredado" class="ayuda" hidden>Esta sucursal usa los carriles de la empresa. Desmarca la casilla para darle los suyos.</p>
+      <div id="cr-lista" class="cr-lista"></div>
+      <div id="cr-acciones" class="ex-botones">
+        <button id="cr-agregar" class="btn" type="button">＋ Agregar carril</button>
+        <button id="cr-defecto" class="btn" type="button">↺ Comer aquí / Para llevar</button>
+      </div>
+      <p id="cr-error" class="msg-error" role="alert"></p>
+      <div class="acciones-dialogo">
+        <button id="cr-guardar" class="btn principal" type="button">Guardar carriles</button>
+        <button id="cr-cerrar" class="btn" type="button">Cerrar</button>
+      </div>
     </div>
   </dialog>
 
@@ -632,9 +660,9 @@
 
   <div id="toast" class="toast" role="status" hidden></div>
 
-  <script src="../js/comun.js?v=1795490401"></script>
-  <script src="../js/shell.js?v=1795490401"></script>
+  <script src="../js/comun.js?v=1795491038"></script>
+  <script src="../js/shell.js?v=1795491038"></script>
   <script src="../js/vendor/qrcode.js"></script>
-  <script src="../js/admin.js?v=1795490401"></script>
+  <script src="../js/admin.js?v=1795491038"></script>
 </body>
 </html>

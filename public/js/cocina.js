@@ -392,14 +392,34 @@ function pintar() {
     carril.append(cuerpo);
     caja.append(carril);
   }
-  const llevar = datos.ordenes.filter((o) => o.modalidad !== 'aqui' && !o.prioritario && !o.urgente && !sigueUrg(o));   // llevar y recoger van juntos
-  const aqui = datos.ordenes.filter((o) => o.modalidad === 'aqui' && !o.prioritario && !o.urgente && !sigueUrg(o));
-  for (const [clase, titulo, lista, vacio] of [
-    ['aqui', '🍽 Comer aquí', aqui, 'Sin pedidos para comer aquí.'],
-    ['llevar', '🥡 Para llevar', llevar, 'Sin pedidos para llevar.'],
-  ]) {
+  // Carriles configurables (Admin → Ajustes → Carriles de cocina). Cada pedido va al PRIMER carril cuya regla cumple;
+  // lo que no entra en ninguno se muestra en "Otros". Por defecto: Comer aquí y Para llevar (llevar y recoger juntos).
+  const CARRILES_DEFECTO = [
+    { id: 'aqui', nombre: '🍽 Comer aquí', color: 'verde', tipos: ['aqui'], estaciones: [], categorias: [] },
+    { id: 'llevar', nombre: '🥡 Para llevar', color: 'naranja', tipos: ['llevar', 'recoger'], estaciones: [], categorias: [] },
+  ];
+  const cfg = Array.isArray(datos.carriles) && datos.carriles.length ? datos.carriles : CARRILES_DEFECTO;
+  const cumple = (o, c) => (!c.tipos.length || c.tipos.includes(o.modalidad))
+    && (!c.estaciones.length || o.items.some((i) => c.estaciones.includes(i.estacion_id)))
+    && (!c.categorias.length || o.items.some((i) => c.categorias.includes(i.categoria)));
+  const sueltos = datos.ordenes.filter((o) => !o.prioritario && !o.urgente && !sigueUrg(o));
+  const porCarril = new Map(cfg.map((c) => [c.id, []]));
+  const otros = [];
+  for (const o of sueltos) {
+    const c = cfg.find((k) => cumple(o, k));
+    if (c) porCarril.get(c.id).push(o); else otros.push(o);
+  }
+  const carriles = cfg.map((c) => ({
+    clase: c.id, titulo: c.nombre, lista: porCarril.get(c.id), color: c.color,
+    vacio: `Sin pedidos en ${c.nombre.replace(/^[^\p{L}\p{N}]+/u, '').trim() || 'este carril'}.`,
+    // Para los logos de la comanda: un carril solo de "aquí" o solo de "llevar/recoger" ya lo dice en su título
+    tipoLogos: c.tipos.length && c.tipos.every((t) => t === 'aqui') ? 'aqui' : c.tipos.length && c.tipos.every((t) => t !== 'aqui') ? 'llevar' : 'urgentes',
+  }));
+  if (otros.length) carriles.push({ clase: 'otros', titulo: '📋 Otros', lista: otros, color: 'gris', vacio: '', tipoLogos: 'urgentes' });
+  caja.style.setProperty('--cols', String(Math.max(2, Math.min(4, carriles.length))));
+  for (const { clase, titulo, lista, vacio, color, tipoLogos } of carriles) {
     const ancho = carrilesAnchos.has(clase);
-    const carril = el('section', 'carril ' + clase + (ancho ? ' ancho' : ''));
+    const carril = el('section', 'carril col-' + color + ((clase === 'aqui' || clase === 'llevar') ? ' ' + clase : '') + (ancho ? ' ancho' : ''));
     const encab = el('h3', 'carril-titulo');
     const boton = el('button', 'carril-ancho');
     boton.type = 'button';
@@ -416,7 +436,7 @@ function pintar() {
     carril.append(encab);
     const cuerpo = el('div', 'carril-cuerpo');
     if (lista.length === 0) cuerpo.append(el('p', 'vacio', vacio));
-    for (const o of lista) cuerpo.append(comanda(o, clase));
+    for (const o of lista) cuerpo.append(comanda(o, tipoLogos));
     carril.append(cuerpo);
     caja.append(carril);
   }

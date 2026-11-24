@@ -72,7 +72,7 @@ async function entrar(usuario) {
   }
   esGerente = usuario.rol === 'gerente';
   pintarUsuario(usuario);
-  for (const id of ['btn-categorias', 'btn-extras', 'btn-apariencia']) { const b = $(id); if (b) b.hidden = esGerente; }
+  for (const id of ['btn-categorias', 'btn-extras', 'btn-apariencia', 'btn-carriles']) { const b = $(id); if (b) b.hidden = esGerente; }
   $('btn-sucursales').textContent = esGerente ? 'Mi sucursal y mesas' : 'Sucursales y mesas';
   mostrar('vista-panel');
   await cargarCatalogo();
@@ -483,7 +483,7 @@ function marcarMenu(idBoton) {
 /** Muestra una sección como página: cierra la que estuviera abierta y oculta la lista de productos. */
 /* Cada sección tiene su propia dirección: /<empresa>/admin/usuarios, /extras… (Inicio es solo /<empresa>/admin/).
    Se puede recargar, guardar en favoritos y usar "atrás". Las direcciones no llevan "#". */
-const RUTAS = { inicio: 'btn-reportes', platillos: 'btn-productos', categorias: 'btn-categorias', extras: 'btn-extras', 'carga-masiva': 'btn-carga', sucursales: 'btn-sucursales', usuarios: 'btn-usuarios', 'ajustes-cocina': 'btn-prioridades', 'ajustes-pedidos': 'btn-pedidos-qr', 'ajustes-toma': 'btn-toma-pedidos', apariencia: 'btn-apariencia' };
+const RUTAS = { inicio: 'btn-reportes', platillos: 'btn-productos', categorias: 'btn-categorias', extras: 'btn-extras', 'carga-masiva': 'btn-carga', sucursales: 'btn-sucursales', usuarios: 'btn-usuarios', 'ajustes-cocina': 'btn-prioridades', 'ajustes-pedidos': 'btn-pedidos-qr', 'ajustes-toma': 'btn-toma-pedidos', 'ajustes-carriles': 'btn-carriles', apariencia: 'btn-apariencia' };
 const BASE_ADMIN = location.pathname.replace(/\/admin(\/.*)?$/, '/admin/');   // "/lavale/admin/"
 const seccionDeLaDireccion = () => {
   const n = (location.pathname.startsWith(BASE_ADMIN) ? location.pathname.slice(BASE_ADMIN.length).replace(/\/+$/, '') : '') || 'inicio';
@@ -1689,6 +1689,123 @@ $('btn-toma-pedidos').addEventListener('click', async () => {
   abrirPagina(dlgTomaPedidos, 'btn-toma-pedidos');
 });
 $('tp-cerrar').addEventListener('click', () => dlgTomaPedidos.close());
+
+
+/* ---- Carriles de cocina (solo el dueño): nombre, color y regla de cada carril, para toda la empresa o por sucursal ---- */
+const dlgCarriles = $('dlg-carriles');
+let crEstado = null;     // lo que manda el servidor (carriles de la empresa y de cada sucursal, estaciones y categorías)
+let crLista = [];        // carriles que se están editando
+const COLORES_CR = [['verde', '🟢 Verde'], ['naranja', '🟠 Naranja'], ['azul', '🔵 Azul'], ['morado', '🟣 Morado'], ['rojo', '🔴 Rojo'], ['gris', '⚪ Gris']];
+const TIPOS_CR = [['aqui', '🍽 Comer aquí'], ['llevar', '🥡 Para llevar'], ['recoger', '🛍 Recoger']];
+const copiaCarriles = (l) => l.map((c) => ({ ...c, tipos: [...c.tipos], estaciones: [...c.estaciones], categorias: [...c.categorias] }));
+
+function crAmbito() { const v = $('cr-ambito').value; return v === 'general' ? { ambito: 'general' } : { ambito: 'sucursal', sucursal_id: Number(v) }; }
+
+function crCargarAmbito() {
+  const v = $('cr-ambito').value;
+  const suc = crEstado.sucursales.find((s) => String(s.id) === v);
+  $('cr-heredar-fila').hidden = v === 'general' && !crEstado.general_propio;
+  if (v === 'general') {
+    $('cr-heredar-fila').hidden = false;
+    $('cr-heredar').checked = !crEstado.general_propio;
+    $('cr-heredar').nextElementSibling.textContent = 'Usar los de siempre (Comer aquí / Para llevar)';
+    crLista = copiaCarriles(crEstado.general);
+  } else {
+    $('cr-heredar-fila').hidden = false;
+    $('cr-heredar').checked = !suc.propio;
+    $('cr-heredar').nextElementSibling.textContent = 'Usar los carriles de toda la empresa';
+    crLista = copiaCarriles(suc.carriles);
+  }
+  crPintar();
+}
+
+function crPintar() {
+  const hereda = $('cr-heredar').checked;
+  $('cr-heredado').hidden = !hereda || $('cr-ambito').value === 'general';
+  $('cr-acciones').hidden = hereda;
+  const caja = $('cr-lista');
+  caja.replaceChildren();
+  crLista.forEach((c, n) => {
+    const t = el('article', 'cr-carril' + (hereda ? ' solo-lectura' : ''));
+    const cab = el('div', 'cr-cab');
+    const nombre = document.createElement('input');
+    nombre.type = 'text'; nombre.maxLength = 40; nombre.value = c.nombre; nombre.placeholder = 'Ej. 🦐 Mariscos'; nombre.setAttribute('aria-label', 'Nombre del carril'); nombre.disabled = hereda;
+    nombre.addEventListener('input', () => { c.nombre = nombre.value; });
+    const color = document.createElement('select');
+    color.setAttribute('aria-label', 'Color'); color.disabled = hereda;
+    for (const [v, tx] of COLORES_CR) color.append(new Option(tx, v));
+    color.value = c.color;
+    color.addEventListener('change', () => { c.color = color.value; });
+    cab.append(el('span', 'cr-num', String(n + 1)), nombre, color);
+    if (!hereda) {
+      const mover = (d) => { const j = n + d; if (j < 0 || j >= crLista.length) return; [crLista[n], crLista[j]] = [crLista[j], crLista[n]]; crPintar(); };
+      const sube = el('button', 'btn chico', '↑'); sube.type = 'button'; sube.title = 'Subir'; sube.disabled = n === 0; sube.addEventListener('click', () => mover(-1));
+      const baja = el('button', 'btn chico', '↓'); baja.type = 'button'; baja.title = 'Bajar'; baja.disabled = n === crLista.length - 1; baja.addEventListener('click', () => mover(1));
+      const borra = el('button', 'btn chico peligro', '🗑'); borra.type = 'button'; borra.title = 'Quitar carril'; borra.disabled = crLista.length <= 1;
+      borra.addEventListener('click', () => { crLista.splice(n, 1); crPintar(); });
+      cab.append(sube, baja, borra);
+    }
+    t.append(cab);
+    const grupo = (titulo, opciones, marcados, alCambiar, vacio) => {
+      const g = el('fieldset', 'cr-grupo');
+      g.append(el('legend', '', titulo));
+      if (!opciones.length) { g.append(el('p', 'ayuda', vacio)); t.append(g); return; }
+      const fila = el('div', 'lote-lista');
+      for (const [v, tx] of opciones) {
+        const x = document.createElement('input'); x.type = 'checkbox'; x.checked = marcados.includes(v); x.disabled = hereda;
+        x.addEventListener('change', () => alCambiar(v, x.checked));
+        const l = el('label', 'lote-op'); l.append(x, el('span', '', tx));
+        fila.append(l);
+      }
+      g.append(fila); t.append(g);
+    };
+    const poner = (lista, v, si) => { const i = lista.indexOf(v); if (si && i < 0) lista.push(v); if (!si && i >= 0) lista.splice(i, 1); };
+    grupo('Tipo de pedido', TIPOS_CR, c.tipos, (v, si) => poner(c.tipos, v, si), '');
+    grupo('Estación (parrilla) de los platillos', crEstado.estaciones.map((e) => [e.id, e.nombre]), c.estaciones, (v, si) => poner(c.estaciones, v, si), 'Aún no hay estaciones. Créalas en Ajustes · Cocina.');
+    grupo('Categoría de los platillos', crEstado.categorias.map((k) => [k, k]), c.categorias, (v, si) => poner(c.categorias, v, si), 'Aún no hay categorías.');
+    caja.append(t);
+  });
+}
+
+async function abrirCarriles() {
+  $('cr-error').textContent = '';
+  try { crEstado = (await pedir(API + 'admin/prioridades.php')).carriles; } catch (err) { avisar(err.message, true); return; }
+  if (!crEstado) { avisar('Solo el dueño de la empresa puede cambiar los carriles.', true); return; }
+  const sel = $('cr-ambito');
+  sel.replaceChildren(new Option('Toda la empresa', 'general'));
+  for (const s of crEstado.sucursales) sel.append(new Option('Sucursal · ' + s.nombre, String(s.id)));
+  crCargarAmbito();
+  abrirPagina(dlgCarriles, 'btn-carriles');
+}
+$('btn-carriles').addEventListener('click', abrirCarriles);
+$('cr-ambito').addEventListener('change', crCargarAmbito);
+$('cr-heredar').addEventListener('change', () => {
+  if (!$('cr-heredar').checked && $('cr-ambito').value !== 'general') {
+    // Empieza con una copia de lo que usa hoy para editarla
+    const suc = crEstado.sucursales.find((s) => String(s.id) === $('cr-ambito').value);
+    crLista = copiaCarriles(suc.carriles);
+  }
+  crPintar();
+});
+$('cr-agregar').addEventListener('click', () => {
+  if (crLista.length >= 8) { $('cr-error').textContent = 'Máximo 8 carriles.'; return; }
+  crLista.push({ id: 'c' + Date.now().toString(36).slice(-6), nombre: '', color: 'azul', tipos: [], estaciones: [], categorias: [] });
+  crPintar();
+});
+$('cr-defecto').addEventListener('click', () => { crLista = copiaCarriles(crEstado.defecto); crPintar(); });
+$('cr-guardar').addEventListener('click', async () => {
+  $('cr-error').textContent = '';
+  const hereda = $('cr-heredar').checked;
+  const cuerpo = { accion: 'carriles', ...crAmbito() };
+  if (hereda) cuerpo.heredar = true; else cuerpo.carriles = crLista;
+  try {
+    const r = await enviarJson(API + 'admin/prioridades.php', cuerpo);
+    crEstado = r.carriles;
+    crCargarAmbito();
+    avisar('Carriles guardados');
+  } catch (err) { $('cr-error').textContent = err.message; }
+});
+$('cr-cerrar').addEventListener('click', () => dlgCarriles.close());
 
 /* Ajustes de pedidos por QR: su propia página */
 const dlgPedidosQr = $('dlg-pedidos-qr');

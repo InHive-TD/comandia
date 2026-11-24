@@ -57,6 +57,62 @@ async function estadoPedirPorMesa(nid: number, alcance: number | null) {
   return { general: g[0]?.['valor'] === '1', puede_general: alcance === null, sucursales: out };
 }
 
+/* ---------------------------------------------------------------------------------------------
+ * Carriles de cocina: cómo se acomodan los pedidos en la pantalla de Cocina.
+ * Cada carril tiene nombre, color y una regla (tipo de pedido, estaciones y/o categorías). Un pedido va al
+ * PRIMER carril cuya regla cumple; lo que no entra en ninguno cae en "Otros". Se guarda como JSON en ajustes:
+ * `cocina_carriles` (toda la empresa) y `cocina_carriles@ID` (una sucursal; si no existe, usa el de la empresa).
+ * ------------------------------------------------------------------------------------------- */
+export interface Carril { id: string; nombre: string; color: string; tipos: string[]; estaciones: number[]; categorias: string[] }
+const COLORES_CARRIL = ['verde', 'naranja', 'azul', 'morado', 'rojo', 'gris'];
+const TIPOS_CARRIL = ['aqui', 'llevar', 'recoger'];
+const MAX_CARRILES = 8;
+export const CARRILES_DEFECTO: Carril[] = [
+  { id: 'aqui', nombre: '🍽 Comer aquí', color: 'verde', tipos: ['aqui'], estaciones: [], categorias: [] },
+  { id: 'llevar', nombre: '🥡 Para llevar', color: 'naranja', tipos: ['llevar', 'recoger'], estaciones: [], categorias: [] },
+];
+
+/** Lee lo guardado con tolerancia (si el JSON está dañado se usan los carriles por defecto). */
+function carrilesGuardados(valor: unknown): Carril[] | null {
+  try {
+    const bruto = JSON.parse(String(valor));
+    if (!Array.isArray(bruto) || bruto.length === 0) return null;
+    const lista = bruto.slice(0, MAX_CARRILES).map((c: Record<string, unknown>, n: number): Carril => ({
+      id: /^[a-z0-9_]{1,24}$/.test(String(c['id'])) ? String(c['id']) : `c${n + 1}`,
+      nombre: String(c['nombre'] ?? '').slice(0, 40) || `Carril ${n + 1}`,
+      color: COLORES_CARRIL.includes(String(c['color'])) ? String(c['color']) : 'gris',
+      tipos: (Array.isArray(c['tipos']) ? c['tipos'] : []).map(String).filter((t) => TIPOS_CARRIL.includes(t)),
+      estaciones: enteros(c['estaciones']),
+      categorias: (Array.isArray(c['categorias']) ? c['categorias'] : []).map(String).slice(0, 60),
+    }));
+    return lista;
+  } catch { return null; }
+}
+
+/** Carriles que usa la sucursal: los suyos, o los de la empresa, o los de siempre (Comer aquí / Para llevar). */
+export async function carrilesEn(nid: number, sid: number): Promise<Carril[]> {
+  const r = await filas("SELECT clave, valor FROM ajustes WHERE negocio_id = ? AND clave IN ('cocina_carriles', ?)", [nid, `cocina_carriles@${sid}`]);
+  const propio = r.find((f) => f['clave'] === `cocina_carriles@${sid}`);
+  const general = r.find((f) => f['clave'] === 'cocina_carriles');
+  return (propio && carrilesGuardados(propio['valor'])) || (general && carrilesGuardados(general['valor'])) || CARRILES_DEFECTO;
+}
+
+/** Estado para el panel del dueño: lo de la empresa, lo de cada sucursal y las listas para elegir reglas. */
+async function estadoCarriles(nid: number) {
+  const ajustes = await filas("SELECT clave, valor FROM ajustes WHERE negocio_id = ? AND clave LIKE 'cocina_carriles%'", [nid]);
+  const g = ajustes.find((f) => f['clave'] === 'cocina_carriles');
+  const general = (g && carrilesGuardados(g['valor'])) || null;
+  const sucs = await filas('SELECT id, nombre FROM sucursales WHERE negocio_id = ? AND activa = 1 ORDER BY orden, id', [nid]);
+  const sucursales = sucs.map((s) => {
+    const p = ajustes.find((f) => f['clave'] === `cocina_carriles@${Number(s['id'])}`);
+    const propios = (p && carrilesGuardados(p['valor'])) || null;
+    return { id: Number(s['id']), nombre: s['nombre'], propio: propios !== null, carriles: propios ?? general ?? CARRILES_DEFECTO };
+  });
+  const estaciones = (await filas('SELECT id, nombre FROM estaciones WHERE negocio_id = ? ORDER BY orden, id', [nid])).map((e) => ({ id: Number(e['id']), nombre: e['nombre'] }));
+  const categorias = (await filas('SELECT nombre FROM categorias WHERE negocio_id = ? ORDER BY orden, id', [nid])).map((k) => String(k['nombre']));
+  return { general: general ?? CARRILES_DEFECTO, general_propio: general !== null, defecto: CARRILES_DEFECTO, sucursales, estaciones, categorias };
+}
+
 /** Estado para el panel: interruptor general de Cocina horizontal y el efectivo de cada sucursal (el gerente solo ve la suya). */
 async function estadoCocinaHorizontal(nid: number, alcance: number | null) {
   const sucs = await filas(`SELECT id, nombre FROM sucursales WHERE negocio_id = ? AND activa = 1${alcance !== null ? ` AND id = ${Math.trunc(alcance)}` : ''} ORDER BY orden, id`, [nid]);
@@ -102,7 +158,7 @@ export async function rutasPrioridades(app: FastifyInstance): Promise<void> {
         ).map((f) => ({ id: Number(f['id']), nombre: f['nombre'], categoria_id: Number(f['categoria_id']), categoria: f['categoria'], prioridades: niveles.get(Number(f['id'])) ?? {} }));
         const general = alcance === null;
         return { ok: true, estaciones, productos, modalidad: await bonosModalidad(c, general), min_preparacion: await minutosPreparacion(c, general), lote: await categoriasLote(c, general), lote_productos: await productosLote(c, general), general,
-          codigo_rapido: await estadoCodigoRapido(c.nid, alcance), cocina_horizontal: await estadoCocinaHorizontal(c.nid, alcance), pedir_por_mesa: await estadoPedirPorMesa(c.nid, alcance) };
+          codigo_rapido: await estadoCodigoRapido(c.nid, alcance), cocina_horizontal: await estadoCocinaHorizontal(c.nid, alcance), pedir_por_mesa: await estadoPedirPorMesa(c.nid, alcance), carriles: alcance === null ? await estadoCarriles(c.nid) : null };
       }
 
       exigirMetodo(req, 'POST');
@@ -127,6 +183,40 @@ export async function rutasPrioridades(app: FastifyInstance): Promise<void> {
           await guardar(`codigo_rapido@${sid}`, activo ? '1' : '0');
         }
         return { ok: true, codigo_rapido: await estadoCodigoRapido(c.nid, alcance) };
+      }
+
+      // Carriles de cocina: solo el dueño (el gerente no está en la lista de acciones permitidas de arriba).
+      if (accion === 'carriles') {
+        const clave = datos['ambito'] === 'general' ? 'cocina_carriles' : `cocina_carriles@${entero(datos['sucursal_id'])}`;
+        if (datos['ambito'] !== 'general') {
+          const sid = entero(datos['sucursal_id']);
+          if ((await c.filas('SELECT id FROM sucursales WHERE id = ? AND negocio_id = ?', [sid, c.nid])).length === 0) throw new ErrorHttp(404, 'validacion', 'Esa sucursal no existe.');
+        }
+        if (noVacio(datos['heredar'])) {   // sucursal: volver a usar los de la empresa · empresa: volver a los de siempre
+          await c.ejecutar('DELETE FROM ajustes WHERE negocio_id = ? AND clave = ?', [c.nid, clave]);
+          return { ok: true, carriles: await estadoCarriles(c.nid) };
+        }
+        const bruto = Array.isArray(datos['carriles']) ? (datos['carriles'] as Record<string, unknown>[]) : [];
+        if (bruto.length < 1 || bruto.length > MAX_CARRILES) throw new ErrorHttp(400, 'validacion', `Crea entre 1 y ${MAX_CARRILES} carriles.`);
+        const estacionesValidas = new Set((await c.filas('SELECT id FROM estaciones WHERE negocio_id = ?', [c.nid])).map((f) => Number(f['id'])));
+        const categoriasValidas = new Set((await c.filas('SELECT nombre FROM categorias WHERE negocio_id = ?', [c.nid])).map((f) => String(f['nombre'])));
+        const usados = new Set<string>();
+        const lista: Carril[] = bruto.map((x, n) => {
+          const nombre = String(x['nombre'] ?? '').trim();
+          if (nombre === '' || [...nombre].length > 40) throw new ErrorHttp(400, 'validacion', `El carril ${n + 1} necesita un nombre (máximo 40 letras).`);
+          let id = /^[a-z0-9_]{1,24}$/.test(String(x['id'])) ? String(x['id']) : `c${n + 1}`;
+          while (usados.has(id)) id += 'x';
+          usados.add(id);
+          return {
+            id, nombre,
+            color: COLORES_CARRIL.includes(String(x['color'])) ? String(x['color']) : 'gris',
+            tipos: [...new Set((Array.isArray(x['tipos']) ? x['tipos'] : []).map(String).filter((t) => TIPOS_CARRIL.includes(t)))],
+            estaciones: enteros(x['estaciones']).filter((e) => estacionesValidas.has(e)),
+            categorias: [...new Set((Array.isArray(x['categorias']) ? x['categorias'] : []).map(String).filter((k) => categoriasValidas.has(k)))],
+          };
+        });
+        await guardar(clave, JSON.stringify(lista));
+        return { ok: true, carriles: await estadoCarriles(c.nid) };
       }
 
       if (accion === 'pedir_por_mesa') {

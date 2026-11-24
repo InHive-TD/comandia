@@ -18,7 +18,7 @@ import {
   colaActiva, contexto, enTransaccion, hacerPrioritaria, leerMesa, leerModalidad, minutosPreparacion, quitarRenglon, reabrirEntregada, registrarEntrega, textoTurno,
 } from '../ordenes.js';
 import { entero } from '../util.js';
-import { cocinaHorizontalEn } from './admin/prioridades.js';
+import { carrilesEn, cocinaHorizontalEn } from './admin/prioridades.js';
 
 const BONO_MINUTOS = [0, 10, 20]; // por nivel de prioridad
 const ESTADOS_ITEM = ['pendiente', 'preparando', 'listo'];
@@ -193,6 +193,7 @@ export async function rutasCocina(app: FastifyInstance): Promise<void> {
           lote_productos: await productosLote(c),   // platillos sueltos que también van al lote
           bonos: BONO_MINUTOS, bonos_modalidad: bonoModalidad,
           horizontal: await cocinaHorizontalEn(c.nid, c.sid),   // comandas en una fila con scroll lateral
+          carriles: await carrilesEn(c.nid, c.sid),            // carriles configurables (por defecto: Comer aquí / Para llevar)
         };
       }
 
