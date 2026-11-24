@@ -40,6 +40,23 @@ export async function cocinaHorizontalEn(nid: number, sid: number): Promise<bool
   return (propio ?? general)?.['valor'] === '1';
 }
 
+/** ¿En Tomar pedidos se pide por MESA (true) o por NOMBRE del cliente (false, por defecto)?
+ *  Cada sucursal puede tener su valor (clave pedir_por_mesa@ID); si no lo tiene, usa el de toda la empresa. */
+export async function pedirPorMesaEn(nid: number, sid: number): Promise<boolean> {
+  const r = await filas("SELECT clave, valor FROM ajustes WHERE negocio_id = ? AND clave IN ('pedir_por_mesa', ?)", [nid, `pedir_por_mesa@${sid}`]);
+  const propio = r.find((f) => f['clave'] === `pedir_por_mesa@${sid}`);
+  const general = r.find((f) => f['clave'] === 'pedir_por_mesa');
+  return (propio ?? general)?.['valor'] === '1';
+}
+
+async function estadoPedirPorMesa(nid: number, alcance: number | null) {
+  const sucs = await filas(`SELECT id, nombre FROM sucursales WHERE negocio_id = ? AND activa = 1${alcance !== null ? ` AND id = ${Math.trunc(alcance)}` : ''} ORDER BY orden, id`, [nid]);
+  const g = await filas("SELECT valor FROM ajustes WHERE negocio_id = ? AND clave = 'pedir_por_mesa'", [nid]);
+  const out = [];
+  for (const s of sucs) out.push({ id: Number(s['id']), nombre: s['nombre'], activo: await pedirPorMesaEn(nid, Number(s['id'])) });
+  return { general: g[0]?.['valor'] === '1', puede_general: alcance === null, sucursales: out };
+}
+
 /** Estado para el panel: interruptor general de Cocina horizontal y el efectivo de cada sucursal (el gerente solo ve la suya). */
 async function estadoCocinaHorizontal(nid: number, alcance: number | null) {
   const sucs = await filas(`SELECT id, nombre FROM sucursales WHERE negocio_id = ? AND activa = 1${alcance !== null ? ` AND id = ${Math.trunc(alcance)}` : ''} ORDER BY orden, id`, [nid]);
@@ -85,13 +102,13 @@ export async function rutasPrioridades(app: FastifyInstance): Promise<void> {
         ).map((f) => ({ id: Number(f['id']), nombre: f['nombre'], categoria_id: Number(f['categoria_id']), categoria: f['categoria'], prioridades: niveles.get(Number(f['id'])) ?? {} }));
         const general = alcance === null;
         return { ok: true, estaciones, productos, modalidad: await bonosModalidad(c, general), min_preparacion: await minutosPreparacion(c, general), lote: await categoriasLote(c, general), lote_productos: await productosLote(c, general), general,
-          codigo_rapido: await estadoCodigoRapido(c.nid, alcance), cocina_horizontal: await estadoCocinaHorizontal(c.nid, alcance) };
+          codigo_rapido: await estadoCodigoRapido(c.nid, alcance), cocina_horizontal: await estadoCocinaHorizontal(c.nid, alcance), pedir_por_mesa: await estadoPedirPorMesa(c.nid, alcance) };
       }
 
       exigirMetodo(req, 'POST');
       const datos = cuerpoJson(req);
       const accion = String(datos['accion'] ?? '');
-      if (alcance !== null && !['lote', 'modalidad', 'codigo_rapido', 'cocina_horizontal'].includes(accion)) throw new ErrorHttp(403, 'validacion', 'Solo el dueño de la empresa puede cambiar esto.');
+      if (alcance !== null && !['lote', 'modalidad', 'codigo_rapido', 'cocina_horizontal', 'pedir_por_mesa'].includes(accion)) throw new ErrorHttp(403, 'validacion', 'Solo el dueño de la empresa puede cambiar esto.');
       const guardar = (clave: string, valor: string) =>
         c.ejecutar('INSERT INTO ajustes (negocio_id, clave, valor) VALUES (?, ?, ?) ON DUPLICATE KEY UPDATE valor = VALUES(valor)', [c.nid, clave, valor]);
 
@@ -110,6 +127,19 @@ export async function rutasPrioridades(app: FastifyInstance): Promise<void> {
           await guardar(`codigo_rapido@${sid}`, activo ? '1' : '0');
         }
         return { ok: true, codigo_rapido: await estadoCodigoRapido(c.nid, alcance) };
+      }
+
+      if (accion === 'pedir_por_mesa') {
+        const activo = noVacio(datos['activo']);
+        if (datos['ambito'] === 'general') {
+          if (alcance !== null) throw new ErrorHttp(403, 'validacion', 'Solo el dueño de la empresa puede cambiar esto para toda la empresa.');
+          await guardar('pedir_por_mesa', activo ? '1' : '0');
+        } else {
+          const sid = alcance ?? entero(datos['sucursal_id']);
+          if ((await c.filas('SELECT id FROM sucursales WHERE id = ? AND negocio_id = ?', [sid, c.nid])).length === 0) throw new ErrorHttp(404, 'validacion', 'Esa sucursal no existe.');
+          await guardar(`pedir_por_mesa@${sid}`, activo ? '1' : '0');
+        }
+        return { ok: true, pedir_por_mesa: await estadoPedirPorMesa(c.nid, alcance) };
       }
 
       // Distribución de las comandas en Cocina: apiladas hacia abajo o en una fila con scroll izquierda-derecha.

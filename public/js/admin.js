@@ -1612,11 +1612,35 @@ async function guardarCodigoRapido(cambio) {
     try { pintarCodigoRapido((await pedir(API + 'admin/prioridades.php')).codigo_rapido); } catch { /* se queda como estaba */ }
   }
 }
+function pintarPedirPorMesa(pm) {
+  $('tm-general-fila').hidden = !pm.puede_general;
+  $('tm-general').checked = pm.general;
+  const lista = $('tm-lista');
+  lista.replaceChildren();
+  for (const s of pm.sucursales) {
+    const x = el('input'); x.type = 'checkbox'; x.checked = s.activo;
+    x.addEventListener('change', () => guardarPedirPorMesa({ ambito: 'sucursal', sucursal_id: s.id, activo: x.checked }));
+    const fila = el('label', 'lote-op'); fila.append(x, el('span', '', s.nombre + ' · pedir por mesa'));
+    lista.append(fila);
+  }
+}
+async function guardarPedirPorMesa(cambio) {
+  $('tm-error').textContent = '';
+  try {
+    const r = await enviarJson(API + 'admin/prioridades.php', { accion: 'pedir_por_mesa', ...cambio });
+    pintarPedirPorMesa(r.pedir_por_mesa);
+    avisar('Guardado');
+  } catch (err) {
+    $('tm-error').textContent = err.message;
+    try { pintarPedirPorMesa((await pedir(API + 'admin/prioridades.php')).pedir_por_mesa); } catch { /* se queda */ }
+  }
+}
+$('tm-general').addEventListener('change', () => guardarPedirPorMesa({ ambito: 'general', activo: $('tm-general').checked }));
 $('tp-general').addEventListener('change', () => guardarCodigoRapido({ ambito: 'general', activo: $('tp-general').checked }));
 
 $('btn-toma-pedidos').addEventListener('click', async () => {
   $('tp-error').textContent = '';
-  try { pintarCodigoRapido((await pedir(API + 'admin/prioridades.php')).codigo_rapido); } catch (err) { avisar(err.message, true); return; }
+  try { const ap = await pedir(API + 'admin/prioridades.php'); pintarCodigoRapido(ap.codigo_rapido); pintarPedirPorMesa(ap.pedir_por_mesa); } catch (err) { avisar(err.message, true); return; }
   abrirPagina(dlgTomaPedidos, 'btn-toma-pedidos');
 });
 $('tp-cerrar').addEventListener('click', () => dlgTomaPedidos.close());

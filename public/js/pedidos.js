@@ -77,9 +77,15 @@ async function cargarMesas() {
   }
   actualizarMesa();
 }
+let pedirPorMesa = false; // ajuste del administrador: en pedidos "aquí" la mesa es obligatoria y el nombre opcional
+function mesaObligatoria() { return pedirPorMesa && modalidad === 'aqui' && !ordenDestino; }
 function actualizarMesa() {
   $('mesa-fila').hidden = !(mesas.length && modalidad === 'aqui' && !ordenDestino);
   if ($('mesa-fila').hidden) $('mesa').value = '';
+  const ob = mesaObligatoria();
+  $('mesa-rotulo').textContent = ob ? 'Mesa (obligatoria)' : 'Mesa';
+  $('cliente-rotulo').textContent = ob ? 'Nombre del cliente (opcional)' : 'Nombre del cliente';
+  $('cliente').placeholder = ob ? 'Opcional' : 'Obligatorio';
 }
 
 async function entrar(usuario) {
@@ -188,6 +194,8 @@ async function cargarMenu() {
     menu = r.menu;
     // El dueño puede apagar el buscador por código rápido: se oculta toda la sección (campo, botón y mensajes)
     $('form-codigo').hidden = r.codigo_rapido === false;
+    pedirPorMesa = r.pedir_por_mesa === true;
+    actualizarMesa();
     if (r.codigo_rapido === false) $('codigo-msg').textContent = '';
     porId = new Map();
     porCodigo = new Map();
@@ -681,7 +689,10 @@ async function levantar(pagarAhora = false) {
   const cliente = $('cliente').value.trim();
   if (carrito.length === 0) { error.textContent = 'Agrega al menos un producto.'; return; }
   if (cuando.incompleto()) { error.textContent = 'Completa la hora del pedido agendado (hora, minutos y AM/PM) o quita la agenda.'; return; }
-  if (!cliente && !ordenDestino) { error.textContent = 'Escribe el nombre del cliente.'; $('cliente').focus(); return; }
+  if (mesaObligatoria()) {
+    if (!mesas.length) { error.textContent = 'Esta sucursal no tiene mesas. Pide al administrador que las cree en “Sucursales y mesas”.'; return; }
+    if (!$('mesa').value) { error.textContent = 'Elige la mesa del pedido.'; $('mesa').focus(); return; }
+  } else if (!cliente && !ordenDestino) { error.textContent = 'Escribe el nombre del cliente.'; $('cliente').focus(); return; }
 
   enviando = true;
   const boton = pagarAhora ? $('btn-levantar-pagar') : $('btn-levantar');

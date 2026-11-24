@@ -19,6 +19,7 @@ import {
   type OrdenCreada, agregarAOrden, calcularHoraPrometida, contexto, crearOrden, estimarNuevo, leerMesa, leerModalidad, textoTurno, validarLineas,
 } from '../ordenes.js';
 import { entero, largo, noVacio } from '../util.js';
+import { pedirPorMesaEn } from './admin/prioridades.js';
 
 const ROLES_PERSONAL = ['taquero', 'caja', 'admin', 'mesero', 'gerente'] as const;
 
@@ -104,8 +105,13 @@ export async function rutasOrdenes(app: FastifyInstance): Promise<void> {
       // Con "orden_id" los productos se AGREGAN a un pedido ya levantado (el cliente pidió algo más).
       const agregarA = entero(datos['orden_id']);
 
-      const nombreCliente = String(datos['nombre_cliente'] ?? '').trim();
-      if (agregarA === 0 && (nombreCliente === '' || largo(nombreCliente) > 80)) throw fallo('Escribe el nombre del cliente (máximo 80 caracteres).');
+      let nombreCliente = String(datos['nombre_cliente'] ?? '').trim();
+      // Modo "pedir por mesa": en pedidos "aquí" la mesa es obligatoria y el nombre es opcional
+      const modalidadPedida = leerModalidad(datos['modalidad']);
+      const porMesa = agregarA === 0 && modalidadPedida === 'aqui' && (await pedirPorMesaEn(c.nid, c.sid));
+      if (largo(nombreCliente) > 80) throw fallo('El nombre del cliente no puede pasar de 80 caracteres.');
+      if (agregarA === 0 && nombreCliente === '' && !porMesa) throw fallo('Escribe el nombre del cliente (máximo 80 caracteres).');
+      if (porMesa && !entero(datos['mesa_id'])) throw fallo('Elige la mesa del pedido.');
       const notasOrden = String(datos['notas'] ?? '').trim();
       if (largo(notasOrden) > 255) throw fallo('Las notas del pedido no pueden pasar de 255 caracteres.');
 
@@ -125,6 +131,7 @@ export async function rutasOrdenes(app: FastifyInstance): Promise<void> {
       const agendado = horaPrometida !== null;
       const espera = agregarA > 0 ? null : await estimarNuevo(c, modalidad, unidades);
       const mesa = agregarA > 0 || modalidad !== 'aqui' ? null : await leerMesa(c, datos['mesa_id']);
+      if (porMesa && nombreCliente === '') nombreCliente = mesa ? (/mesa/i.test(mesa.nombre) ? mesa.nombre : `Mesa ${mesa.nombre}`) : 'Mesa';
       const orden =
         agregarA > 0
           ? await agregarAOrden(c, agregarA, lineas, total)

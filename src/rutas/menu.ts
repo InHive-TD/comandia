@@ -12,7 +12,7 @@ import type { FastifyInstance } from 'fastify';
 import { exigirMetodo, fijarSucursalAuto, requerirRol } from '../auth.js';
 import { CARTA_AGOTADO, CARTA_PRECIO, cartaUnir, cartaVisible } from '../carta.js';
 import { filas } from '../db.js';
-import { codigoRapidoEn } from './admin/prioridades.js';
+import { codigoRapidoEn, pedirPorMesaEn } from './admin/prioridades.js';
 
 export async function rutasMenu(app: FastifyInstance): Promise<void> {
   app.get('/productos', async (req) => {
@@ -70,7 +70,7 @@ export async function rutasMenu(app: FastifyInstance): Promise<void> {
       menu.set(cid, grupo);
     }
     // Interruptor del dueño: ¿se muestra el código rápido en Tomar pedidos? (por defecto sí)
-    return { ok: true, menu: [...menu.values()], codigo_rapido: await codigoRapidoEn(nid, suc) };
+    return { ok: true, menu: [...menu.values()], codigo_rapido: await codigoRapidoEn(nid, suc), pedir_por_mesa: await pedirPorMesaEn(nid, suc) };
   });
 
   app.get('/mesas', async (req) => {
