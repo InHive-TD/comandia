@@ -1,0 +1,54 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="robots" content="noindex">
+  <title>Iniciar sesión · Comandia</title>
+  <link rel="icon" type="image/png" href="../img/favicon.png">
+  <link rel="apple-touch-icon" href="../img/apple-touch-icon.png">
+  <meta name="theme-color" content="#601020">
+  <link rel="stylesheet" href="../css/estilos.css?v=1795557467">
+  <link rel="stylesheet" href="../css/admin.css?v=1795557467">
+  <link rel="stylesheet" href="../css/acceso.css?v=1795557467">
+</head>
+<body>
+
+  <header class="encabezado barra">
+    <div class="marca">
+      <img class="logo" src="../api/logo.php" alt="Comandia" width="52" height="52">
+      <div>
+        <h1 id="titulo-negocio">Comandia</h1>
+        <p>Acceso del personal</p>
+      </div>
+    </div>
+  </header>
+
+  <main class="contenedor ancho">
+
+    <section id="vista-login" class="tarjeta angosta" hidden>
+      <h2>Iniciar sesión</h2>
+      <form id="form-login" class="formulario">
+        <label>Usuario
+          <input id="login-usuario" type="text" autocomplete="username" autocapitalize="none" required>
+        </label>
+        <label>Contraseña
+          <input id="login-password" type="password" autocomplete="current-password" required>
+        </label>
+        <p id="login-msg" class="msg-error" role="alert"></p>
+        <button class="btn principal" type="submit">Entrar</button>
+      </form>
+    </section>
+
+    <section id="vista-aviso" class="tarjeta angosta" hidden>
+      <h2 id="aviso-titulo"></h2>
+      <p id="aviso-texto"></p>
+    </section>
+
+  </main>
+
+  <script src="../js/comun.js?v=202611211180"></script>
+  <script src="../js/login.js?v=1795557467"></script>
+  <script src="../js/entrada.js?v=202611242100"></script>
+</body>
+</html>

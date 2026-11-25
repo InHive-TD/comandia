@@ -43,7 +43,7 @@ export async function cargarNegocio(slugCrudo: string): Promise<Negocio> {
 }
 
 /** Nombres que NO pueden ser el nombre corto de una sucursal: ya son carpetas o pantallas de la empresa (/lavale/admin/, /lavale/css/...). */
-export const SLUGS_SUCURSAL_RESERVADOS = new Set(['admin', 'pedidos', 'cocina', 'caja', 'api', 'css', 'js', 'img', 'uploads', 'plataforma', 'cliente', 'favicon.ico', 'index.html']);
+export const SLUGS_SUCURSAL_RESERVADOS = new Set(['admin', 'pedidos', 'cocina', 'caja', 'login', 'api', 'css', 'js', 'img', 'uploads', 'plataforma', 'cliente', 'favicon.ico', 'index.html']);
 
 /**
  * Da su "slug" (nombre para el enlace del QR) a las sucursales que aún no lo tienen: sucursales nuevas o de bases anteriores.
