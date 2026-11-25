@@ -2,6 +2,7 @@
  * Entrada única del personal: /<empresa>/login/. Se inicia sesión una sola vez y cada quien llega a su pantalla
  * según su rol. La sesión es la misma de las demás pantallas, así que al llegar ya está dentro.
  */
+const $ = (id) => document.getElementById(id);
 const API = '../api/';
 const PANTALLA_POR_ROL = {
   admin: 'admin/',
