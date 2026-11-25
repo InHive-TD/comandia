@@ -31,6 +31,19 @@
       <p id="ac-error" class="msg-error" role="alert"></p>
       <button class="btn principal" type="submit" id="ac-enviar">Guardar y entrar</button>
     </form>
+    <form id="ol-form" class="formulario" hidden>
+      <label>Tu correo
+        <input id="ol-correo" type="email" autocomplete="email" inputmode="email" autocapitalize="none" placeholder="tucorreo@ejemplo.com" maxlength="190" required>
+      </label>
+      <p id="ol-error" class="msg-error" role="alert"></p>
+      <button class="btn principal" type="submit" id="ol-enviar">Enviarme el enlace</button>
+      <p class="ac-ayuda"><a href="../login/">← Volver a iniciar sesión</a></p>
+    </form>
+    <div id="ol-listo" class="ac-exito" hidden>
+      <div class="grande">📬</div>
+      <p class="ac-sub" id="ol-txt"></p>
+      <a class="btn" href="../login/">Volver a iniciar sesión</a>
+    </div>
     <div id="ac-exito" class="ac-exito" hidden>
       <div class="grande">✅</div>
       <h2 style="margin:0">¡Listo! Tu correo quedó confirmado</h2>
@@ -43,6 +56,6 @@
     </div>
     <p class="ac-pie">Con tecnología de <b>Comandia</b></p>
   </main>
-  <script src="../js/acceso.js?v=202611242240"></script>
+  <script src="../js/acceso.js?v=202611242250"></script>
 </body>
 </html>

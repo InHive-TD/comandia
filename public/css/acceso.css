@@ -25,6 +25,9 @@ body:has(#vista-login:not([hidden])) header, body:has(#vista-login:not([hidden])
 .ac-ojo:hover { background: var(--color-suave, #eef3ef); }
 #vista-login .btn.principal, .ac-tarjeta .btn.principal { width: 100%; padding: 14px; font-size: 1.05rem; font-weight: 700; border-radius: 12px; margin-top: 4px; }
 .ac-ayuda { margin: 14px 0 0; text-align: center; font-size: .82rem; color: #5b6672; line-height: 1.45; }
+.ac-ayuda a { color: var(--color-vino, #0a6b4e); font-weight: 600; text-decoration: none; }
+.ac-ayuda a:hover { text-decoration: underline; }
+.ac-tarjeta .btn:not(.principal) { display: inline-block; margin-top: 8px; }
 .ac-pie { text-align: center; font-size: .75rem; color: #8a96a3; margin: 14px 0 0; }
 .ac-pie b { color: var(--color-vino, #0a6b4e); }
 .ac-reglas { list-style: none; margin: 2px 0 0; padding: 0; display: grid; gap: 4px; font-size: .82rem; color: #5b6672; }

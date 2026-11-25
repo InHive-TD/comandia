@@ -11,9 +11,24 @@
     return d;
   }
   fetch(API + 'sesion.php').then((r) => r.json()).then((s) => { if (s.negocio) $('ac-negocio').textContent = s.negocio.nombre; }).catch(() => {});
+  const olvide = new URLSearchParams(location.search).get('olvide') === '1';
+  if (!token && olvide) {
+    document.title = 'Restablecer contraseña · Comandia';
+    $('ac-sub').textContent = 'Escribe tu correo y te enviaremos un enlace para crear una contraseña nueva.';
+    $('ol-form').hidden = false; $('ol-correo').focus();
+    $('ol-form').addEventListener('submit', async (ev) => {
+      ev.preventDefault();
+      $('ol-error').textContent = ''; $('ol-enviar').disabled = true;
+      try {
+        const d = await json(API + 'acceso/olvide.php', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ correo: $('ol-correo').value.trim() }) });
+        $('ol-form').hidden = true; $('ac-sub').textContent = ''; $('ol-txt').textContent = d.mensaje; $('ol-listo').hidden = false;
+      } catch (e) { $('ol-error').textContent = e.message; $('ol-enviar').disabled = false; }
+    });
+    return;
+  }
   // Sin código no hay nada que confirmar: quien entra a esta dirección a secas viene a iniciar sesión.
   if (!token) { location.replace('/' + location.pathname.split('/').filter(Boolean)[0] + '/login/'); return; }
-  else json(API + 'acceso/enlace.php?t=' + encodeURIComponent(token)).then((d) => {
+  json(API + 'acceso/enlace.php?t=' + encodeURIComponent(token)).then((d) => {
     $('ac-sub').textContent = `Hola ${d.nombre}, ${d.tipo === 'restablecer' ? 'crea tu contraseña nueva.' : 'confirma tu correo creando tu contraseña.'}`;
     $('ac-form').hidden = false; $('ac-p1').focus();
   }).catch((e) => malo(e.message));

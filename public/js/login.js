@@ -26,7 +26,7 @@
     envoltura.append(ojo);
   }
   const boton = caja.querySelector('button[type="submit"]'); if (boton) boton.textContent = 'Entrar';
-  const ayuda = document.createElement('p'); ayuda.className = 'ac-ayuda'; ayuda.textContent = '¿Olvidaste tu contraseña? Pídele a tu administrador que te envíe un enlace para crear una nueva.';
+  const ayuda = document.createElement('p'); ayuda.className = 'ac-ayuda'; const enlaceOlvide = document.createElement('a'); enlaceOlvide.href = '../acceso/?olvide=1'; enlaceOlvide.textContent = '¿Olvidaste tu contraseña?'; ayuda.append(enlaceOlvide);
   const pie = document.createElement('p'); pie.className = 'ac-pie'; pie.innerHTML = 'Con tecnología de <b>Comandia</b>';
   caja.append(ayuda, pie);
   fetch('../api/sesion.php', { credentials: 'same-origin' }).then((r) => r.json()).then((s) => { if (s && s.negocio) nombre.textContent = s.negocio.nombre; }).catch(() => {});

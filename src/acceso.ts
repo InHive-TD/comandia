@@ -69,6 +69,29 @@ export async function rutasAcceso(app: FastifyInstance): Promise<void> {
     return { ok: true, nombre: f['nombre'], tipo: f['tipo'], negocio: req.negocio.nombre };
   });
 
+  /** «Olvidé mi contraseña»: siempre responde lo mismo exista o no la cuenta, para no revelar quién tiene acceso. */
+  app.post('/acceso/olvide', async (req) => {
+    const ip = req.ip.slice(0, 45);
+    const n = await fila("SELECT COUNT(*) AS n FROM intentos_login WHERE negocio_id = ? AND ip = ? AND usuario = '@olvido' AND creado_en > (NOW() - INTERVAL 10 MINUTE)", [req.negocio.id, ip]);
+    if (Number(n?.['n']) >= 5) throw new ErrorHttp(429, 'bloqueado', 'Demasiados intentos. Espera 10 minutos.');
+    await ejecutar("INSERT INTO intentos_login (negocio_id, ip, usuario) VALUES (?, ?, '@olvido')", [req.negocio.id, ip]);
+    const correo = String(cuerpoJson(req)['correo'] ?? '').trim().toLowerCase();
+    if (!CORREO_VALIDO.test(correo)) throw fallo('Escribe un correo válido.');
+    const respuesta = { ok: true, mensaje: `Si ese correo tiene acceso a ${req.negocio.nombre}, te enviamos un enlace para crear una contraseña nueva. Revisa tu bandeja (y la carpeta de spam).` };
+    if (!correoListo()) return respuesta;
+    const u = await fila('SELECT id, clave_pendiente FROM usuarios WHERE negocio_id = ? AND correo = ? AND activo = 1', [req.negocio.id, correo]);
+    if (!u) return respuesta;
+    // Un correo cada 2 minutos por persona: evita que alguien llene la bandeja de otro.
+    const reciente = await fila("SELECT id FROM tokens_usuario WHERE usuario_id = ? AND creado_en > (NOW() - INTERVAL 2 MINUTE) LIMIT 1", [Number(u['id'])]);
+    if (reciente) return respuesta;
+    try {
+      await mandarEnlace(req.negocio, Number(u['id']), Number(u['clave_pendiente']) === 1 ? 'invitacion' : 'restablecer');
+    } catch (e) {
+      console.error('Olvidé mi contraseña: no se pudo enviar:', (e as Error).message);
+    }
+    return respuesta;
+  });
+
   app.post('/acceso/clave', async (req) => {
     const ip = req.ip.slice(0, 45);
     await limitar(req.negocio.id, ip);
