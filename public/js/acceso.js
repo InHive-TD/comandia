@@ -11,7 +11,8 @@
     return d;
   }
   fetch(API + 'sesion.php').then((r) => r.json()).then((s) => { if (s.negocio) $('ac-negocio').textContent = s.negocio.nombre; }).catch(() => {});
-  if (!token) malo('Falta el código del enlace. Abre el botón del correo que te enviaron.');
+  // Sin código no hay nada que confirmar: quien entra a esta dirección a secas viene a iniciar sesión.
+  if (!token) { location.replace('/' + location.pathname.split('/').filter(Boolean)[0] + '/login/'); return; }
   else json(API + 'acceso/enlace.php?t=' + encodeURIComponent(token)).then((d) => {
     $('ac-sub').textContent = `Hola ${d.nombre}, ${d.tipo === 'restablecer' ? 'crea tu contraseña nueva.' : 'confirma tu correo creando tu contraseña.'}`;
     $('ac-form').hidden = false; $('ac-p1').focus();
