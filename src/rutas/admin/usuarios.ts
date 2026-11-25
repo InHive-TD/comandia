@@ -71,7 +71,7 @@ export async function rutasUsuarios(app: FastifyInstance): Promise<void> {
 
       if (req.method === 'GET') {
         const r = await filas(
-          `SELECT u.id, u.nombre, u.usuario, u.correo, u.clave_pendiente, u.rol, u.activo, u.creado_en, u.sucursal_id, s.nombre AS sucursal
+          `SELECT u.id, u.nombre, u.usuario, u.correo, u.clave_pendiente, u.bloqueado, (u.bloqueo_hasta IS NOT NULL AND u.bloqueo_hasta > NOW()) AS bloqueo_temporal, u.rol, u.activo, u.creado_en, u.sucursal_id, s.nombre AS sucursal
              FROM usuarios u LEFT JOIN sucursales s ON s.id = u.sucursal_id
             WHERE u.negocio_id = ?${alcance !== null ? " AND u.sucursal_id = ? AND u.rol IN ('taquero','caja','mesero') AND NOT EXISTS (SELECT 1 FROM usuario_sucursales x WHERE x.usuario_id = u.id)" : ''}
             ORDER BY u.activo DESC, u.rol = 'admin' DESC, u.nombre`,
@@ -83,7 +83,7 @@ export async function rutasUsuarios(app: FastifyInstance): Promise<void> {
           ok: true,
           yo: yo.id,
           usuarios: r.map((u) => ({
-            id: Number(u['id']), nombre: u['nombre'], usuario: u['usuario'], correo: u['correo'] ?? null, pendiente: Boolean(Number(u['clave_pendiente'])), rol: u['rol'], activo: Boolean(Number(u['activo'])), creado_en: u['creado_en'],
+            id: Number(u['id']), nombre: u['nombre'], usuario: u['usuario'], correo: u['correo'] ?? null, pendiente: Boolean(Number(u['clave_pendiente'])), bloqueado: Boolean(Number(u['bloqueado'])), bloqueo_temporal: Boolean(Number(u['bloqueo_temporal'])), rol: u['rol'], activo: Boolean(Number(u['activo'])), creado_en: u['creado_en'],
             sucursal_id: u['sucursal_id'] === null ? null : Number(u['sucursal_id']), sucursal: u['sucursal'],
             sucursales_extra: extrasDeUsuario(Number(u['id'])),
           })),
@@ -196,6 +196,13 @@ export async function rutasUsuarios(app: FastifyInstance): Promise<void> {
           if (Number(dup?.['n']) > 0) throw new ErrorHttp(409, 'validacion', 'Ya existe una persona con ese correo.');
           await ejecutar('UPDATE usuarios SET correo = ? WHERE id = ? AND negocio_id = ?', [correo, id, nid]);
           await mandarEnlace(req.negocio, id, 'invitacion');
+          return { ok: true };
+        }
+        case 'desbloquear': {
+          // Lo pueden hacer el administrador general y, en su sucursal, el gerente (objetivo() ya lo limita).
+          const id = entero(d['id']);
+          await objetivo(id);
+          await ejecutar('UPDATE usuarios SET bloqueado = 0, fallos_login = 0, nivel_bloqueo = 0, bloqueo_hasta = NULL WHERE id = ? AND negocio_id = ?', [id, nid]);
           return { ok: true };
         }
         case 'clave': {

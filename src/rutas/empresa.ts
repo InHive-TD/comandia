@@ -99,16 +99,19 @@ export async function rutasEmpresa(app: FastifyInstance): Promise<void> {
     const ip = req.ip.slice(0, 45);
 
     await ejecutar('DELETE FROM intentos_login WHERE creado_en < (NOW() - INTERVAL 1 DAY)');
-    const porUsuario = await fila(
-      'SELECT COUNT(*) AS n FROM intentos_login WHERE negocio_id = ? AND ip = ? AND usuario = ? AND creado_en > (NOW() - INTERVAL 10 MINUTE)',
-      [nid, ip, usuario.slice(0, 40)],
-    );
     const porIp = await fila('SELECT COUNT(*) AS n FROM intentos_login WHERE negocio_id = ? AND ip = ? AND creado_en > (NOW() - INTERVAL 10 MINUTE)', [nid, ip]);
-    if (Number(porUsuario?.['n']) >= 5 || Number(porIp?.['n']) >= 20) {
-      throw new ErrorHttp(429, 'bloqueado', 'Demasiados intentos. Espera 10 minutos e inténtalo de nuevo.');
+    if (Number(porIp?.['n']) >= 20) {
+      throw new ErrorHttp(429, 'bloqueado', 'Demasiados intentos desde esta conexión. Espera 10 minutos e inténtalo de nuevo.');
     }
 
-    const f = await fila('SELECT id, nombre, rol, password_hash, clave_pendiente FROM usuarios WHERE negocio_id = ? AND (usuario = ? OR correo = ?) AND activo = 1', [nid, usuario, usuario]);
+    const f = await fila('SELECT id, nombre, rol, password_hash, clave_pendiente, bloqueado, nivel_bloqueo, fallos_login, GREATEST(0, TIMESTAMPDIFF(SECOND, NOW(), bloqueo_hasta)) AS espera FROM usuarios WHERE negocio_id = ? AND (usuario = ? OR correo = ?) AND activo = 1', [nid, usuario, usuario]);
+    if (f && Number(f['bloqueado']) === 1) {
+      throw new ErrorHttp(423, 'bloqueado', 'Esta cuenta está bloqueada por seguridad. Pide a tu administrador que la desbloquee.');
+    }
+    if (f && Number(f['espera']) > 0) {
+      const min = Math.ceil(Number(f['espera']) / 60);
+      throw new ErrorHttp(429, 'bloqueado', `Cuenta bloqueada temporalmente por demasiados intentos. Vuelve a intentar en ${min} minuto${min === 1 ? '' : 's'}.`);
+    }
     if (f && Number(f['clave_pendiente']) === 1) {
       throw new ErrorHttp(403, 'clave_pendiente', 'Aún no creas tu contraseña. Abre el correo de invitación o pide al administrador que te lo reenvíe.');
     }
@@ -117,8 +120,28 @@ export async function rutasEmpresa(app: FastifyInstance): Promise<void> {
     if (!f || !correcto) {
       await ejecutar('INSERT INTO intentos_login (negocio_id, ip, usuario) VALUES (?, ?, ?)', [nid, ip, usuario.slice(0, 40)]);
       await esperar(400);
+      if (f) {
+        // Escalera de bloqueos: 3 fallos seguidos → 5 min; otros 3 → 1 hora; otros 3 → bloqueo permanente (lo quita un administrador).
+        // Un administrador general nunca queda bloqueado para siempre (nadie podría desbloquearlo): se repite la hora.
+        const fallos = Number(f['fallos_login']) + 1;
+        if (fallos < 3) {
+          await ejecutar('UPDATE usuarios SET fallos_login = ? WHERE id = ?', [fallos, Number(f['id'])]);
+        } else {
+          const nivel = Number(f['nivel_bloqueo']) + 1;
+          const permanente = nivel >= 3 && String(f['rol']) !== 'admin';
+          const minutos = nivel === 1 ? 5 : 60;
+          await ejecutar(
+            'UPDATE usuarios SET fallos_login = 0, nivel_bloqueo = ?, bloqueado = ?, bloqueo_hasta = ' + (permanente ? 'NULL' : 'DATE_ADD(NOW(), INTERVAL ? MINUTE)') + ' WHERE id = ?',
+            permanente ? [Math.min(nivel, 3), 1, Number(f['id'])] : [Math.min(nivel, 2), 0, minutos, Number(f['id'])],
+          );
+          throw new ErrorHttp(permanente ? 423 : 429, 'bloqueado', permanente
+            ? 'Demasiados intentos fallidos: la cuenta quedó bloqueada. Pide a tu administrador que la desbloquee.'
+            : `Demasiados intentos fallidos. La cuenta queda bloqueada ${minutos === 5 ? '5 minutos' : '1 hora'}.`);
+        }
+      }
       throw new ErrorHttp(401, 'credenciales', 'Usuario, correo o contraseña incorrectos.');
     }
+    await ejecutar('UPDATE usuarios SET fallos_login = 0, nivel_bloqueo = 0, bloqueo_hasta = NULL WHERE id = ?', [Number(f['id'])]);
     await ejecutar('DELETE FROM intentos_login WHERE negocio_id = ? AND ip = ? AND usuario = ?', [nid, ip, usuario.slice(0, 40)]);
 
     // Un usuario solo puede estar en UN dispositivo a la vez. Se considera "abierta" otra sesión del mismo usuario

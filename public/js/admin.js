@@ -939,11 +939,21 @@ function renglonUsuario(u, r) {
   if (extra.length) chips.append(el('span', 'chip', '+ ' + extra.join(' + ')));
   if (u.id === r.yo) chips.append(el('span', 'chip', 'Tú'));
   if (u.pendiente) chips.append(el('span', 'chip sin', '✉ Pendiente de crear contraseña'));
+  if (u.bloqueado) chips.append(el('span', 'chip sin', '🔒 Bloqueado'));
+  else if (u.bloqueo_temporal) chips.append(el('span', 'chip sin', '⏳ Bloqueo temporal'));
   chips.append(el('span', 'chip ' + (u.activo ? 'activo' : 'sin'), u.activo ? '● Activo' : 'Desactivado'));
+  const desbloquear = (u.bloqueado || u.bloqueo_temporal) ? el('button', 'btn chico', '🔓 Desbloquear') : null;
+  if (desbloquear) {
+    desbloquear.type = 'button';
+    desbloquear.addEventListener('click', async () => {
+      try { await enviarJson(API + 'admin/usuarios.php', { accion: 'desbloquear', id: u.id }); avisar(u.nombre + ' ya puede iniciar sesión'); await cargarUsuarios(); }
+      catch (err) { avisar(err.message, true); }
+    });
+  }
   const editar = el('button', 'btn chico', '✎ Editar');
   editar.type = 'button';
   editar.addEventListener('click', () => abrirEditarUsuario(u));
-  fila.append(quien, chips, editar);
+  fila.append(quien, chips, ...(desbloquear ? [desbloquear] : []), editar);
   return fila;
 }
 

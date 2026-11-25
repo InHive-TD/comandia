@@ -82,6 +82,9 @@ export async function asegurarEsquema(): Promise<void> {
     const col = `SELECT COUNT(*) AS n FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'usuarios' AND COLUMN_NAME = ?`;
     if (!(await hay(col, ['correo']))) await c.query('ALTER TABLE usuarios ADD COLUMN correo VARCHAR(150) NULL');
     if (!(await hay(col, ['clave_pendiente']))) await c.query('ALTER TABLE usuarios ADD COLUMN clave_pendiente TINYINT(1) NOT NULL DEFAULT 0');
+    if (!(await hay(col, ['fallos_login']))) {
+      await c.query('ALTER TABLE usuarios ADD COLUMN fallos_login TINYINT UNSIGNED NOT NULL DEFAULT 0, ADD COLUMN nivel_bloqueo TINYINT UNSIGNED NOT NULL DEFAULT 0, ADD COLUMN bloqueo_hasta DATETIME NULL, ADD COLUMN bloqueado TINYINT(1) NOT NULL DEFAULT 0');
+    }
     if (!(await hay(`SELECT COUNT(*) AS n FROM information_schema.STATISTICS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'usuarios' AND INDEX_NAME = 'uq_usuario_correo'`, []))) {
       await c.query('ALTER TABLE usuarios ADD UNIQUE KEY uq_usuario_correo (negocio_id, correo)');
     }

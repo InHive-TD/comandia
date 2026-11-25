@@ -107,6 +107,10 @@ CREATE TABLE IF NOT EXISTS usuarios (
     foto           VARCHAR(80)  NULL,             -- foto de perfil (archivo en uploads)
     correo         VARCHAR(150) NULL,             -- acceso con correo (invitación); NULL = solo usuario y contraseña
     clave_pendiente TINYINT(1)  NOT NULL DEFAULT 0, -- 1 = aún no crea su contraseña
+    fallos_login    TINYINT UNSIGNED NOT NULL DEFAULT 0, -- contraseñas incorrectas seguidas
+    nivel_bloqueo   TINYINT UNSIGNED NOT NULL DEFAULT 0, -- 0 ninguno · 1 ya tuvo bloqueo de 5 min · 2 ya tuvo bloqueo de 1 h
+    bloqueo_hasta   DATETIME NULL,                       -- bloqueo temporal vigente
+    bloqueado       TINYINT(1) NOT NULL DEFAULT 0,       -- 1 = bloqueo permanente (solo lo quita el administrador)
     creado_en      DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP,
     UNIQUE KEY uq_usuario_negocio (negocio_id, usuario),
     UNIQUE KEY uq_usuario_correo (negocio_id, correo),
