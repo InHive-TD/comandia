@@ -67,8 +67,8 @@ const pct = (a, q) => a.length ? a.slice().sort((x, y) => x - y)[Math.min(a.leng
 
 const p0 = await req('GET', '/productos');
 const lista = JSON.parse(p0.cuerpo);
-const todos = Array.isArray(lista) ? lista : (lista.productos || []);
-productos = todos.filter((p) => !p.pedir_opciones && !p.opciones_obligatorias && !p.grupo_obligatorio && !p.agotado).slice(0, 30);
+const todos = (lista.menu || []).flatMap((g) => g.productos || []);
+productos = todos.filter((p) => !p.obligatorias && !p.grupo_obligatorio && !p.agotado).slice(0, 30);
 if (!productos.length) { console.error('Sin productos sencillos'); process.exit(3); }
 console.log(`Productos de prueba: ${productos.length}. Etapas: ${ETAPAS.join(', ')} taquerías x ${SEG}s\n`);
 console.log('taquerias | req/s | p50 ms | p95 ms | p99 ms | errores % | pedidos ok | rechazos | SSE');
