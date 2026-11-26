@@ -48,6 +48,7 @@ interface Pago {
   anulado: boolean;
   hora: string;
   cobro: unknown;
+  partes: { nombre: string; unidades: number }[];   // qué platillos cubrió (si se cobró por plato o por platillo)
 }
 
 export async function rutasCaja(app: FastifyInstance): Promise<void> {
@@ -71,7 +72,7 @@ export async function rutasCaja(app: FastifyInstance): Promise<void> {
         );
 
         const pagosPorOrden = new Map<number, Pago[]>();
-        const itemsPorOrden = new Map<number, { cantidad: number; nombre: unknown }[]>();
+        const itemsPorOrden = new Map<number, { cantidad: number; nombre: unknown; id: number; plato: number; llevar: boolean; unitario: number; extras: string[]; pagadas: number }[]>();
         const cambiosPorOrden = new Map<number, { detalle: unknown; hora: unknown; tras_entrega: boolean }[]>();
         if (ordenes.length > 0) {
           const ids = ordenes.map((o) => Number(o['id']));
@@ -86,13 +87,35 @@ export async function rutasCaja(app: FastifyInstance): Promise<void> {
             const k = Number(p['orden_id']);
             pagosPorOrden.set(k, [
               ...(pagosPorOrden.get(k) ?? []),
-              { id: Number(p['id']), monto: Number(p['monto']), propina: Number(p['propina']), comision: Number(p['comision']), metodo: String(p['metodo']), anulado: Boolean(Number(p['anulado'])), hora: String(p['hora']), cobro: p['cobro'] },
+              { id: Number(p['id']), monto: Number(p['monto']), propina: Number(p['propina']), comision: Number(p['comision']), metodo: String(p['metodo']), anulado: Boolean(Number(p['anulado'])), hora: String(p['hora']), cobro: p['cobro'], partes: [] },
             ]);
           }
-          for (const i of await c.filas(`SELECT orden_id, cantidad, nombre_producto FROM orden_items WHERE orden_id IN (${marcas}) ORDER BY plato, id`, ids)) {
-            const k = Number(i['orden_id']);
-            itemsPorOrden.set(k, [...(itemsPorOrden.get(k) ?? []), { cantidad: Number(i['cantidad']), nombre: i['nombre_producto'] }]);
+          // Renglones con su precio y cuántas piezas ya se pagaron (para cobrar por plato o por platillo)
+          const extrasDe = new Map<number, string[]>();
+          for (const x of await c.filas(`SELECT e.item_id, e.nombre FROM orden_item_extras e JOIN orden_items i ON i.id = e.item_id WHERE i.orden_id IN (${marcas}) ORDER BY e.id`, ids)) {
+            const k = Number(x['item_id']);
+            extrasDe.set(k, [...(extrasDe.get(k) ?? []), String(x['nombre'])]);
           }
+          const pagadasDe = new Map<number, number>();
+          const partesDe = new Map<number, { item_id: number; unidades: number }[]>();
+          for (const x of await c.filas(`SELECT pi.item_id, pi.unidades, p.id AS pago_id, p.anulado FROM pago_items pi JOIN pagos p ON p.id = pi.pago_id WHERE p.orden_id IN (${marcas})`, ids)) {
+            const k = Number(x['item_id']);
+            if (!Number(x['anulado'])) pagadasDe.set(k, (pagadasDe.get(k) ?? 0) + Number(x['unidades']));
+            const pk = Number(x['pago_id']);
+            partesDe.set(pk, [...(partesDe.get(pk) ?? []), { item_id: k, unidades: Number(x['unidades']) }]);
+          }
+          const nombreItem = new Map<number, string>();
+          for (const i of await c.filas(`SELECT id, orden_id, plato, llevar, cantidad, nombre_producto, precio_unitario, extras_precio FROM orden_items WHERE orden_id IN (${marcas}) ORDER BY plato, id`, ids)) {
+            const k = Number(i['orden_id']);
+            const iid = Number(i['id']);
+            nombreItem.set(iid, String(i['nombre_producto']));
+            itemsPorOrden.set(k, [...(itemsPorOrden.get(k) ?? []), {
+              cantidad: Number(i['cantidad']), nombre: i['nombre_producto'],
+              id: iid, plato: Number(i['plato']), llevar: Boolean(Number(i['llevar'])), unitario: redondear(Number(i['precio_unitario']) + Number(i['extras_precio'])),
+              extras: extrasDe.get(iid) ?? [], pagadas: Math.min(Number(i['cantidad']), pagadasDe.get(iid) ?? 0),
+            }]);
+          }
+          for (const lista of pagosPorOrden.values()) for (const pg of lista) pg.partes = (partesDe.get(pg.id) ?? []).map((x) => ({ nombre: nombreItem.get(x.item_id) ?? 'Platillo', unidades: x.unidades }));
           for (const x of await c.filas(`SELECT orden_id, detalle, despues_de_entrega, DATE_FORMAT(creado_en, '%H:%i') AS hora FROM orden_cambios WHERE orden_id IN (${marcas}) ORDER BY id`, ids)) {
             const k = Number(x['orden_id']);
             cambiosPorOrden.set(k, [...(cambiosPorOrden.get(k) ?? []), { detalle: x['detalle'], hora: x['hora'], tras_entrega: Boolean(Number(x['despues_de_entrega'])) }]);
@@ -161,16 +184,44 @@ export async function rutasCaja(app: FastifyInstance): Promise<void> {
             if (o['estado'] === 'cancelada') throw fallo('Ese pedido está cancelado: no se puede cobrar.', 409);
             const saldo = redondear(Number(o['total']) - (await montoPagado(t, ordenId)));
             if (saldo <= 0.004) throw fallo('Ese pedido ya está pagado. Recarga la pantalla.', 409);
-            // Sin "monto" se cobra todo lo que falta; con "monto" se cobra una parte (cuenta dividida).
-            const monto = datos['monto'] !== undefined && datos['monto'] !== null && datos['monto'] !== '' ? dineroValido(datos['monto'], 'monto', 100000) : saldo;
+            // Cuenta dividida por plato o por platillo: se cobran las piezas elegidas. Sin "items": todo lo que falta, o "monto" (una parte).
+            const partes: { item_id: number; unidades: number; monto: number }[] = [];
+            let montoItems: number | null = null;
+            if (Array.isArray(datos['items']) && datos['items'].length > 0) {
+              const renglones = await t.filas('SELECT id, cantidad, precio_unitario, extras_precio FROM orden_items WHERE orden_id = ? FOR UPDATE', [ordenId]);
+              const ya = new Map<number, number>();
+              for (const x of await t.filas('SELECT pi.item_id, SUM(pi.unidades) AS u FROM pago_items pi JOIN pagos p ON p.id = pi.pago_id WHERE p.orden_id = ? AND p.anulado = 0 GROUP BY pi.item_id', [ordenId])) ya.set(Number(x['item_id']), Number(x['u']));
+              const pedido = new Map<number, number>();
+              for (const it of datos['items'] as unknown[]) {
+                const o = it as Record<string, unknown>;
+                const iid = Math.trunc(Number(o?.['item_id'])), u = Math.trunc(Number(o?.['unidades']));
+                if (!Number.isFinite(iid) || !Number.isFinite(u) || u < 1) throw fallo('La selección de platillos no es válida.');
+                pedido.set(iid, (pedido.get(iid) ?? 0) + u);
+              }
+              let suma = 0;
+              for (const [iid, u] of pedido) {
+                const r = renglones.find((x) => Number(x['id']) === iid);
+                if (!r) throw fallo('Uno de los platillos ya no está en el pedido. Recarga la pantalla.', 409);
+                const quedan = Number(r['cantidad']) - (ya.get(iid) ?? 0);
+                if (u > quedan) throw fallo('Uno de los platillos ya se había cobrado. Recarga la pantalla.', 409);
+                const m = redondear(u * (Number(r['precio_unitario']) + Number(r['extras_precio'])));
+                suma += m;
+                partes.push({ item_id: iid, unidades: u, monto: m });
+              }
+              // Si con esto queda todo cobrado, se cobra el saldo exacto (cualquier diferencia de centavos se absorbe aquí)
+              const todo = renglones.every((r) => Number(r['cantidad']) - (ya.get(Number(r['id'])) ?? 0) - (pedido.get(Number(r['id'])) ?? 0) <= 0);
+              montoItems = todo ? saldo : Math.min(redondear(suma), saldo);
+            }
+            const monto = montoItems !== null ? montoItems : datos['monto'] !== undefined && datos['monto'] !== null && datos['monto'] !== '' ? dineroValido(datos['monto'], 'monto', 100000) : saldo;
             if (monto <= 0 || monto > saldo + 0.004) {
               throw fallo(`El monto debe ser mayor a cero y no pasar de lo que falta por pagar (${saldo.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}).`);
             }
             const comision = metodo === 'tarjeta' ? comisionTarjeta(monto) : 0;
-            await t.ejecutar(
+            const ins = await t.ejecutar(
               'INSERT INTO pagos (negocio_id, sucursal_id, orden_id, monto, propina, comision, metodo, creado_por) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
               [t.nid, Number(o['sucursal_id']), ordenId, monto.toFixed(2), propina.toFixed(2), comision.toFixed(2), metodo, usuario.id],
             );
+            for (const pt of partes) await t.ejecutar('INSERT INTO pago_items (pago_id, item_id, unidades, monto) VALUES (?, ?, ?, ?)', [ins.insertId, pt.item_id, pt.unidades, pt.monto.toFixed(2)]);
             const pagado = await actualizarPagado(t, ordenId);
             return { ok: true, pagado, saldo: redondear(saldo - monto), comision };
           });

@@ -18,7 +18,7 @@
   <link rel="stylesheet" href="../css/estilos.css?v=1795557467">
   <link rel="stylesheet" href="../css/admin.css?v=1795557467">
   <link rel="stylesheet" href="../css/menu-barra.css?v=1795557467">
-  <link rel="stylesheet" href="../css/caja.css?v=1795557467">
+  <link rel="stylesheet" href="../css/caja.css?v=1795736000">
   <link rel="stylesheet" href="../css/shell.css?v=1795557467">
   <link rel="stylesheet" href="../css/acceso.css?v=202611261215">
   <link rel="stylesheet" href="../api/tema.php">
@@ -104,8 +104,10 @@
       </fieldset>
 
       <details id="cb-parte" class="cb-parte">
-        <summary>Cobrar solo una parte (cuenta dividida)</summary>
-        <label>Monto de la cuenta que se paga ahora
+        <summary>Dividir la cuenta (por plato, por platillo o por monto)</summary>
+        <div id="cb-modos" class="cb-opciones cb-modos" role="group" aria-label="Cómo dividir la cuenta"></div>
+        <div id="cb-seleccion" class="cb-seleccion"></div>
+        <label id="cb-monto-fila">Monto de la cuenta que se paga ahora
           <input id="cb-monto" type="number" inputmode="decimal" min="0.01" step="0.01">
         </label>
       </details>
@@ -137,6 +139,6 @@
   <script src="../js/shell.js?v=1795557467"></script>
   <script src="../js/login.js?v=202611242250"></script>
   <script src="../js/eventos.js?v=1795557467"></script>
-  <script src="../js/caja.js?v=1795557467"></script>
+  <script src="../js/caja.js?v=1795736000"></script>
 </body>
 </html>

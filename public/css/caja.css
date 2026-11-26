@@ -88,3 +88,17 @@
 .cb-comision { display: flex; justify-content: space-between; align-items: baseline; gap: 10px; color: #5a4636; }
 .cb-comision strong { font-variant-numeric: tabular-nums; }
 .cb-comision small { font-weight: 400; }
+/* Cuenta dividida: por plato, por platillo o por monto */
+.cb-modos .btn { min-height: 44px; flex: 1 1 100px; }
+.cb-seleccion { display: grid; gap: 6px; margin: 8px 0; }
+.cb-sel-fila { display: flex; align-items: center; gap: 10px; padding: 8px 10px; border: 1px solid var(--color-borde); border-radius: 10px; background: var(--color-tarjeta, #fff); }
+.cb-sel-fila.pagado { opacity: .55; }
+.cb-sel-fila input[type="checkbox"] { width: 24px; height: 24px; flex: none; }
+.cb-sel-texto { flex: 1; min-width: 0; display: grid; gap: 2px; }
+.cb-sel-texto small { opacity: .75; overflow-wrap: anywhere; }
+.cb-sel-precio { font-variant-numeric: tabular-nums; font-weight: 700; white-space: nowrap; }
+.cb-sel-cant { display: flex; align-items: center; gap: 6px; }
+.cb-sel-cant output { min-width: 3.2em; text-align: center; font-variant-numeric: tabular-nums; }
+.cb-sel-pie { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+.cb-sel-suma { margin-left: auto; font-weight: 700; }
+.pago-partes { display: block; opacity: .75; flex-basis: 100%; }

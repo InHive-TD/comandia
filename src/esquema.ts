@@ -224,4 +224,16 @@ async function actualizarV2(): Promise<void> {
     costo DECIMAL(12,6) NOT NULL DEFAULT 0,
     PRIMARY KEY (negocio_id, dia)
   ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4`);
+  // Qué platillos (y cuántas piezas) cubrió cada pago: cuenta dividida por plato o por platillo. Un pago anulado libera sus piezas.
+  await ejecutar(`CREATE TABLE IF NOT EXISTS pago_items (
+    id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+    pago_id INT UNSIGNED NOT NULL,
+    item_id INT UNSIGNED NOT NULL,
+    unidades INT UNSIGNED NOT NULL,
+    monto DECIMAL(10,2) NOT NULL DEFAULT 0,
+    INDEX idx_pi_item (item_id),
+    INDEX idx_pi_pago (pago_id),
+    CONSTRAINT fk_pi_pago FOREIGN KEY (pago_id) REFERENCES pagos(id) ON DELETE CASCADE,
+    CONSTRAINT fk_pi_item FOREIGN KEY (item_id) REFERENCES orden_items(id) ON DELETE CASCADE
+  ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4`);
 }

@@ -253,6 +253,7 @@ function enlaceReabrir(o) {
 function filaPago(p) {
   const f = el('div', 'pago-fila' + (p.anulado ? ' anulado' : ''));
   f.append(el('span', '', `${p.hora} · ${NOMBRE_METODO[p.metodo]} ${dinero.format(p.monto)}` + (p.propina > 0 ? ` + propina ${dinero.format(p.propina)}` : '') + (p.comision > 0 ? ` + comisión ${dinero.format(p.comision)}` : '') + (p.cobro ? ` · ${p.cobro}` : '')));
+  if (p.partes && p.partes.length) f.append(el('small', 'pago-partes', 'Pagó: ' + p.partes.map((x) => `${x.unidades}× ${x.nombre}`).join(' · ')));
   if (!p.anulado) {
     const b = el('button', 'btn peligro', anularPendiente === p.id ? '¿Seguro? Anular' : 'Anular');
     b.type = 'button';
@@ -356,12 +357,29 @@ function pintarCorte() {
 /*  Diálogo de cobro                                                   */
 /* ------------------------------------------------------------------ */
 /** Comisión de tarjeta que se suma al cliente: $3 + 3.7 % del monto, redondeada al peso (el servidor calcula lo mismo). */
-let cobro = null;   // { orden, metodo, enviando }
+let cobro = null;   // { orden, metodo, enviando, modo: 'plato'|'platillo'|'monto', sel: Map(item_id → piezas a cobrar ahora) }
+
+const MODOS_DIVISION = [['plato', 'Por plato'], ['platillo', 'Por platillo'], ['monto', 'Por monto']];
+const dividiendo = () => $('cb-parte').open;
+const restantes = (i) => Math.max(0, i.cantidad - (i.pagadas || 0));
+/** ¿Se eligieron TODAS las piezas que faltan? Entonces se cobra el saldo exacto. */
+function seleccionaTodo() {
+  const its = cobro.orden.items.filter((i) => restantes(i) > 0);
+  return its.length > 0 && its.every((i) => (cobro.sel.get(i.id) || 0) >= restantes(i));
+}
+function montoSeleccion() {
+  if (seleccionaTodo()) return cobro.orden.saldo;
+  let s = 0;
+  for (const i of cobro.orden.items) s += (cobro.sel.get(i.id) || 0) * i.unitario;
+  return Math.min(redondear(s), cobro.orden.saldo);
+}
+const haySeleccion = () => [...cobro.sel.values()].some((n) => n > 0);
 
 function montoActual() {
-  const v = parseFloat($('cb-monto').value);
   const saldo = cobro.orden.saldo;
-  return Number.isFinite(v) && v > 0 ? Math.min(redondear(v), saldo) : saldo;
+  if (dividiendo() && cobro.modo !== 'monto') return haySeleccion() ? montoSeleccion() : 0;
+  const v = parseFloat($('cb-monto').value);
+  return dividiendo() && Number.isFinite(v) && v > 0 ? Math.min(redondear(v), saldo) : saldo;
 }
 function propinaActual() {
   const v = parseFloat($('cb-propina').value);
@@ -369,13 +387,14 @@ function propinaActual() {
 }
 
 function abrirCobro(o) {
-  cobro = { orden: o, metodo: ['efectivo', 'tarjeta', 'transferencia'].includes(o.pago_previsto) ? o.pago_previsto : 'efectivo', enviando: false };
+  cobro = { orden: o, metodo: ['efectivo', 'tarjeta', 'transferencia'].includes(o.pago_previsto) ? o.pago_previsto : 'efectivo', enviando: false, modo: (o.items || []).some((i) => i.id) ? 'plato' : 'monto', sel: new Map() };
   $('cb-titulo').textContent = `${o.cliente} · #${o.turno.slice(-3)}`;
   $('cb-sub').textContent = (o.pagado > 0 ? `Ya pagó ${dinero.format(o.pagado)} de ${dinero.format(o.total)}.` : ESTADO_TXT[o.estado]) + (o.pago_previsto ? ` · Dijo que pagaría con ${NOMBRE_METODO[o.pago_previsto] || o.pago_previsto}.` : '');
   $('cb-saldo').textContent = dinero.format(o.saldo);
   $('cb-monto').value = '';
   $('cb-monto').max = String(o.saldo);
   $('cb-parte').open = false;
+  pintarDivision();
   $('cb-propina').value = '';
   $('cb-recibido').value = '';
   $('cb-error').textContent = '';
@@ -384,6 +403,74 @@ function abrirCobro(o) {
   recalcular();
   $('dlg-cobro').showModal();
 }
+
+/** Pinta el selector de la cuenta dividida: por plato, por platillo (con piezas) o por monto. */
+function pintarDivision() {
+  const modos = $('cb-modos');
+  modos.replaceChildren();
+  for (const [v, txt] of MODOS_DIVISION) {
+    const b = el('button', 'btn', txt);
+    b.type = 'button';
+    b.setAttribute('aria-pressed', String(cobro.modo === v));
+    b.addEventListener('click', () => { cobro.modo = v; cobro.sel = new Map(); $('cb-monto').value = ''; pintarDivision(); recalcular(); });
+    modos.append(b);
+  }
+  $('cb-monto-fila').hidden = cobro.modo !== 'monto';
+  const caja = $('cb-seleccion');
+  caja.replaceChildren();
+  caja.hidden = cobro.modo === 'monto';
+  if (cobro.modo === 'monto') return;
+
+  const items = cobro.orden.items.filter((i) => i.id);
+  const cambiar = () => { pintarDivision(); recalcular(); };
+  if (cobro.modo === 'plato') {
+    const platos = [...new Set(items.map((i) => i.plato))].sort((a, b) => a - b);
+    for (const n of platos) {
+      const del = items.filter((i) => i.plato === n);
+      const faltan = del.filter((i) => restantes(i) > 0);
+      const fila = el('label', 'cb-sel-fila' + (faltan.length ? '' : ' pagado'));
+      const chk = document.createElement('input'); chk.type = 'checkbox';
+      chk.disabled = faltan.length === 0;
+      chk.checked = faltan.length > 0 && faltan.every((i) => (cobro.sel.get(i.id) || 0) >= restantes(i));
+      chk.addEventListener('change', () => { for (const i of faltan) { if (chk.checked) cobro.sel.set(i.id, restantes(i)); else cobro.sel.delete(i.id); } cambiar(); });
+      const texto = el('div', 'cb-sel-texto');
+      const llevar = del.every((i) => i.llevar);
+      texto.append(el('strong', '', `Plato ${n}${llevar ? ' · para llevar' : ''}`));
+      texto.append(el('small', '', del.map((i) => `${restantes(i) > 0 ? restantes(i) : i.cantidad}× ${i.nombre}${restantes(i) === 0 ? ' (pagado)' : ''}`).join(' · ')));
+      const resto = faltan.reduce((s, i) => s + restantes(i) * i.unitario, 0);
+      fila.append(chk, texto, el('span', 'cb-sel-precio', faltan.length ? dinero.format(redondear(resto)) : 'Pagado'));
+      caja.append(fila);
+    }
+  } else {
+    for (const i of items) {
+      const quedan = restantes(i);
+      const fila = el('div', 'cb-sel-fila' + (quedan ? '' : ' pagado'));
+      const texto = el('div', 'cb-sel-texto');
+      texto.append(el('strong', '', i.nombre));
+      const extra = [i.extras && i.extras.length ? i.extras.join(', ') : '', `Plato ${i.plato}`, i.pagadas ? `ya pagó ${i.pagadas} de ${i.cantidad}` : ''].filter(Boolean).join(' · ');
+      texto.append(el('small', '', extra));
+      const cant = el('div', 'cb-sel-cant');
+      const sel = cobro.sel.get(i.id) || 0;
+      if (quedan > 0) {
+        const menos = el('button', 'btn chico', '−'); menos.type = 'button'; menos.disabled = sel <= 0;
+        const mas = el('button', 'btn chico', '＋'); mas.type = 'button'; mas.disabled = sel >= quedan;
+        menos.addEventListener('click', () => { const v = sel - 1; if (v <= 0) cobro.sel.delete(i.id); else cobro.sel.set(i.id, v); cambiar(); });
+        mas.addEventListener('click', () => { cobro.sel.set(i.id, Math.min(quedan, sel + 1)); cambiar(); });
+        cant.append(menos, el('output', '', `${sel} de ${quedan}`), mas);
+      }
+      fila.append(texto, cant, el('span', 'cb-sel-precio', quedan ? dinero.format(i.unitario) + (quedan > 1 ? ' c/u' : '') : 'Pagado'));
+      caja.append(fila);
+    }
+  }
+  const todos = el('button', 'btn chico', 'Elegir todo lo que falta'); todos.type = 'button';
+  todos.addEventListener('click', () => { for (const i of items) if (restantes(i) > 0) cobro.sel.set(i.id, restantes(i)); cambiar(); });
+  const nada = el('button', 'btn chico', 'Quitar selección'); nada.type = 'button';
+  nada.addEventListener('click', () => { cobro.sel = new Map(); cambiar(); });
+  const pie = el('div', 'cb-sel-pie');
+  pie.append(todos, nada, el('span', 'cb-sel-suma', haySeleccion() ? `Seleccionado: ${dinero.format(montoSeleccion())}` : 'Elige qué paga ahora'));
+  caja.append(pie);
+}
+$('cb-parte').addEventListener('toggle', () => { if (cobro) { if (!$('cb-parte').open) { cobro.sel = new Map(); $('cb-monto').value = ''; } pintarDivision(); recalcular(); } });
 
 function pintarOpciones() {
   const m = $('cb-metodos');
@@ -429,7 +516,10 @@ $('form-cobro').addEventListener('submit', async (ev) => {
   $('cb-error').textContent = '';
   try {
     const carga = { accion: 'cobrar', orden_id: cobro.orden.id, metodo: cobro.metodo, propina: propinaActual() };
-    if ($('cb-monto').value !== '') carga.monto = montoActual();
+    if (dividiendo() && cobro.modo !== 'monto') {
+      if (!haySeleccion()) { $('cb-error').textContent = 'Elige qué platos o platillos paga ahora.'; $('cb-confirmar').disabled = false; cobro.enviando = false; return; }
+      carga.items = [...cobro.sel].filter(([, n]) => n > 0).map(([item_id, unidades]) => ({ item_id, unidades }));
+    } else if (dividiendo() && $('cb-monto').value !== '') carga.monto = montoActual();
     const r = await enviarJson(API + 'caja.php', carga);
     $('dlg-cobro').close();
     avisar(r.pagado ? 'Pedido pagado ✓' : `Pago registrado. Faltan ${dinero.format(r.saldo)}.`);
