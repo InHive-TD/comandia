@@ -379,10 +379,18 @@ async function vozEnviar() {
 const cuandoVoz = montarCuando($('voz-cuando'));   // «Agendar pedido para más tarde», dentro de la ventana de voz
 const campoVozMesa = crearCampoMesa($('voz-mesa'), $('voz-mesa-plano'), () => vozPintarDatos());
 
+/** Platos seguidos (1, 2, 3…) ya en la ventana, para que lo que se ve sea lo que se va a agregar. */
+function vozNormalizarPlatos() {
+  const nums = [...new Set([...vozPropuesta.lineas.map((l) => l.plato), ...vozPropuesta.dudas.map((d) => d.plato || 1)])].sort((a, b) => a - b);
+  for (const l of vozPropuesta.lineas) l.plato = nums.indexOf(l.plato) + 1;
+  for (const d of vozPropuesta.dudas) d.plato = nums.indexOf(d.plato || 1) + 1;
+}
+
 function vozPintar(r, continuando = false) {
   const pd = r.pedido || {};
   const pendientes = continuando ? vozPropuesta.dudas : [];
   vozPropuesta = { lineas: (r.lineas || []).map((l) => ({ ...l, plato: l.plato || 1 })), dudas: [...pendientes, ...(r.dudas || [])], pedido: pd };
+  vozNormalizarPlatos();
   if (continuando) {   // se sigue dictando: lo ya elegido en la ventana (tipo, mesa, nombre, notas) se queda salvo que se diga otra cosa
     vozMod = pd.modalidad || vozMod;
     if (pd.mesa_id && mesas.some((m) => m.id === pd.mesa_id)) $('voz-mesa').value = String(pd.mesa_id);
@@ -394,7 +402,7 @@ function vozPintar(r, continuando = false) {
     $('voz-no').textContent = (r.resumen || []).length ? 'Cambios: ' + r.resumen.join(' · ') : '';
     $('voz-no').classList.add('voz-resumen');
     $('voz-estado').textContent = r.aviso ? 'Ya llevas más del 80% del límite de voz de hoy.' : 'Revisa, corrige lo que haga falta y agrégalo al pedido.';
-    $('voz-error').textContent = '';
+    $('voz-error').textContent = [pd.aviso_hora, ...(r.avisos || [])].filter(Boolean).join(' ');
     vozVista('resultado');
     vozPintarDatos();
     vozPintarPlatos();
@@ -412,7 +420,7 @@ function vozPintar(r, continuando = false) {
   $('voz-no').textContent = (r.resumen || []).length ? 'Cambios: ' + r.resumen.join(' · ') : '';
   $('voz-no').classList.add('voz-resumen');
   $('voz-estado').textContent = r.aviso ? 'Ya llevas más del 80% del límite de voz de hoy.' : 'Revisa, corrige lo que haga falta y agrégalo al pedido.';
-  $('voz-error').textContent = pd.aviso_hora || '';
+  $('voz-error').textContent = [pd.aviso_hora, ...(r.avisos || [])].filter(Boolean).join(' ');
   vozVista('resultado');
   vozPintarDatos();
   vozPintarPlatos();

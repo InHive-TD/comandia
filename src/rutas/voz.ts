@@ -191,7 +191,7 @@ export async function rutasVoz(app: FastifyInstance): Promise<void> {
         'Responde SOLO un JSON con esta forma exacta: {"lineas":[{"producto_id":0,"cantidad":1,"mods":[{"tipo":"sin","texto":"queso","extra_id":0}],"notas":"","plato":1,"llevar":false}],"dudas":[{"texto":"lo que dijo","cantidad":1,"opciones":[0],"plato":1,"llevar":false}],"no_encontrados":[{"texto":"lo que dijo","cantidad":1,"plato":1,"llevar":false}],"cambios":[{"ref":1,"accion":"quitar","cantidad":1,"mods":[]}],"mesa_id":null,"nombre":null,"modalidad":null,"notas_pedido":null,"para_hora":null,"en_minutos":null}.',
         'Eres tolerante con la transcripción: puede traer errores, marcas mal escritas, plurales, diminutivos o muletillas («este», «eh», «agrégame», «ponme», «me das», «añade», «también»). Entiende la intención y empata con el menú por significado, no solo por letras (ej. «taco de alambre» = «Alambre» si es lo más parecido, «coca» = «Coca-Cola»). Cada cosa que pide el mesero es un renglón, aunque la diga al final o después de «y también…».',
         'Datos del pedido (solo si el mesero los dice; si no, null): "mesa_id" = id de la lista MESAS; "nombre" = nombre del cliente («a nombre de Juan», «es para María»); "modalidad" = "aqui" (comer aquí), "llevar" (para llevar) o "recoger" (pasa a recoger); "notas_pedido" = indicaciones de TODO el pedido (ej. «todo sin picante», «cuenta separada»).',
-        'Platos: cada plato o persona es un número (plato 1, plato 2…). Si dicen «para la niña…», «otro plato con…» o «el segundo es…», usa el siguiente número. "llevar": true solo en los renglones de los platos que dicen que son para llevar; si TODO el pedido es para llevar usa modalidad "llevar".',
+        'Platos: cada plato o persona es un número (plato 1, plato 2…). Si hay PEDIDO ACTUAL, los números que diga el mesero son los de ese pedido («plato 2» = el plato 2); un plato que aún no existe es nuevo y usa EXACTAMENTE el número que dijo (aunque se salte alguno). «Otro plato», «un plato más», «para la niña…» o «el siguiente» = el SIGUIENTE PLATO NUEVO que viene abajo. Platillos sin número dicho van en el plato 1. "llevar": true solo en los renglones de los platos que dicen que son para llevar; si TODO el pedido es para llevar usa modalidad "llevar".',
         'MODIFICADORES: todo «sin X», «con X», «extra X», «más X», «con doble X», «quítale X», «ponle X», «aparte» o elección dicha para un platillo va en "mods" de ESE renglón, UNO por cada cosa: {"tipo":"sin"|"con"|"extra"|"elegir","texto":"lo dicho tal cual, solo el ingrediente (ej. queso)","extra_id":id de la opción del menú si estás seguro o 0}. «sin cebolla ni cilantro» son DOS mods «sin». «con todo» = un mod «con» texto «todo». «de pastor» / «de harina» cuando el platillo ofrece esa opción es "elegir". Si el mesero dice un modificador justo después de un platillo, es de ese platillo; si dice «el segundo sin…», es del segundo.',
         '"notas" es SOLO para indicaciones que no son una opción del menú (ej. «bien cocido», «cortado en cuatro», «para regalo»). Nunca pongas «sin X» o «con X» en "notas" si X puede ser una opción: va en "mods" (el sistema lo empata con las opciones reales del platillo).',
         'Reglas de menú: usa SOLO ids del menú. Si lo dicho puede ser varios platillos del menú, ponlo en "dudas" con hasta 4 ids posibles (no adivines entre opciones realmente distintas). Si no existe nada parecido a lo que pidió (ej. una bebida o marca que no está en el menú), ponlo en "no_encontrados" con su cantidad: nunca lo omitas ni lo cambies por otra cosa. Cantidades en número (dos = 2, un par = 2, media docena = 6).',
@@ -204,7 +204,7 @@ export async function rutasVoz(app: FastifyInstance): Promise<void> {
         temperature: 0,
         max_tokens: 1800,
         response_format: { type: 'json_object' },
-        messages: [{ role: 'system', content: sistema }, { role: 'user', content: `MENÚ:\n${catalogo}\n\nMESAS:\n${[...mesasOk].map(([id, n]) => `${id}=${n}`).join('\n') || '(ninguna)'}\n\nPEDIDO ACTUAL:\n${actualTexto || '(vacío)'}\n\nHORA ACTUAL: ${horaAhora}\n\nMESERO DIJO: ${texto}` }],
+        messages: [{ role: 'system', content: sistema }, { role: 'user', content: `MENÚ:\n${catalogo}\n\nMESAS:\n${[...mesasOk].map(([id, n]) => `${id}=${n}`).join('\n') || '(ninguna)'}\n\nPLATOS EXISTENTES: ${[...new Set(actual.map((l) => l.plato))].sort((a, b) => a - b).join(', ') || '(ninguno)'} · SIGUIENTE PLATO NUEVO: ${Math.max(0, ...actual.map((l) => l.plato)) + 1}\n\nPEDIDO ACTUAL:\n${actualTexto || '(vacío)'}\n\nHORA ACTUAL: ${horaAhora}\n\nMESERO DIJO: ${texto}` }],
       });
       tokens += Number(ia['usage']?.['total_tokens'] ?? 0);
       costo += Number(ia['usage']?.['cost'] ?? 0);
@@ -273,6 +273,20 @@ export async function rutasVoz(app: FastifyInstance): Promise<void> {
     for (const l of lineas as LineaV[]) resumen.push(`agregué ${l.cantidad > 1 ? l.cantidad + ' ' : ''}${l.nombre}`);
     lineas.length = 0;
     lineas.push(...finales);
+    // Red de seguridad: si dijo «plato 3» y no quedó nada en el plato 3, se avisa (la IA a veces se salta un plato)
+    const avisos: string[] = [];
+    const palabras: Record<string, number> = { uno: 1, primero: 1, dos: 2, segundo: 2, tres: 3, tercero: 3, cuatro: 4, cuarto: 4, cinco: 5, quinto: 5, seis: 6, siete: 7 };
+    const mencionados = new Set<number>();
+    for (const m of texto.toLowerCase().matchAll(/plato\s+(?:n[uú]mero\s+)?(\d{1,2}|uno|primero|dos|segundo|tres|tercero|cuatro|cuarto|cinco|quinto|seis|siete)\b/g)) {
+      const n = /^\d/.test(m[1]!) ? Number(m[1]) : palabras[m[1]!];
+      if (n && n <= 20) mencionados.add(n);
+    }
+    if (!/quit|elimin|cancel|borra/.test(texto.toLowerCase())) {
+      for (const n of [...mencionados].sort((a, b) => a - b)) {
+        const hayPend = (Array.isArray(respuesta['dudas']) ? respuesta['dudas'] : []).concat(Array.isArray(respuesta['no_encontrados']) ? respuesta['no_encontrados'] : []).some((q: any) => entero(q?.['plato']) === n);
+        if (!finales.some((l) => l.plato === n) && !hayPend) avisos.push(`Dijiste «plato ${n}» pero no quedó nada en ese plato. Revisa o vuelve a decirlo.`);
+      }
+    }
 
     // Pendientes: la IA dudó entre varios, o no encontró nada. El mesero elige aquí mismo (sugerencias + todo el menú).
     const dudas: unknown[] = [];
@@ -321,6 +335,6 @@ export async function rutasVoz(app: FastifyInstance): Promise<void> {
       [c.nid, Math.max(0, Math.round(tokens)), segundos, costo],
     );
     const usados = e.usados + Math.max(0, Math.round(tokens));
-    return { ok: true, texto, lineas, resumen: actual.length ? resumen : [], dudas, no_encontrados: noEncontrados, pedido, usados, limite: e.limite, aviso: usados >= e.limite * 0.8 };
+    return { ok: true, texto, lineas, avisos, resumen: actual.length ? resumen : [], dudas, no_encontrados: noEncontrados, pedido, usados, limite: e.limite, aviso: usados >= e.limite * 0.8 };
   });
 }
