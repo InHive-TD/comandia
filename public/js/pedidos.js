@@ -570,6 +570,13 @@ function vozPintarPlatos() {
   $('voz-agregar').disabled = vozPropuesta.lineas.length === 0 || vozPropuesta.dudas.length > 0;
 }
 
+/** Platos del diálogo marcados «para llevar» (todos sus renglones). */
+function platosVozLlevar() {
+  const por = new Map();
+  for (const l of vozPropuesta.lineas) por.set(l.plato, (por.get(l.plato) ?? true) && !!l.llevar);
+  return new Set([...por].filter(([, v]) => v).map(([n]) => n));
+}
+
 /** Pasa lo confirmado al pedido en curso (con el mismo flujo de siempre). Los platillos que piden opción obligatoria abren su hoja de opciones. */
 function vozAgregar() {
   const falta = vozFalta();
@@ -592,23 +599,19 @@ function vozAgregar() {
 
   // Tipo de pedido, nombre y mesa (solo en pedidos nuevos; a un pedido ya levantado solo se le agregan platillos)
   if (!ordenDestino) {
-    const llevarPlatos = new Set(vozPropuesta.lineas.filter((l) => l.llevar).map((l) => l.plato));
+    const llevarPlatos = platosVozLlevar();
     const todosPlatos = new Set(vozPropuesta.lineas.map((l) => l.plato));
     platosLlevar.clear();
     if (vozMod === 'recoger') fijarModalidad('recoger');
     else if (vozMod === 'llevar' || (llevarPlatos.size > 0 && llevarPlatos.size === todosPlatos.size && !carrito.length)) fijarModalidad('llevar');
-    else {
-      fijarModalidad('aqui');
-      for (const n of llevarPlatos) platosLlevar.add(n);
-    }
+    else fijarModalidad('aqui');   // los platos «para llevar» se marcan al final, cuando ya existen en el pedido
     $('cliente').value = $('voz-nombre').value.trim();
     if (modalidad === 'aqui' && $('voz-mesa').value && mesas.some((m) => String(m.id) === $('voz-mesa').value)) $('mesa').value = $('voz-mesa').value;
-  } else if (ordenDestino.modalidad === 'aqui') {
-    for (const l of vozPropuesta.lineas) if (l.llevar) platosLlevar.add(l.plato); else platosLlevar.delete(l.plato);
   }
   const notasPedido = $('voz-notas-pedido').value.trim();
   if (notasPedido) { const a = $('notas-orden').value.trim(); if (!a.includes(notasPedido)) $('notas-orden').value = a ? `${a} · ${notasPedido}` : notasPedido; }
 
+  const asignado = new Map();   // plato del diálogo → plato real en el pedido
   for (const l of vozPropuesta.lineas) {
     const p = porId.get(l.producto_id);
     if (!p || p.agotado) { avisar(`${l.nombre} ya no está disponible`, true); continue; }
@@ -616,7 +619,13 @@ function vozAgregar() {
     const extras = l.extras.map((x) => p.extras.find((e) => e.id === x.id)).filter(Boolean);
     // Cada plato nuevo toma el siguiente número (sin saltarse ninguno)
     const plato = reemplaza ? l.plato : (l.plato > 1 ? Math.min(l.plato, maxPlato() + 1) : platoActual);
+    asignado.set(l.plato, plato);
     agregarLinea(p, extras, l.cantidad, l.notas, plato);
+  }
+  // «Para llevar» por plato: se marca DESPUÉS de agregar todo (si se marca antes, al ir agregando el plato 1 el pedido borra la marca del plato 2, que aún no existe)
+  const llevarFinal = platosVozLlevar();
+  if (!ordenDestino ? modalidad === 'aqui' : ordenDestino.modalidad === 'aqui') {
+    for (const [n, real] of asignado) { if (llevarFinal.has(n)) platosLlevar.add(real); else if (ordenDestino) platosLlevar.delete(real); }
   }
   actualizarMesa();
   pintarCarrito();
