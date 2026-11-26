@@ -1,3 +1,4 @@
+import { config } from './config.js';
 import { ejecutar, fila, filas } from './db.js';
 import { slugDeTexto } from './util.js';
 import { ErrorHttp } from './errores.js';
@@ -21,6 +22,9 @@ export const SLUGS_RESERVADOS = new Set([
   'api', 'admin', 'caja', 'cocina', 'pedidos', 'cliente', 'css', 'js', 'img', 'uploads', 'database',
   'plataforma', 'www', 'app', 'static', 'assets', 'login', 'registro', 'soporte', 'ayuda', 'precios',
 ]);
+
+// La dirección secreta del panel de plataforma tampoco puede ser el nombre de una empresa.
+SLUGS_RESERVADOS.add(config.rutaPlataforma);
 
 const FORMATO_SLUG = /^[a-z0-9][a-z0-9-]{1,38}$/;
 

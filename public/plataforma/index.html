@@ -11,12 +11,14 @@
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Outfit:wght@600;700;800&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="../css/estilos.css?v=1795557467">
   <link rel="stylesheet" href="../css/admin.css?v=1795557467">
-  <link rel="stylesheet" href="../css/plataforma.css?v=1795717000">
+  <link rel="stylesheet" href="../css/plataforma.css?v=1795718000">
+  <link rel="stylesheet" href="../css/acceso.css?v=1795718000">
 </head>
 <body>
 
   <header class="encabezado barra">
     <div class="marca">
+      <img class="logo" src="../img/logo.png" alt="" width="46" height="46">
       <div>
         <h1>Comandia · Plataforma</h1>
         <p id="quien"></p>
@@ -29,16 +31,22 @@
 
     <section id="vista-login" class="tarjeta angosta" hidden>
       <h2>Iniciar sesión</h2>
+      <div class="ac-marca">
+        <img class="ac-logo" src="../img/logo-claro.svg" alt="Comandia" width="220" height="51">
+        <h1 class="ac-negocio">Panel de plataforma</h1>
+        <p class="ac-sub">Acceso exclusivo del administrador de Comandia</p>
+      </div>
       <form id="form-login" class="formulario">
         <label>Usuario
           <input id="login-usuario" type="text" autocomplete="username" autocapitalize="none" required>
         </label>
         <label>Contraseña
-          <input id="login-password" type="password" autocomplete="current-password" required>
+          <span class="ac-campo"><input id="login-password" type="password" autocomplete="current-password" required><button type="button" class="ac-ojo" id="login-ojo" aria-label="Mostrar contraseña">👁</button></span>
         </label>
         <p id="login-msg" class="msg-error" role="alert"></p>
         <button class="btn principal" type="submit">Entrar</button>
       </form>
+      <p class="ac-pie">Con tecnología de <b>Comandia</b></p>
     </section>
 
     <section id="vista-aviso" class="tarjeta angosta" hidden>
@@ -136,6 +144,6 @@
   <div id="toast" class="toast" role="status" hidden></div>
 
   <script src="../js/comun.js?v=1795557467"></script>
-  <script src="../js/plataforma.js?v=1795717000"></script>
+  <script src="../js/plataforma.js?v=1795718000"></script>
 </body>
 </html>

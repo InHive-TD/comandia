@@ -135,6 +135,16 @@ export async function crearApp(): Promise<FastifyInstance> {
 
     if (partes.length === 0) {
       relativa = 'index.html';
+    } else if (primero === config.rutaPlataforma) {
+      // Panel de plataforma en su dirección secreta: /<ruta>/ muestra public/plataforma/index.html
+      if (partes.length === 1) {
+        if (!ruta.endsWith('/')) return reply.redirect(ruta + '/', 302);
+        relativa = 'plataforma/index.html';
+      } else {
+        relativa = partes.slice(1).join('/');
+      }
+    } else if (primero === 'plataforma') {
+      return reply.code(404).send('No encontrado');   // la dirección vieja ya no existe
     } else if (slugValido(primero)) {
       const resto = partes.slice(1).join('/');
       const segundo = partes[1]?.toLowerCase() ?? '';

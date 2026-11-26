@@ -9,6 +9,7 @@
  */
 import { createInterface } from 'node:readline/promises';
 import { Writable } from 'node:stream';
+import { config } from '../config.js';
 import bcrypt from 'bcryptjs';
 import { cerrarBd, ejecutar, fila } from '../db.js';
 import { esDuplicado } from '../util.js';
@@ -52,7 +53,7 @@ try {
     } else {
       try {
         await ejecutar('INSERT INTO plataforma_admins (nombre, usuario, password_hash) VALUES (?, ?, ?)', [nombre, usuario, await bcrypt.hash(password, 10)]);
-        console.log(`Listo: ya puedes entrar a /plataforma/ con el usuario ${usuario}.`);
+        console.log(`Listo: ya puedes entrar a /${config.rutaPlataforma}/ con el usuario ${usuario}.`);
       } catch (e) {
         console.error(esDuplicado(e) ? 'Ese usuario ya existe.' : `No se pudo crear el usuario: ${e instanceof Error ? e.message : e}`);
         process.exitCode = 1;

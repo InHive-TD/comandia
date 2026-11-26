@@ -29,6 +29,15 @@ function mostrarAviso(titulo, texto) {
   mostrar('vista-aviso');
 }
 
+/* ---- Mostrar/ocultar contraseña ---- */
+$('login-ojo').addEventListener('click', () => {
+  const campo = $('login-password');
+  const ver = campo.type === 'password';
+  campo.type = ver ? 'text' : 'password';
+  $('login-ojo').textContent = ver ? '🙈' : '👁';
+  $('login-ojo').setAttribute('aria-label', ver ? 'Ocultar contraseña' : 'Mostrar contraseña');
+});
+
 /* ---- Sesión ---- */
 async function iniciar() {
   try {
@@ -72,8 +81,8 @@ $('btn-salir').addEventListener('click', async () => {
 
 /* ---- Lista ---- */
 function dominioBase() {
-  // Misma carpeta que /plataforma/ pero sin ella: https://dominio.mx/  (o http://localhost/comandia/)
-  return location.origin + location.pathname.replace(/plataforma\/?(index\.html)?$/, '');
+  // Misma carpeta que la del panel de plataforma pero sin ella: https://dominio.mx/  (o http://localhost/comandia/)
+  return location.origin + location.pathname.replace(/[^/]*\/?(index\.html)?$/, '');
 }
 
 function estadoDe(n) {

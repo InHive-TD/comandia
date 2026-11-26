@@ -37,6 +37,8 @@ export const config = {
   },
   /** Dirección pública del sistema, sin "/" al final (para los enlaces de los correos). */
   urlPublica: texto('APP_URL', '').trim().replace(/\/+$/, ''),
+  /** Dirección secreta del panel de plataforma (solo el dueño de Comandia): /<ruta>/. Se puede cambiar con PLATAFORMA_RUTA. */
+  rutaPlataforma: texto('PLATAFORMA_RUTA', 'mando-p2ddsllb').trim().toLowerCase(),
   /** Duración de una sesión iniciada: 12 horas. */
   sesionSegundos: 12 * 60 * 60,
 } as const;
