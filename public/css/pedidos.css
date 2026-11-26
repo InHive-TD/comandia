@@ -439,5 +439,7 @@ main.contenedor:has(#vista-pedido:not([hidden])) { padding-top: 0; }
 .voz-chip[aria-pressed="true"] { background: var(--color-principal, #0a6b4e); border-color: transparent; color: #fff; font-weight: 600; }
 .voz-total { text-align: right; font-weight: 800; font-size: 1.1rem; margin: 6px 0; }
 .voz-total[hidden] { display: none; }
-.acciones-dialogo .btn.voz-redondo { flex: 0 0 48px; width: 48px; height: 48px; min-height: 0; padding: 0; border-radius: 50%; display: inline-grid; place-items: center; background: var(--color-principal, #0a6b4e); color: #fff; border-color: transparent; }
-.acciones-dialogo .btn.voz-redondo[hidden] { display: none; }
+.btn.voz-redondo { flex: 0 0 48px; width: 48px; height: 48px; min-height: 0; padding: 0; border-radius: 50%; display: inline-grid; place-items: center; background: var(--color-principal, #0a6b4e); color: #fff; border-color: transparent; }
+.btn.voz-redondo[hidden] { display: none; }
+
+.dlg-barra .btn.voz-redondo { flex: 0 0 48px; margin-right: 8px; }

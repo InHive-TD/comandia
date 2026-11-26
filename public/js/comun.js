@@ -324,6 +324,8 @@ document.addEventListener('DOMContentLoaded', () => {
     cerrar.textContent = '✕'; cerrar.setAttribute('aria-label','Cerrar'); cerrar.title = 'Cerrar';
     cerrar.classList.remove('principal', 'grande', 'peligro');
     cerrar.classList.add('dlg-cerrar');
+    // Botones auxiliares (clase dlg-extra), como el micrófono de la voz: van primero, antes de la acción principal
+    for (const x of acc.querySelectorAll('.dlg-extra')) barra.append(x);
         if (principal) {
       principal.classList.remove('grande');
       principal.classList.add('dlg-ok');
