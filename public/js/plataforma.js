@@ -135,6 +135,7 @@ function tarjeta(n) {
     el('span', '', `${n.usuarios} usuario${n.usuarios === 1 ? '' : 's'}`),
     el('span', '', `Hoy: ${n.pedidos_hoy} pedidos`),
     el('span', '', `30 días: ${n.pedidos_30d}`),
+    el('span', '', n.voz_activa ? 'Voz: activa' : 'Voz: apagada'),
     el('span', '', n.vence_en ? `Vence: ${n.vence_en}` : 'Sin vencimiento'),
   );
 
@@ -186,6 +187,7 @@ function abrirEmpresa(n = null) {
   $('e-id').value = n ? n.id : '';
   $('e-titulo').textContent = n ? 'Editar empresa' : 'Nueva empresa';
   $('e-slug-caja').hidden = !!n;
+  $('e-voz-caja').hidden = !n;
   $('e-admin-caja').hidden = !!n;
   $('e-slug').required = !n;
   if (n) {
@@ -194,6 +196,8 @@ function abrirEmpresa(n = null) {
     $('e-vence').value = n.vence_en || '';
     $('e-contacto').value = n.contacto || '';
     $('e-notas').value = n.notas || '';
+    $('e-voz-activa').checked = !!n.voz_activa;
+    $('e-voz-limite').value = n.voz_limite_tokens ?? '';
   } else {
     $('e-plan').value = 'basico';
     pintarVistaSlug();
@@ -226,7 +230,7 @@ $('form-empresa').addEventListener('submit', async (ev) => {
     contacto: $('e-contacto').value.trim(), notas: $('e-notas').value.trim(),
   };
   const cuerpo = id
-    ? { accion: 'editar', id: Number(id), ...base }
+    ? { accion: 'editar', id: Number(id), ...base, voz_activa: $('e-voz-activa').checked, voz_limite_tokens: $('e-voz-limite').value.trim() }
     : { accion: 'crear', slug: $('e-slug').value.trim().toLowerCase(), admin_nombre: $('e-admin-nombre').value.trim(),
         admin_usuario: $('e-admin-usuario').value.trim().toLowerCase(), admin_password: $('e-admin-password').value, ...base };
   const boton = $('e-guardar');
@@ -254,11 +258,16 @@ function pintarIntegraciones(e) {
   $('int-modelo-ia').value = e.modelo_ia;
   $('int-modelo-stt').value = e.modelo_stt;
   $('int-limite').value = e.limite_diario;
+  pintarPrecio('ia'); pintarPrecio('stt');
   $('int-activa').checked = e.activa;
 }
 
 async function cargarIntegraciones() {
-  try { pintarIntegraciones(await pedir(API + 'integraciones.php')); } catch (err) { avisar(err.message, true); }
+  try {
+    const e = await pedir(API + 'integraciones.php');
+    pintarIntegraciones(e);
+    if (e.llave.configurada) cargarModelos();
+  } catch (err) { avisar(err.message, true); }
 }
 
 $('int-guardar-llave').addEventListener('click', async () => {
@@ -306,5 +315,51 @@ $('int-guardar').addEventListener('click', async () => {
     avisar('Ajustes guardados');
   } catch (err) { avisar(err.message, true); }
 });
+
+/* ---- Selector de modelos (se llena con la lista real de OpenRouter) ---- */
+const modelosPorId = { ia: new Map(), stt: new Map() };
+const usd = (n) => '$' + (n >= 1 ? n.toFixed(2) : n.toFixed(3).replace(/0+$/, '').replace(/\.$/, ''));
+
+function textoPrecio(m, esVoz) {
+  if (!m) return '';
+  if (esVoz && m.minuto !== null) return `${m.nombre} · ${usd(m.minuto)} por minuto de audio`;
+  if (m.entrada !== null && m.salida !== null) return `${m.nombre} · ${usd(m.entrada)} entrada / ${usd(m.salida)} salida por millón de tokens`;
+  return m.nombre;
+}
+
+function pintarPrecio(tipo) {
+  const campo = tipo === 'ia' ? 'int-modelo-ia' : 'int-modelo-stt';
+  const m = modelosPorId[tipo].get($(campo).value.trim());
+  $(tipo === 'ia' ? 'int-precio-ia' : 'int-precio-stt').textContent = m ? textoPrecio(m, tipo === 'stt') : (modelosPorId[tipo].size ? 'Ese nombre no está en la lista de OpenRouter.' : '');
+}
+
+function llenarLista(tipo, modelos) {
+  const dl = $(tipo === 'ia' ? 'lista-modelos-ia' : 'lista-modelos-stt');
+  dl.replaceChildren();
+  modelosPorId[tipo] = new Map(modelos.map((m) => [m.id, m]));
+  for (const m of modelos) {
+    const o = document.createElement('option');
+    o.value = m.id;
+    o.label = textoPrecio(m, tipo === 'stt');
+    dl.append(o);
+  }
+  pintarPrecio(tipo);
+}
+
+async function cargarModelos() {
+  const boton = $('int-modelos');
+  boton.disabled = true;
+  $('int-resultado').textContent = 'Cargando modelos…';
+  try {
+    const r = await enviarJson(API + 'integraciones.php', { accion: 'modelos' });
+    llenarLista('ia', r.ia);
+    llenarLista('stt', r.stt);
+    $('int-resultado').textContent = `${r.ia.length} modelos de IA y ${r.stt.length} de voz. Escribe en el campo para buscar y elige de la lista.`;
+  } catch (err) { $('int-resultado').textContent = err.message; }
+  finally { boton.disabled = false; }
+}
+$('int-modelos').addEventListener('click', cargarModelos);
+$('int-modelo-ia').addEventListener('input', () => pintarPrecio('ia'));
+$('int-modelo-stt').addEventListener('input', () => pintarPrecio('stt'));
 
 iniciar();

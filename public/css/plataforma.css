@@ -28,3 +28,5 @@
 .integraciones .rejilla-int label { display: grid; gap: 4px; font-weight: 600; }
 .integraciones .casilla-int { display: flex !important; align-items: center; gap: 8px; align-self: end; }
 .integraciones .acciones-int { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 8px; }
+.integraciones .rejilla-int small.ayuda { margin: 0; font-weight: 400; opacity: .75; }
+#e-voz-caja { margin-top: 4px; }

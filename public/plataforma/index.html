@@ -11,7 +11,7 @@
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Outfit:wght@600;700;800&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="../css/estilos.css?v=1795557467">
   <link rel="stylesheet" href="../css/admin.css?v=1795557467">
-  <link rel="stylesheet" href="../css/plataforma.css?v=1795718000">
+  <link rel="stylesheet" href="../css/plataforma.css?v=1795719000">
   <link rel="stylesheet" href="../css/acceso.css?v=202611261215">
 </head>
 <body>
@@ -75,12 +75,14 @@
           </div>
         </div>
         <div class="rejilla-int">
-          <label>Modelo de IA (entiende el pedido)<input id="int-modelo-ia" type="text" autocomplete="off" spellcheck="false"></label>
-          <label>Modelo de transcripción (voz a texto)<input id="int-modelo-stt" type="text" autocomplete="off" spellcheck="false"></label>
-          <label>Límite diario de pedidos por voz, por empresa<input id="int-limite" type="number" min="0" max="100000" step="1"></label>
+          <label>Modelo de IA (entiende el pedido)<input id="int-modelo-ia" type="text" list="lista-modelos-ia" autocomplete="off" spellcheck="false" placeholder="Escribe para buscar…"><small id="int-precio-ia" class="ayuda"></small></label>
+          <label>Modelo de transcripción (voz a texto)<input id="int-modelo-stt" type="text" list="lista-modelos-stt" autocomplete="off" spellcheck="false" placeholder="Escribe para buscar…"><small id="int-precio-stt" class="ayuda"></small></label>
+          <label>Límite diario de tokens por empresa (general)<input id="int-limite" type="number" min="0" max="1000000000" step="1000"><small class="ayuda">Cada empresa puede tener el suyo en «Editar».</small></label>
           <label class="casilla-int"><input id="int-activa" type="checkbox"> Voz encendida en toda la plataforma</label>
         </div>
-        <div class="acciones-int"><button id="int-guardar" class="btn principal" type="button">Guardar ajustes</button></div>
+        <datalist id="lista-modelos-ia"></datalist>
+        <datalist id="lista-modelos-stt"></datalist>
+        <div class="acciones-int"><button id="int-modelos" class="btn" type="button">Cargar lista de modelos</button> <button id="int-guardar" class="btn principal" type="button">Guardar ajustes</button></div>
         <p id="int-resultado" class="ayuda" role="status"></p>
       </section>
     </section>
@@ -126,6 +128,13 @@
           <input id="e-vence" type="date">
         </label>
       </div>
+      <div id="e-voz-caja">
+        <h3 class="sub-dlg">Voz con IA</h3>
+        <label class="casilla-int"><input id="e-voz-activa" type="checkbox"> Voz activada para esta empresa</label>
+        <label>Límite diario de tokens (vacío = usa el general)
+          <input id="e-voz-limite" type="number" min="0" max="1000000000" step="1000" placeholder="General">
+        </label>
+      </div>
       <label>Contacto (nombre, teléfono, correo)
         <input id="e-contacto" type="text" maxlength="150">
       </label>
@@ -144,6 +153,6 @@
   <div id="toast" class="toast" role="status" hidden></div>
 
   <script src="../js/comun.js?v=1795557467"></script>
-  <script src="../js/plataforma.js?v=1795718000"></script>
+  <script src="../js/plataforma.js?v=1795719000"></script>
 </body>
 </html>

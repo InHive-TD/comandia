@@ -49,10 +49,14 @@ export async function rutasPlataformaNegocios(app: FastifyInstance): Promise<voi
                   (SELECT COUNT(*) FROM ordenes o WHERE o.negocio_id = n.id AND o.fecha_turno >= CURDATE() - INTERVAL 30 DAY AND o.estado <> 'cancelada') AS pedidos_30d
              FROM negocios n ORDER BY n.activo DESC, n.nombre`,
         );
+        const voz = await filas("SELECT negocio_id, clave, valor FROM ajustes WHERE clave IN ('voz_activa', 'voz_limite_tokens')");
+        const vozDe = (id: number, clave: string): string | undefined => voz.find((x) => Number(x['negocio_id']) === id && x['clave'] === clave)?.['valor'] as string | undefined;
         return {
           ok: true,
           negocios: r.map((f) => ({
             ...f,
+            voz_activa: vozDe(Number(f['id']), 'voz_activa') === '1',
+            voz_limite_tokens: vozDe(Number(f['id']), 'voz_limite_tokens') === undefined ? null : Number(vozDe(Number(f['id']), 'voz_limite_tokens')),
             id: Number(f['id']),
             activo: Boolean(Number(f['activo'])),
             sucursales: Number(f['sucursales']),
@@ -111,6 +115,18 @@ export async function rutasPlataformaNegocios(app: FastifyInstance): Promise<voi
         await ejecutar('UPDATE negocios SET nombre = ?, plan = ?, vence_en = ?, contacto = ?, notas = ? WHERE id = ?', [
           nombre, leerPlan(d['plan']), leerFecha(d['vence_en']), textoOpcional(d['contacto'], 150, 'Contacto'), textoOpcional(d['notas'], 255, 'Notas'), Number(d['id'] ?? 0),
         ]);
+        if (d['voz_activa'] !== undefined) {
+          const nid = Number(d['id'] ?? 0);
+          await ejecutar('INSERT INTO ajustes (negocio_id, clave, valor) VALUES (?, ?, ?) ON DUPLICATE KEY UPDATE valor = VALUES(valor)', [nid, 'voz_activa', d['voz_activa'] ? '1' : '0']);
+          const crudo = String(d['voz_limite_tokens'] ?? '').trim();
+          if (crudo === '') {
+            await ejecutar("DELETE FROM ajustes WHERE negocio_id = ? AND clave = 'voz_limite_tokens'", [nid]);
+          } else {
+            const lim = Number(crudo);
+            if (!Number.isInteger(lim) || lim < 0 || lim > 1_000_000_000) throw fallo('El límite de tokens debe ser un número entero entre 0 y 1,000,000,000.');
+            await ejecutar('INSERT INTO ajustes (negocio_id, clave, valor) VALUES (?, ?, ?) ON DUPLICATE KEY UPDATE valor = VALUES(valor)', [nid, 'voz_limite_tokens', String(lim)]);
+          }
+        }
         return { ok: true };
       }
 
