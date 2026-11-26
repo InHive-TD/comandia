@@ -13,7 +13,7 @@
  */
 import type { FastifyInstance } from 'fastify';
 import { cuerpoJson, exigirMetodo, requerirRol } from '../auth.js';
-import { CARTA_AGOTADO, CARTA_PRECIO, cartaUnir, cartaVisible } from '../carta.js';
+import { CARTA_AGOTADO, cartaUnir, cartaVisible } from '../carta.js';
 import { ejecutar, fila, filas } from '../db.js';
 import { ErrorHttp, fallo } from '../errores.js';
 import { contexto } from '../ordenes.js';
@@ -49,7 +49,7 @@ async function menuParaVoz(nid: number, suc: number): Promise<Map<number, Produc
   const prods = await filas(
     `SELECT p.id, p.nombre, c.nombre AS categoria, p.opciones_obligatorias
        FROM productos p JOIN categorias c ON c.id = p.categoria_id${cartaUnir(suc)}
-      WHERE p.negocio_id = ? AND c.negocio_id = p.negocio_id AND p.disponible = 1 AND ${CARTA_AGOTADO} = 0${cartaVisible(suc)}
+      WHERE p.negocio_id = ? AND c.negocio_id = p.negocio_id AND p.disponible = 1 AND COALESCE(${CARTA_AGOTADO}, 0) = 0${cartaVisible(suc)}
       ORDER BY c.orden, p.orden, p.nombre`,
     [nid],
   );
