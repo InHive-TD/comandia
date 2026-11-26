@@ -382,3 +382,10 @@ main.contenedor:has(#vista-pedido:not([hidden])) { padding-top: 0; }
 .acciones-plato { gap: 10px; }
 .acciones-plato h2 { margin: 0 0 4px; }
 .acciones-plato .btn.grande { width: 100%; min-height: 52px; }
+
+/* ---------- Escritorio: «Tomar pedidos / Sucursal» sube con el scroll; la franja de código rápido y categorías se queda fija arriba ----------
+   Antes ambas barras eran fijas en top:0 y la franja tapaba el título. Ahora solo la franja queda pegada al borde superior. */
+@media (min-width: 901px) {
+  body[data-shell="pedidos"] .barra-panel { position: static; }
+  body[data-shell="pedidos"] .menu-fijo { top: 0; }
+}
