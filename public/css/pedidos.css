@@ -444,3 +444,4 @@ main.contenedor:has(#vista-pedido:not([hidden])) { padding-top: 0; }
 
 .dlg-barra .btn.voz-redondo { flex: 0 0 48px; margin-right: 8px; }
 .voz-otro { min-height: 36px; max-width: 100%; border: 1px solid var(--color-borde); border-radius: 8px; background: var(--color-tarjeta); color: inherit; padding: 0 8px; font: inherit; font-size: .9rem; }
+.msg-error.voz-resumen { color: inherit; opacity: .8; font-size: .9rem; }

@@ -320,6 +320,14 @@ function aBase64(blob) {
   return new Promise((ok, mal) => { const r = new FileReader(); r.onload = () => ok(String(r.result).split(',')[1] || ''); r.onerror = mal; r.readAsDataURL(blob); });
 }
 
+/** Lo que ya hay armado: lo que se está viendo en la ventana (si ya se dictó algo) o, si no, el pedido en curso. Lo nuevo que se diga se aplica SOBRE esto. */
+function vozActual() {
+  if (vozPropuesta.lineas.length) return vozPropuesta.lineas.map((l) => ({ producto_id: l.producto_id, nombre: l.nombre, cantidad: l.cantidad, extras: l.extras.map((x) => x.id), notas: l.notas || '', plato: l.plato || 1, llevar: !!l.llevar }));
+  const llevarMix = modalidad === 'aqui' && !ordenDestino;
+  return carrito.map((l) => ({ producto_id: l.producto.id, nombre: l.producto.nombre, cantidad: l.cantidad, extras: l.extras.map((x) => x.id), notas: l.notas || '', plato: l.plato || 1, llevar: llevarMix && platosLlevar.has(l.plato) }));
+}
+let vozBase = 0;   // renglones que había en el pedido al abrir la ventana (si hay, lo que se confirme los reemplaza ya con los cambios)
+
 async function vozEnviar() {
   const segundos = Math.max(1, Math.round((Date.now() - vozInicio) / 1000));
   const tipo = (vozGrabador && vozGrabador.mimeType) || 'audio/webm';
@@ -331,8 +339,8 @@ async function vozEnviar() {
   $('voz-estado').textContent = 'Entendiendo el pedido…';
   try {
     const formato = tipo.includes('mp4') ? 'mp4' : tipo.includes('ogg') ? 'ogg' : 'webm';
-    const r = await enviarJson(API + 'voz.php', { audio: await aBase64(blob), formato, segundos });
-    vozPintar(r);
+    const r = await enviarJson(API + 'voz.php', { audio: await aBase64(blob), formato, segundos, actual: vozActual() });
+    vozPintar(r, vozPropuesta.lineas.length > 0 || vozPropuesta.dudas.length > 0);
   } catch (err) {
     $('voz-error').textContent = err.message;
     $('voz-estado').textContent = 'No se pudo. Intenta otra vez.';
@@ -345,9 +353,26 @@ async function vozEnviar() {
 
 const campoVozMesa = crearCampoMesa($('voz-mesa'), $('voz-mesa-plano'), () => vozPintarDatos());
 
-function vozPintar(r) {
+function vozPintar(r, continuando = false) {
   const pd = r.pedido || {};
-  vozPropuesta = { lineas: (r.lineas || []).map((l) => ({ ...l, plato: l.plato || 1 })), dudas: r.dudas || [], pedido: pd };
+  const pendientes = continuando ? vozPropuesta.dudas : [];
+  vozPropuesta = { lineas: (r.lineas || []).map((l) => ({ ...l, plato: l.plato || 1 })), dudas: [...pendientes, ...(r.dudas || [])], pedido: pd };
+  if (continuando) {   // se sigue dictando: lo ya elegido en la ventana (tipo, mesa, nombre, notas) se queda salvo que se diga otra cosa
+    vozMod = pd.modalidad || vozMod;
+    if (pd.mesa_id && mesas.some((m) => m.id === pd.mesa_id)) $('voz-mesa').value = String(pd.mesa_id);
+    if (pd.nombre) $('voz-nombre').value = pd.nombre;
+    if (pd.notas) $('voz-notas-pedido').value = pd.notas;
+    campoVozMesa.refrescar();
+    $('voz-texto').textContent = r.texto ? `«${r.texto}»` : '(nada)';
+    $('voz-no').textContent = (r.resumen || []).length ? 'Cambios: ' + r.resumen.join(' · ') : '';
+    $('voz-no').classList.add('voz-resumen');
+    $('voz-estado').textContent = r.aviso ? 'Ya llevas más del 80% del límite de voz de hoy.' : 'Revisa, corrige lo que haga falta y agrégalo al pedido.';
+    $('voz-error').textContent = '';
+    vozVista('resultado');
+    vozPintarDatos();
+    vozPintarPlatos();
+    return;
+  }
   // Punto de partida: lo que dijo el mesero; si no dijo nada, lo que ya estaba elegido en la pantalla
   vozMod = pd.modalidad || modalidad;
   campoVozMesa.poner({ mesas, zonas: zonasPed, plano: planoActivo }, 'Elige la mesa…');
@@ -356,7 +381,8 @@ function vozPintar(r) {
   $('voz-nombre').value = pd.nombre || $('cliente').value || '';
   $('voz-notas-pedido').value = pd.notas || '';
   $('voz-texto').textContent = r.texto ? `«${r.texto}»` : '(nada)';
-  $('voz-no').textContent = (r.no_encontrados || []).length ? 'No encontré en el menú: ' + r.no_encontrados.join(', ') : '';
+  $('voz-no').textContent = (r.resumen || []).length ? 'Cambios: ' + r.resumen.join(' · ') : '';
+  $('voz-no').classList.add('voz-resumen');
   $('voz-estado').textContent = r.aviso ? 'Ya llevas más del 80% del límite de voz de hoy.' : 'Revisa, corrige lo que haga falta y agrégalo al pedido.';
   $('voz-error').textContent = '';
   vozVista('resultado');
@@ -526,6 +552,15 @@ function vozAgregar() {
   }
   const faltan = [];
 
+  // Si ya había platillos, lo que se confirma YA los trae con los cambios dictados: se reconstruye el pedido en curso (no se duplica ni se pierde nada)
+  const reemplaza = vozBase > 0;
+  if (reemplaza) {
+    carrito = [];
+    const nums = [...new Set(vozPropuesta.lineas.map((l) => l.plato))].sort((a, b) => a - b);
+    for (const l of vozPropuesta.lineas) l.plato = nums.indexOf(l.plato) + 1;   // platos seguidos: 1, 2, 3…
+    platoActual = Math.min(platoActual, Math.max(1, nums.length));
+  }
+
   // Tipo de pedido, nombre y mesa (solo en pedidos nuevos; a un pedido ya levantado solo se le agregan platillos)
   if (!ordenDestino) {
     const llevarPlatos = new Set(vozPropuesta.lineas.filter((l) => l.llevar).map((l) => l.plato));
@@ -551,7 +586,7 @@ function vozAgregar() {
     if (l.falta_opcion) { faltan.push(p); continue; }
     const extras = l.extras.map((x) => p.extras.find((e) => e.id === x.id)).filter(Boolean);
     // Cada plato nuevo toma el siguiente número (sin saltarse ninguno)
-    const plato = l.plato > 1 ? Math.min(l.plato, maxPlato() + 1) : platoActual;
+    const plato = reemplaza ? l.plato : (l.plato > 1 ? Math.min(l.plato, maxPlato() + 1) : platoActual);
     agregarLinea(p, extras, l.cantidad, l.notas, plato);
   }
   actualizarMesa();
@@ -571,7 +606,7 @@ function vozSiguienteOpcion() {
 $('dlg-opciones').addEventListener('close', () => { if (vozPendientesOpciones.length) setTimeout(vozSiguienteOpcion, 150); });
 
 // Al tocar el micrófono se abre la ventana y empieza a grabar de inmediato
-$('btn-voz').addEventListener('click', () => { vozReiniciar(); dlgVoz.showModal(); vozEmpezar(); });
+$('btn-voz').addEventListener('click', () => { vozReiniciar(); vozBase = carrito.length; dlgVoz.showModal(); vozEmpezar(); });
 $('voz-grabar').addEventListener('click', () => {
   if (vozProcesando) return;
   if (vozGrabador && vozGrabador.state === 'recording') vozDetener(); else vozEmpezar();
