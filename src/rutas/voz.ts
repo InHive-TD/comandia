@@ -140,7 +140,13 @@ export async function rutasVoz(app: FastifyInstance): Promise<void> {
     let tokens = 0, costo = 0;
 
     // 1) Voz a texto
-    const t = await openRouter(llave, 'audio/transcriptions', { model: modeloStt, input_audio: { data: audio, format: formato }, language: 'es' });
+    // Pista de vocabulario: los nombres reales del menú (y sus opciones) para que «Jugo Boing» no salga «boinks»
+    const vocab = new Set<string>();
+    for (const p of menu.values()) vocab.add(p.nombre);
+    for (const p of menu.values()) for (const n of p.extras.values()) vocab.add(n);
+    let pista = 'Pedido de comida en un restaurante, en español de México. Menú: ';
+    for (const v of vocab) { if (pista.length + v.length + 2 > 900) break; pista += v + ', '; }
+    const t = await openRouter(llave, 'audio/transcriptions', { model: modeloStt, input_audio: { data: audio, format: formato }, language: 'es', prompt: pista.replace(/, $/, '.') });
     const texto = String(t['text'] ?? '').trim();
     tokens += Number(t['usage']?.['total_tokens'] ?? 0);
     costo += Number(t['usage']?.['cost'] ?? 0);
