@@ -4,6 +4,7 @@ import { contextoPlataforma, csrfToken, cuerpoJson, verificarCsrf } from '../aut
 import { ejecutar, fila } from '../db.js';
 import { ErrorHttp } from '../errores.js';
 import { type Sesion, sesionDe } from '../sesion.js';
+import { rutasPlataformaIntegraciones } from './plataformaIntegraciones.js';
 import { rutasPlataformaNegocios } from './plataformaNegocios.js';
 
 const HASH_RELLENO = bcrypt.hashSync('relleno-para-igualar-tiempos', 10);
@@ -34,6 +35,7 @@ export async function requerirPlataforma(req: FastifyRequest): Promise<{ id: num
 /** Panel del dueño de Comandia (sesión aparte de la de las empresas). Cuelga de /api/plataforma. */
 export async function rutasPlataforma(app: FastifyInstance): Promise<void> {
   await app.register(rutasPlataformaNegocios);
+  await app.register(rutasPlataformaIntegraciones);
 
   app.get('/sesion', async (req) => {
     const ses = await sesionPlataforma(req);

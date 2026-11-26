@@ -206,4 +206,10 @@ async function actualizarV2(): Promise<void> {
     CONSTRAINT fk_us_usuario FOREIGN KEY (usuario_id) REFERENCES usuarios(id) ON DELETE CASCADE,
     CONSTRAINT fk_us_sucursal FOREIGN KEY (sucursal_id) REFERENCES sucursales(id) ON DELETE CASCADE
   ) ENGINE=InnoDB`);
+  // Ajustes de integraciones de toda la plataforma (llave de OpenRouter cifrada, modelos, límite de voz). Solo los ve el panel de plataforma.
+  await ejecutar(`CREATE TABLE IF NOT EXISTS plataforma_config (
+    clave VARCHAR(40) NOT NULL PRIMARY KEY,
+    valor TEXT NOT NULL,
+    actualizado_en TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+  ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4`);
 }

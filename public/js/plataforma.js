@@ -44,6 +44,7 @@ async function entrar(usuario) {
   $('quien').textContent = usuario.nombre;
   mostrar('vista-panel');
   await cargar();
+  await cargarIntegraciones();
 }
 
 $('form-login').addEventListener('submit', async (ev) => {
@@ -232,6 +233,69 @@ $('form-empresa').addEventListener('submit', async (ev) => {
   } finally {
     boton.disabled = false;
   }
+});
+
+/* ---- Integraciones: voz con IA (OpenRouter) ---- */
+function pintarIntegraciones(e) {
+  const est = $('int-estado');
+  est.textContent = e.llave.ilegible ? 'La llave guardada no se pudo leer: guarda una nueva'
+    : e.llave.configurada ? 'Configurada: sk-or-…' + e.llave.ultimos : 'Sin configurar';
+  est.className = e.llave.configurada ? 'ok' : '';
+  $('int-llave').value = '';
+  $('int-modelo-ia').value = e.modelo_ia;
+  $('int-modelo-stt').value = e.modelo_stt;
+  $('int-limite').value = e.limite_diario;
+  $('int-activa').checked = e.activa;
+}
+
+async function cargarIntegraciones() {
+  try { pintarIntegraciones(await pedir(API + 'integraciones.php')); } catch (err) { avisar(err.message, true); }
+}
+
+$('int-guardar-llave').addEventListener('click', async () => {
+  const llave = $('int-llave').value.trim();
+  if (!llave) { avisar('Pega primero la llave.', true); return; }
+  try {
+    pintarIntegraciones(await enviarJson(API + 'integraciones.php', { accion: 'guardar_llave', llave }));
+    $('int-resultado').textContent = 'Llave guardada. Usa «Probar» para comprobar que funciona.';
+    avisar('Llave guardada');
+  } catch (err) { avisar(err.message, true); }
+});
+
+$('int-quitar').addEventListener('click', async () => {
+  if (!(await confirmar('¿Quitar la llave de OpenRouter? La voz dejará de funcionar hasta que guardes otra.', { si: 'Quitar', peligro: true }))) return;
+  try {
+    pintarIntegraciones(await enviarJson(API + 'integraciones.php', { accion: 'quitar_llave' }));
+    $('int-resultado').textContent = '';
+    avisar('Llave quitada');
+  } catch (err) { avisar(err.message, true); }
+});
+
+$('int-probar').addEventListener('click', async () => {
+  const boton = $('int-probar');
+  boton.disabled = true;
+  $('int-resultado').textContent = 'Probando…';
+  try {
+    const r = await enviarJson(API + 'integraciones.php', { accion: 'probar' });
+    const dinero = (n) => '$' + Number(n).toFixed(2);
+    const partes = ['La llave funciona ✓'];
+    if (r.limite !== null && r.limite !== undefined) partes.push('límite de la llave ' + dinero(r.limite));
+    if (r.restante !== null && r.restante !== undefined) partes.push('restante ' + dinero(r.restante));
+    if (r.gastado !== null && r.gastado !== undefined) partes.push('gastado ' + dinero(r.gastado));
+    $('int-resultado').textContent = partes.join(' · ');
+  } catch (err) {
+    $('int-resultado').textContent = err.message;
+  } finally { boton.disabled = false; }
+});
+
+$('int-guardar').addEventListener('click', async () => {
+  try {
+    pintarIntegraciones(await enviarJson(API + 'integraciones.php', {
+      accion: 'ajustes', modelo_ia: $('int-modelo-ia').value.trim(), modelo_stt: $('int-modelo-stt').value.trim(),
+      limite_diario: Number($('int-limite').value), activa: $('int-activa').checked,
+    }));
+    avisar('Ajustes guardados');
+  } catch (err) { avisar(err.message, true); }
 });
 
 iniciar();

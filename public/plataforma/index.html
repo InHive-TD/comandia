@@ -11,7 +11,7 @@
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Outfit:wght@600;700;800&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="../css/estilos.css?v=1795557467">
   <link rel="stylesheet" href="../css/admin.css?v=1795557467">
-  <link rel="stylesheet" href="../css/plataforma.css?v=1795557467">
+  <link rel="stylesheet" href="../css/plataforma.css?v=1795717000">
 </head>
 <body>
 
@@ -52,6 +52,29 @@
       </div>
       <div id="resumen" class="resumen-plat"></div>
       <div id="lista" class="lista-empresas" aria-live="polite"></div>
+
+      <section id="integraciones" class="tarjeta integraciones">
+        <h2>Integraciones · Voz con IA (OpenRouter)</h2>
+        <p class="ayuda">La llave se guarda cifrada y no se puede volver a ver. Los créditos son de la plataforma; cada empresa con la voz activa los gasta.</p>
+        <div class="fila-llave">
+          <label for="int-llave">Llave de OpenRouter</label>
+          <div class="llave-estado"><span id="int-estado">Sin configurar</span></div>
+          <input id="int-llave" type="password" autocomplete="off" spellcheck="false" placeholder="Pega aquí la llave nueva (sk-or-…)">
+          <div class="acciones-int">
+            <button id="int-guardar-llave" class="btn principal" type="button">Guardar llave</button>
+            <button id="int-probar" class="btn" type="button">Probar</button>
+            <button id="int-quitar" class="btn peligro" type="button">Quitar llave</button>
+          </div>
+        </div>
+        <div class="rejilla-int">
+          <label>Modelo de IA (entiende el pedido)<input id="int-modelo-ia" type="text" autocomplete="off" spellcheck="false"></label>
+          <label>Modelo de transcripción (voz a texto)<input id="int-modelo-stt" type="text" autocomplete="off" spellcheck="false"></label>
+          <label>Límite diario de pedidos por voz, por empresa<input id="int-limite" type="number" min="0" max="100000" step="1"></label>
+          <label class="casilla-int"><input id="int-activa" type="checkbox"> Voz encendida en toda la plataforma</label>
+        </div>
+        <div class="acciones-int"><button id="int-guardar" class="btn principal" type="button">Guardar ajustes</button></div>
+        <p id="int-resultado" class="ayuda" role="status"></p>
+      </section>
     </section>
   </main>
 
@@ -113,6 +136,6 @@
   <div id="toast" class="toast" role="status" hidden></div>
 
   <script src="../js/comun.js?v=1795557467"></script>
-  <script src="../js/plataforma.js?v=1795557467"></script>
+  <script src="../js/plataforma.js?v=1795717000"></script>
 </body>
 </html>
