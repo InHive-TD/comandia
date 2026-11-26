@@ -826,3 +826,5 @@ body.menu-compacto .menu-desp-items { display: block; padding-left: 0; }
 .su-carta .casilla-int { display: flex; align-items: flex-start; gap: 10px; font-weight: 400; cursor: pointer; }
 .su-carta .casilla-int input { margin-top: 4px; flex: none; }
 .su-carta .casilla-int span { font-size: .92rem; line-height: 1.35; }
+.filtro-carta { display: inline-flex; align-items: center; gap: 8px; font-weight: 600; font-size: .9rem; }
+.filtro-carta select { min-height: 34px; max-width: 320px; }

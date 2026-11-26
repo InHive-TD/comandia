@@ -253,6 +253,16 @@ export async function rutasAdminProductos(app: FastifyInstance): Promise<void> {
 
       switch (f.texto('accion')) {
         case 'crear': {
+          // El dueño puede crear el platillo directo en la carta de una sucursal (sucursal_id); sin eso queda en la carta general.
+          let destino = alcance;
+          if (alcance === null) {
+            const pedida = entero(f.texto('sucursal_id'));
+            if (pedida > 0) {
+              const existe = await fila('SELECT id FROM sucursales WHERE id = ? AND negocio_id = ?', [pedida, nid]);
+              if (!existe) throw fallo('Esa sucursal no existe.');
+              destino = pedida;
+            }
+          }
           const c = await leerCampos(nid, alcance, f);
           const foto = await recibirFoto();
           try {
@@ -262,7 +272,7 @@ export async function rutasAdminProductos(app: FastifyInstance): Promise<void> {
               const r = await tx.ejecutar(
                 `INSERT INTO productos (negocio_id, sucursal_id, categoria_id, nombre, descripcion, precio, foto, disponible, codigo, porcion, estacion_id, pedir_opciones, opciones_obligatorias, grupo_obligatorio, orden)
                  VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-                [nid, alcance, c.categoriaId, c.nombre, c.descripcion, c.precio, foto, c.disponible, c.codigo, c.porcion, c.estacionId, c.pedirOpciones, c.obligatorias, c.grupoObligatorio, Number(sig?.['n'])],
+                [nid, destino, c.categoriaId, c.nombre, c.descripcion, c.precio, foto, c.disponible, c.codigo, c.porcion, c.estacionId, c.pedirOpciones, c.obligatorias, c.grupoObligatorio, Number(sig?.['n'])],
               );
               await guardarExtras(tx, r.insertId, c.extras, c.preciosExtra);
               return r.insertId;

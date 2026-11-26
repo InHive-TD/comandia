@@ -8,6 +8,15 @@ const API = '../api/';
 const RUTA_FOTOS = '../uploads/';
 
 let productos = [];
+let sucursalesCarta = [];   // solo el dueño: sucursales para elegir de cuál ver/editar la carta
+let filtroCarta = '';       // '' = todas · 'general' = solo la carta general · '<id>' = platillos propios de esa sucursal
+
+/** Los platillos que se muestran según la carta elegida (el dueño ve todo o la de una sucursal; el gerente ya recibe solo lo suyo). */
+function vistaProductos() {
+  if (esGerente || filtroCarta === '') return productos;
+  if (filtroCarta === 'general') return productos.filter((p) => p.sucursal_id === null);
+  return productos.filter((p) => p.sucursal_id === Number(filtroCarta));
+}
 let categorias = [];
 let estaciones = [];
 let extras = [];
@@ -208,6 +217,10 @@ async function cargarCatalogo() {
     extras = r.extras;
     gruposExtras = r.grupos_extras || [];
     variantesPropias = r.variantes_propias || [];
+    if (!esGerente) {
+      try { sucursalesCarta = (await pedir(API + 'admin/sucursales.php')).sucursales.filter((x) => x.activa); } catch { /* sin selector */ }
+      pintarFiltroCarta();
+    }
     pintarLista();
   } catch (err) {
     if (err.estado === 401) { await iniciar(); return; }
@@ -215,24 +228,35 @@ async function cargarCatalogo() {
   }
 }
 
+function pintarFiltroCarta() {
+  const sel = $('filtro-carta');
+  $('filtro-carta-caja').hidden = esGerente || sucursalesCarta.length < 2;
+  sel.replaceChildren(new Option('Todas las cartas', ''), new Option('Carta general (la de toda la empresa)', 'general'));
+  for (const s of sucursalesCarta) sel.append(new Option('Platillos propios de ' + s.nombre + (s.carta_propia ? ' · carta propia' : ''), String(s.id)));
+  if (![...sel.options].some((o) => o.value === filtroCarta)) filtroCarta = '';
+  sel.value = filtroCarta;
+}
+$('filtro-carta').addEventListener('change', () => { filtroCarta = $('filtro-carta').value; pintarLista(); });
+
 function pintarLista() {
   const lista = $('lista');
   lista.replaceChildren();
   $('barra-expandir').replaceChildren();
 
-  if (productos.length === 0) {
+  const vista = vistaProductos();
+  if (vista.length === 0) {
     lista.append(el('p', 'vacio',
       categorias.length === 0
         ? 'Empieza creando una categoría (botón “Categorías de platillos”) y luego agrega tu primer platillo.'
-        : 'Aún no hay platillos. Toca “Nuevo platillo” para agregar el primero.'));
+        : (productos.length > 0 ? 'Esta carta aún no tiene platillos propios. Toca “Nuevo platillo” o “Importar desde Excel” para agregarlos.' : 'Aún no hay platillos. Toca “Nuevo platillo” para agregar el primero.')));
     return;
   }
 
   // Productos agrupados por categoría, cada grupo expandible/colapsable. Los que no pertenecen a ninguna
   // categoría conocida van al final en "Otros".
-  const grupos = categorias.map((c) => ({ clave: String(c.id), nombre: c.nombre, items: productos.filter((p) => p.categoria_id === c.id) }));
+  const grupos = categorias.map((c) => ({ clave: String(c.id), nombre: c.nombre, items: vista.filter((p) => p.categoria_id === c.id) }));
   const conocidas = new Set(categorias.map((c) => c.id));
-  const otros = productos.filter((p) => !conocidas.has(p.categoria_id));
+  const otros = vista.filter((p) => !conocidas.has(p.categoria_id));
   if (otros.length) grupos.push({ clave: 'otros', nombre: 'Otros', items: otros });
   const visibles = grupos.filter((g) => g.items.length);
   // Primera vez en este navegador: se abre solo la primera categoría para no mostrar todo cerrado
@@ -315,7 +339,7 @@ function tarjeta(p) {
   const editar = el('button', 'btn', 'Editar');
   editar.type = 'button';
   editar.addEventListener('click', () => abrirFormulario(p));
-  const mismos = productos.filter((x) => x.categoria_id === p.categoria_id);
+  const mismos = vistaProductos().filter((x) => x.categoria_id === p.categoria_id);
   const idx = mismos.findIndex((x) => x.id === p.id);
   const mover = el('div', 'mover');
   mover.append(botonMover('▲', 'Subir platillo', idx <= 0, () => moverProducto(p, -1)), botonMover('▼', 'Bajar platillo', idx === mismos.length - 1, () => moverProducto(p, 1)));
@@ -575,7 +599,8 @@ function abrirFormulario(p = null, categoriaId = null) {
   limpiarVistaPrevia();
   $('f-error').textContent = '';
   $('f-id').value = p ? String(p.id) : '';
-  $('dlg-titulo').textContent = p ? 'Editar platillo' : 'Nuevo platillo';
+  const sucDestino = !p && !esGerente && /^\d+$/.test(filtroCarta) ? sucursalesCarta.find((x) => String(x.id) === filtroCarta) : null;
+  $('dlg-titulo').textContent = p ? 'Editar platillo' : (sucDestino ? 'Nuevo platillo · solo en ' + sucDestino.nombre : 'Nuevo platillo');
 
   const select = $('f-categoria');
   select.replaceChildren(...categorias.map((c) => new Option(c.nombre, String(c.id))));
@@ -668,6 +693,7 @@ formProducto.addEventListener('submit', async (ev) => {
     const datos = new FormData();
     datos.append('accion', id ? 'actualizar' : 'crear');
     if (id) datos.append('id', id);
+    else if (!esGerente && /^\d+$/.test(filtroCarta)) datos.append('sucursal_id', filtroCarta);   // el dueño crea en la carta de la sucursal elegida
     datos.append('nombre', $('f-nombre').value.trim());
     datos.append('categoria_id', $('f-categoria').value);
     datos.append('precio', $('f-precio').value.trim());
@@ -793,7 +819,7 @@ async function moverCategoria(idx, delta) {
 }
 
 async function moverProducto(p, delta) {
-  const mismos = productos.filter((x) => x.categoria_id === p.categoria_id);
+  const mismos = vistaProductos().filter((x) => x.categoria_id === p.categoria_id);
   const idx = mismos.findIndex((x) => x.id === p.id);
   const j = idx + delta;
   if (idx < 0 || j < 0 || j >= mismos.length) return;
@@ -2053,7 +2079,8 @@ $('btn-carga').addEventListener('click', async () => {
       const previo = sel.value;
       sel.replaceChildren(new Option('Carta general de la empresa', ''));
       for (const s of r.sucursales.filter((x) => x.activa)) sel.append(new Option('Solo en la sucursal: ' + s.nombre + (s.carta_propia ? ' (carta propia)' : ''), String(s.id)));
-      sel.value = [...sel.options].some((o) => o.value === previo) ? previo : '';
+      const quiere = /^\d+$/.test(filtroCarta) ? filtroCarta : previo;   // si estás viendo la carta de una sucursal, la carga va ahí
+      sel.value = [...sel.options].some((o) => o.value === quiere) ? quiere : '';
       $('cm-destino-caja').hidden = r.sucursales.length < 2;
     } catch { $('cm-destino-caja').hidden = true; }
   }
