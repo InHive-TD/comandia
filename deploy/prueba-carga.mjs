@@ -8,7 +8,8 @@ if (!BASE || BASE.includes('comandia.mx') && !BASE.includes('staging')) { consol
 const API = `${BASE}/${SLUG}/api`;
 const ETAPAS = ETAPAS_TXT.split(',').map(Number);
 const DUR = Number(SEG) * 1000;
-const PEDIDO_CADA_MS = 30_000; // 20 pedidos / 10 min por taquería
+const PEDIDO_CADA_MS = Number(process.env.PEDIDO_CADA_S || 30) * 1000; // 30 s = 20 pedidos / 10 min por taquería
+const SSE_MAX_TAQUERIAS = 50; // tope de 200 conexiones por negocio: todas comparten uno solo, en la vida real cada taquería tiene el suyo
 const MARCA = 'ZZCARGA';
 
 const agente = new http.Agent({ keepAlive: true, maxSockets: 400 });
@@ -46,8 +47,8 @@ function abrirSSE(vivo) {
   vivo.push(r);
 }
 
-async function taqueria(vivo, parar) {
-  abrirSSE(vivo); abrirSSE(vivo); // cocina + caja
+async function taqueria(vivo, parar, idx) {
+  if (idx < SSE_MAX_TAQUERIAS) { abrirSSE(vivo); abrirSSE(vivo); } // cocina + caja
   await dormir(Math.random() * PEDIDO_CADA_MS);
   while (!parar.v) {
     const ip = ipAzar(); const t0 = Date.now();
@@ -77,7 +78,7 @@ let abortar = false;
 for (const n of ETAPAS) {
   lat = []; errores = 0; total = 0; rechazos = 0; pedidosOk = 0; sseFallos = 0;
   const vivo = []; const parar = { v: false };
-  const ps = []; for (let i = 0; i < n; i++) { ps.push(taqueria(vivo, parar)); await dormir(40); }
+  const ps = []; for (let i = 0; i < n; i++) { ps.push(taqueria(vivo, parar, i)); await dormir(40); }
   await dormir(Math.max(0, DUR - n * 40));
   parar.v = true; const t = total;
   const fila = `${String(n).padStart(9)} | ${(t / (DUR / 1000)).toFixed(1).padStart(5)} | ${pct(lat, .5).toFixed(0).padStart(6)} | ${pct(lat, .95).toFixed(0).padStart(6)} | ${pct(lat, .99).toFixed(0).padStart(6)} | ${(100 * errores / Math.max(1, t)).toFixed(2).padStart(9)} | ${String(pedidosOk).padStart(10)} | ${String(rechazos).padStart(8)} | ${sseAbiertos}/${sseFallos} fallos`;
