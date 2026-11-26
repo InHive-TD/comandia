@@ -17,6 +17,7 @@ import { CARTA_AGOTADO, cartaUnir, cartaVisible } from '../carta.js';
 import { ejecutar, fila, filas } from '../db.js';
 import { ErrorHttp, fallo } from '../errores.js';
 import { contexto } from '../ordenes.js';
+import { mesasParaElegir } from '../plano.js';
 import { LIMITE_VOZ_DEFECTO, MODELO_IA_DEFECTO, MODELO_STT_DEFECTO, leerConfigPlataforma, llaveOpenRouter } from './plataformaIntegraciones.js';
 
 const MAX_SEGUNDOS = 30;
@@ -139,12 +140,19 @@ export async function rutasVoz(app: FastifyInstance): Promise<void> {
     costo += Number(t['usage']?.['cost'] ?? 0);
 
     // 2) Entender el pedido contra el menú de la sucursal
+    // Mesas de la sucursal (para que «mesa 5» se convierta en la mesa real)
+    const lm = await mesasParaElegir(c.nid, c.sid);
+    const zonaDe = new Map((lm.zonas ?? []).map((z: { id: number; nombre: string }) => [z.id, z.nombre] as const));
+    const mesasOk = new Map<number, string>((lm.mesas ?? []).map((m: { id: number; nombre: string; zona_id?: number | null }) => [m.id, `Mesa ${m.nombre}${m.zona_id && zonaDe.get(m.zona_id) ? ' (' + zonaDe.get(m.zona_id) + ')' : ''}`] as const));
+
     let respuesta: Record<string, any> = {};
     if (texto !== '') {
       const catalogo = [...menu.values()].map((p) => `${p.id}|${p.categoria}|${p.nombre}${p.obligatorias ? '|requiere opción' : ''}${p.extras.size ? '|opciones: ' + [...p.extras].map(([id, n]) => `${id}=${n}`).join(', ') : ''}`).join('\n');
       const sistema = [
         'Eres el asistente de toma de pedidos de un restaurante. Recibes lo que dijo el mesero y el menú disponible (id|categoría|nombre|opciones).',
-        'Responde SOLO un JSON con esta forma exacta: {"lineas":[{"producto_id":0,"cantidad":1,"extras":[],"notas":"","plato":1,"llevar":false}],"dudas":[{"texto":"lo que dijo","cantidad":1,"opciones":[0]}],"no_encontrados":["texto"]}.',
+        'Responde SOLO un JSON con esta forma exacta: {"lineas":[{"producto_id":0,"cantidad":1,"extras":[],"notas":"","plato":1,"llevar":false}],"dudas":[{"texto":"lo que dijo","cantidad":1,"opciones":[0]}],"no_encontrados":["texto"],"mesa_id":null,"nombre":null,"modalidad":null,"notas_pedido":null}.',
+        'Datos del pedido (solo si el mesero los dice; si no, null): "mesa_id" = id de la lista MESAS; "nombre" = nombre del cliente («a nombre de Juan»); "modalidad" = "aqui" (comer aquí), "llevar" (para llevar) o "recoger" (pasa a recoger); "notas_pedido" = indicaciones de TODO el pedido (ej. «todo sin picante», «cuenta separada»).',
+        'Platos: cada plato o persona es un número (plato 1, plato 2…). Si dicen «para la niña…» o «otro plato con…», usa el siguiente número. "llevar": true solo en los renglones de los platos que dicen que son para llevar; si TODO el pedido es para llevar usa modalidad "llevar".',
         'Reglas: usa SOLO ids del menú. "extras" son ids de las opciones de ESE platillo (sin cebolla, con queso…); lo que no sea una opción va en "notas". "plato" es el número de plato o persona si lo dicen (1 por defecto). "llevar" true si dicen para llevar.',
         'Si lo dicho puede ser varios platillos del menú, ponlo en "dudas" con hasta 4 ids posibles (no adivines). Si no existe nada parecido, ponlo en "no_encontrados". Cantidades en número (dos = 2).',
       ].join('\n');
@@ -153,7 +161,7 @@ export async function rutasVoz(app: FastifyInstance): Promise<void> {
         temperature: 0,
         max_tokens: 900,
         response_format: { type: 'json_object' },
-        messages: [{ role: 'system', content: sistema }, { role: 'user', content: `MENÚ:\n${catalogo}\n\nMESERO DIJO: ${texto}` }],
+        messages: [{ role: 'system', content: sistema }, { role: 'user', content: `MENÚ:\n${catalogo}\n\nMESAS:\n${[...mesasOk].map(([id, n]) => `${id}=${n}`).join('\n') || '(ninguna)'}\n\nMESERO DIJO: ${texto}` }],
       });
       tokens += Number(ia['usage']?.['total_tokens'] ?? 0);
       costo += Number(ia['usage']?.['cost'] ?? 0);
@@ -181,6 +189,12 @@ export async function rutasVoz(app: FastifyInstance): Promise<void> {
     }
     const noEncontrados = (Array.isArray(respuesta['no_encontrados']) ? respuesta['no_encontrados'] : []).map((x: unknown) => String(x).slice(0, 120)).filter(Boolean).slice(0, 10);
 
+    const mesaId = entero(respuesta['mesa_id']);
+    const modalidadPedida = ['aqui', 'llevar', 'recoger'].includes(String(respuesta['modalidad'])) ? String(respuesta['modalidad']) : null;
+    const nombre = typeof respuesta['nombre'] === 'string' ? respuesta['nombre'].trim().slice(0, 80) : '';
+    const notasPedido = typeof respuesta['notas_pedido'] === 'string' ? respuesta['notas_pedido'].trim().slice(0, 255) : '';
+    const pedido = { mesa_id: mesasOk.has(mesaId) ? mesaId : null, mesa: mesasOk.get(mesaId) ?? null, nombre: nombre || null, modalidad: modalidadPedida, notas: notasPedido || null };
+
     // 4) Contar el consumo del día (aunque no haya salido nada útil: igual se gastó)
     await ejecutar(
       `INSERT INTO voz_uso (negocio_id, dia, tokens, audio_seg, peticiones, costo) VALUES (?, CURDATE(), ?, ?, 1, ?)
@@ -188,6 +202,6 @@ export async function rutasVoz(app: FastifyInstance): Promise<void> {
       [c.nid, Math.max(0, Math.round(tokens)), segundos, costo],
     );
     const usados = e.usados + Math.max(0, Math.round(tokens));
-    return { ok: true, texto, lineas, dudas, no_encontrados: noEncontrados, usados, limite: e.limite, aviso: usados >= e.limite * 0.8 };
+    return { ok: true, texto, lineas, dudas, no_encontrados: noEncontrados, pedido, usados, limite: e.limite, aviso: usados >= e.limite * 0.8 };
   });
 }

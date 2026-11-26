@@ -238,7 +238,7 @@ async function cargarMenu() {
 const MAX_VOZ_SEG = 30;
 const dlgVoz = $('dlg-voz');
 let vozGrabador = null, vozPartes = [], vozTimer = null, vozInicio = 0, vozProcesando = false;
-let vozPropuesta = { lineas: [], dudas: [] };
+let vozPropuesta = { lineas: [], dudas: [], pedido: {} };
 let vozPendientesOpciones = [];
 
 /** Muestra el botón del micrófono solo si la voz está activada para esta empresa y hay micrófono disponible. */
@@ -261,7 +261,7 @@ function vozReiniciar() {
   $('voz-error').textContent = '';
   $('voz-resultado').hidden = true;
   $('voz-agregar').hidden = true;
-  vozPropuesta = { lineas: [], dudas: [] };
+  vozPropuesta = { lineas: [], dudas: [], pedido: {} };
   $('voz-estado').textContent = 'Toca el micrófono y di el pedido. Ejemplo: «dos de arrachera con todo y uno de pastor sin cebolla».';
   $('voz-grabar').textContent = '🎤 Empezar a hablar';
   $('voz-grabar').disabled = false;
@@ -327,7 +327,7 @@ async function vozEnviar() {
 }
 
 function vozPintar(r) {
-  vozPropuesta = { lineas: r.lineas || [], dudas: r.dudas || [] };
+  vozPropuesta = { lineas: r.lineas || [], dudas: r.dudas || [], pedido: r.pedido || {} };
   $('voz-texto').textContent = r.texto ? `«${r.texto}»` : '(nada)';
   $('voz-no').textContent = (r.no_encontrados || []).length ? 'No encontré en el menú: ' + r.no_encontrados.join(', ') : '';
   $('voz-estado').textContent = r.aviso ? 'Ya llevas más del 80% del límite de voz de hoy.' : 'Revisa y confirma:';
@@ -335,7 +335,14 @@ function vozPintar(r) {
   vozPintarListas();
 }
 
+const NOMBRE_MOD = { aqui: 'Comer aquí', llevar: 'Para llevar', recoger: 'Recoger' };
+
 function vozPintarListas() {
+  // Datos del pedido que dijo el mesero (mesa, nombre, tipo, notas)
+  const pd = vozPropuesta.pedido || {};
+  const datos = [pd.mesa, pd.nombre ? `A nombre de ${pd.nombre}` : null, pd.modalidad ? NOMBRE_MOD[pd.modalidad] : null, pd.notas ? `Notas: ${pd.notas}` : null].filter(Boolean);
+  $('voz-datos').hidden = datos.length === 0 || !!ordenDestino;
+  $('voz-datos').textContent = datos.join(' · ');
   const ul = $('voz-lineas');
   ul.replaceChildren();
   vozPropuesta.lineas.forEach((l, i) => {
@@ -371,16 +378,46 @@ function vozPintarListas() {
 
 /** Pasa lo confirmado al pedido en curso (con el mismo flujo de siempre). Los platillos que piden opción obligatoria abren su hoja de opciones. */
 function vozAgregar() {
+  const pd = vozPropuesta.pedido || {};
   const faltan = [];
+
+  // Tipo de pedido y platos para llevar (solo en pedidos nuevos; a un pedido ya levantado solo se le agregan platillos)
+  if (!ordenDestino) {
+    const base = pd.modalidad || modalidad;
+    const llevarPlatos = new Set(vozPropuesta.lineas.filter((l) => l.llevar).map((l) => l.plato || 1));
+    const todosPlatos = new Set(vozPropuesta.lineas.map((l) => l.plato || 1));
+    platosLlevar.clear();
+    if (base === 'recoger') fijarModalidad('recoger');
+    else if (base === 'llevar' || (llevarPlatos.size > 0 && llevarPlatos.size === todosPlatos.size && !carrito.length)) fijarModalidad('llevar');
+    else {
+      fijarModalidad('aqui');
+      for (const n of llevarPlatos) platosLlevar.add(n);
+    }
+    if (pd.nombre) $('cliente').value = pd.nombre;
+    if (pd.mesa_id && modalidad === 'aqui' && mesas.some((m) => m.id === pd.mesa_id)) { $('mesa').value = String(pd.mesa_id); campoMesa.refrescar(); actualizarMesa(); }
+  }
+  if (pd.notas) { const a = $('notas-orden').value.trim(); if (!a.includes(pd.notas)) $('notas-orden').value = a ? `${a} · ${pd.notas}` : pd.notas; }
+
   for (const l of vozPropuesta.lineas) {
     const p = porId.get(l.producto_id);
     if (!p || p.agotado) { avisar(`${l.nombre} ya no está disponible`, true); continue; }
     if (l.falta_opcion) { faltan.push(p); continue; }
     const extras = l.extras.map((x) => p.extras.find((e) => e.id === x.id)).filter(Boolean);
-    agregarLinea(p, extras, l.cantidad, l.notas + (l.llevar ? (l.notas ? ' · ' : '') + 'para llevar' : ''), l.plato > 1 ? l.plato : platoActual);
+    // Cada plato nuevo toma el siguiente número (sin saltarse ninguno)
+    const plato = l.plato > 1 ? Math.min(l.plato, maxPlato() + 1) : platoActual;
+    agregarLinea(p, extras, l.cantidad, l.notas, plato);
   }
+  actualizarMesa();
+  pintarCarrito();
   dlgVoz.close();
-  avisar('Agregado al pedido');
+
+  // Mismas reglas de siempre: sin mesa (si es obligatoria) o sin nombre no se puede levantar el pedido
+  let falta = '';
+  if (!ordenDestino) {
+    if (mesaObligatoria() && !$('mesa').value) falta = 'Falta elegir la mesa.';
+    else if (!$('cliente').value.trim() && !nombreOpcional()) falta = modalidad === 'aqui' && mesas.length ? 'Falta elegir la mesa o escribir el nombre.' : 'Falta escribir el nombre del cliente.';
+  }
+  avisar(falta ? 'Agregado al pedido. ' + falta : 'Agregado al pedido', !!falta);
   vozPendientesOpciones = faltan;
   vozSiguienteOpcion();
 }
