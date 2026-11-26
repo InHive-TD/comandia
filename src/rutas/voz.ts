@@ -21,8 +21,8 @@ import { mesasParaElegir } from '../plano.js';
 import { modsDeNotas, resolverMods, sugerir, textoMod, type ModVoz } from '../vozEntender.js';
 import { LIMITE_VOZ_DEFECTO, MODELO_IA_DEFECTO, MODELO_STT_DEFECTO, leerConfigPlataforma, llaveOpenRouter } from './plataformaIntegraciones.js';
 
-const MAX_SEGUNDOS = 30;
-const MAX_AUDIO_BASE64 = 3_000_000;
+const MAX_SEGUNDOS = 60;
+const MAX_AUDIO_BASE64 = 4_500_000;
 const FORMATOS = new Set(['webm', 'mp4', 'mp3', 'wav', 'ogg', 'm4a', 'flac']);
 
 interface Estado { disponible: boolean; motivo: string | null; usados: number; limite: number }

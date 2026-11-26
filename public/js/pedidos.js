@@ -235,7 +235,7 @@ async function cargarMenu() {
 /*  Pedir con voz                                                      */
 /* ------------------------------------------------------------------ */
 
-const MAX_VOZ_SEG = 30;
+const MAX_VOZ_SEG = 60;
 const dlgVoz = $('dlg-voz');
 let vozGrabador = null, vozPartes = [], vozTimer = null, vozInicio = 0, vozProcesando = false;
 let vozPropuesta = { lineas: [], dudas: [], pedido: {} };
