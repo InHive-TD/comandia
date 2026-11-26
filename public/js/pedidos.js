@@ -329,6 +329,27 @@ function vozActual() {
 let vozAntes = [], vozDudasAntes = [];   // cómo estaba el pedido antes del último dictado (para volver a entenderlo si se corrige el texto)
 let vozBase = 0;   // renglones que había en el pedido al abrir la ventana (si hay, lo que se confirme los reemplaza ya con los cambios)
 
+/** Convierte lo grabado a WAV mono de 16 kHz: lo entienden todos los modelos (MAI, Whisper, GPT…), no solo los que leen webm. Si el navegador no puede, se manda tal cual. */
+async function aWav(blob) {
+  try {
+    const Ctx = window.AudioContext || window.webkitAudioContext;
+    const ctx = new Ctx();
+    const buf = await ctx.decodeAudioData(await blob.arrayBuffer());
+    ctx.close();
+    const n = Math.ceil(buf.duration * 16000);
+    const off = new OfflineAudioContext(1, n, 16000);
+    const src = off.createBufferSource(); src.buffer = buf; src.connect(off.destination); src.start();
+    const pcm = (await off.startRendering()).getChannelData(0);
+    const out = new DataView(new ArrayBuffer(44 + n * 2));
+    const txt = (o, t) => { for (let i = 0; i < t.length; i++) out.setUint8(o + i, t.charCodeAt(i)); };
+    txt(0, 'RIFF'); out.setUint32(4, 36 + n * 2, true); txt(8, 'WAVE'); txt(12, 'fmt '); out.setUint32(16, 16, true);
+    out.setUint16(20, 1, true); out.setUint16(22, 1, true); out.setUint32(24, 16000, true); out.setUint32(28, 32000, true); out.setUint16(32, 2, true); out.setUint16(34, 16, true);
+    txt(36, 'data'); out.setUint32(40, n * 2, true);
+    for (let i = 0; i < n; i++) out.setInt16(44 + i * 2, Math.max(-1, Math.min(1, pcm[i])) * 0x7fff, true);
+    return new Blob([out], { type: 'audio/wav' });
+  } catch { return null; }
+}
+
 async function vozEnviar() {
   const segundos = Math.max(1, Math.round((Date.now() - vozInicio) / 1000));
   const tipo = (vozGrabador && vozGrabador.mimeType) || 'audio/webm';
@@ -339,9 +360,10 @@ async function vozEnviar() {
   $('voz-grabar').classList.remove('grabando');
   $('voz-estado').textContent = 'Entendiendo el pedido…';
   try {
-    const formato = tipo.includes('mp4') ? 'mp4' : tipo.includes('ogg') ? 'ogg' : 'webm';
+    const wav = await aWav(blob);
+    const formato = wav ? 'wav' : tipo.includes('mp4') ? 'mp4' : tipo.includes('ogg') ? 'ogg' : 'webm';
     vozAntes = vozActual(); vozDudasAntes = [...vozPropuesta.dudas];
-    const r = await enviarJson(API + 'voz.php', { audio: await aBase64(blob), formato, segundos, actual: vozAntes });
+    const r = await enviarJson(API + 'voz.php', { audio: await aBase64(wav || blob), formato, segundos, actual: vozAntes });
     vozPintar(r, vozPropuesta.lineas.length > 0 || vozPropuesta.dudas.length > 0);
   } catch (err) {
     $('voz-error').textContent = err.message;

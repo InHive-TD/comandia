@@ -23,7 +23,7 @@ import { LIMITE_VOZ_DEFECTO, MODELO_IA_DEFECTO, MODELO_STT_DEFECTO, leerConfigPl
 
 const MAX_SEGUNDOS = 30;
 const MAX_AUDIO_BASE64 = 3_000_000;
-const FORMATOS = new Set(['webm', 'mp4', 'mp3', 'wav', 'ogg', 'm4a']);
+const FORMATOS = new Set(['webm', 'mp4', 'mp3', 'wav', 'ogg', 'm4a', 'flac']);
 
 interface Estado { disponible: boolean; motivo: string | null; usados: number; limite: number }
 
@@ -149,7 +149,11 @@ export async function rutasVoz(app: FastifyInstance): Promise<void> {
       // Pista breve para la transcripción: contexto + nombres de platillos (una lista larga la confunde y mete platillos que nadie dijo)
       let pista = 'Mesero tomando un pedido en un restaurante de México. Platillos: ';
       for (const p of menu.values()) { if (pista.length + p.nombre.length + 2 > 420) break; pista += p.nombre + ', '; }
-      const t = await openRouter(llave, 'audio/transcriptions', { model: modeloStt, input_audio: { data: audio, format: formato }, language: 'es', prompt: pista.replace(/, $/, '.') });
+      // Algunos modelos (p. ej. MAI-Transcribe) solo aceptan modelo + audio: no se les manda idioma ni pista. Si otro modelo rechaza esos campos, se reintenta sin ellos.
+      const minimo = { model: modeloStt, input_audio: { data: audio, format: formato } };
+      const t = /mai-transcribe/i.test(modeloStt)
+        ? await openRouter(llave, 'audio/transcriptions', minimo)
+        : await openRouter(llave, 'audio/transcriptions', { ...minimo, language: 'es', prompt: pista.replace(/, $/, '.') }).catch(() => openRouter(llave, 'audio/transcriptions', minimo));
       texto = String(t['text'] ?? '').trim();
       tokens += Number(t['usage']?.['total_tokens'] ?? 0);
       costo += Number(t['usage']?.['cost'] ?? 0);
