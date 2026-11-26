@@ -432,7 +432,7 @@ function vozPintarPlatos() {
       cant.append(menos, el('output', '', String(l.cantidad)), mas);
       const nombre = el('div', 'voz-nombre');
       nombre.append(el('strong', '', l.nombre));
-      if (l.extras.length) nombre.append(el('div', 'voz-extras', l.extras.map((x) => x.nombre).join(' · ')));
+      if (l.extras.length) nombre.append(el('div', 'voz-extras', l.extras.map((x) => (x.grupo ? x.grupo + ': ' : '') + x.nombre).join(' · ')));
       if (l.falta_opcion) nombre.append(el('div', 'voz-aviso', 'Falta elegir la opción obligatoria'));
       const precio = el('span', 'voz-precio', dinero.format(vozPrecioLinea(l)));
       const quitar = el('button', 'btn chico', '✕'); quitar.type = 'button'; quitar.setAttribute('aria-label', 'Quitar');
@@ -453,7 +453,7 @@ function vozPintarPlatos() {
             const on = l.extras.some((e) => e.id === x.id);
             const b = el('button', 'voz-chip', x.nombre + (x.precio > 0 ? ` +${dinero.format(x.precio)}` : '')); b.type = 'button'; b.setAttribute('aria-pressed', String(on));
             b.addEventListener('click', () => {
-              l.extras = on ? l.extras.filter((e) => e.id !== x.id) : [...l.extras, { id: x.id, nombre: x.nombre }];
+              l.extras = on ? l.extras.filter((e) => e.id !== x.id) : [...l.extras, { id: x.id, nombre: x.nombre, grupo: x.grupo || null }];
               l.falta_opcion = p.obligatorias && l.extras.length === 0;
               vozPintarPlatos();
             });
@@ -464,6 +464,7 @@ function vozPintarPlatos() {
         if (l.extras.length === 0 || l.falta_opcion) det.open = !!l.falta_opcion;
         fila.append(det);
       }
+      if (l.sin_resolver && l.sin_resolver.length) fila.append(el('div', 'voz-aviso', `«${l.sin_resolver.join(', ')}» no es una opción de este platillo: quedó como nota.`));
       if (l.notas) fila.append(el('div', 'voz-nota', 'Nota: ' + l.notas));
       caja.append(fila);
     }
@@ -471,26 +472,42 @@ function vozPintarPlatos() {
   }
   if (!numeros.length) cont.append(el('p', 'ayuda', 'No quedó ningún platillo. Toca el micrófono para volver a decirlo.'));
 
-  // Dudas: la IA no estaba segura; el mesero elige
+  // Pendientes: lo que no quedó claro o no está en el menú. El mesero elige aquí mismo (sugerencias o cualquier platillo del menú).
   const dudas = $('voz-dudas');
   dudas.replaceChildren();
-  vozPropuesta.dudas.forEach((d, i) => {
+  const agregarPendiente = (d, producto_id, nombre) => {
+    const prod = porId.get(producto_id) || {};
+    vozPropuesta.lineas.push({ producto_id, nombre, cantidad: d.cantidad, extras: [], notas: '', plato: d.plato || 1, llevar: !!d.llevar, falta_opcion: !!prod.obligatorias });
+    vozPropuesta.dudas.splice(vozPropuesta.dudas.indexOf(d), 1);
+    vozPintarPlatos();
+  };
+  for (const d of [...vozPropuesta.dudas]) {
     const caja = el('div', 'voz-duda');
-    caja.append(el('p', 'ayuda', `No estoy seguro de «${d.texto}» (${d.cantidad}). ¿Cuál es?`));
+    const cant = d.cantidad > 1 ? ` (${d.cantidad})` : '';
+    caja.append(el('p', 'ayuda', d.sin_coincidencia
+      ? `No encontré «${d.texto}»${cant} en el menú.${d.opciones.length ? ' ¿Te referías a alguno de estos?' : ' Elige qué platillo es, o descártalo.'}`
+      : `No estoy seguro de «${d.texto}»${cant}. ¿Cuál es?`));
     for (const o of d.opciones) {
       const b = el('button', 'btn chico', o.nombre); b.type = 'button';
-      b.addEventListener('click', () => {
-        vozPropuesta.lineas.push({ producto_id: o.id, nombre: o.nombre, cantidad: d.cantidad, extras: [], notas: '', plato: 1, llevar: false, falta_opcion: !!(porId.get(o.id) || {}).obligatorias });
-        vozPropuesta.dudas.splice(i, 1);
-        vozPintarPlatos();
-      });
+      b.addEventListener('click', () => agregarPendiente(d, o.id, o.nombre));
       caja.append(b);
     }
-    const ninguno = el('button', 'btn chico', 'Ninguno'); ninguno.type = 'button';
-    ninguno.addEventListener('click', () => { vozPropuesta.dudas.splice(i, 1); vozPintarPlatos(); });
+    // Cualquier platillo del menú, por categoría
+    const sel = el('select', 'voz-otro');
+    sel.setAttribute('aria-label', 'Elegir otro platillo del menú');
+    sel.append(new Option(d.opciones.length ? 'Otro platillo…' : 'Buscar en el menú…', ''));
+    for (const c of menu) {
+      const grupo = document.createElement('optgroup'); grupo.label = c.categoria;
+      for (const pr of c.productos) if (!pr.agotado) grupo.append(new Option(pr.nombre, String(pr.id)));
+      if (grupo.children.length) sel.append(grupo);
+    }
+    sel.addEventListener('change', () => { const pr = porId.get(Number(sel.value)); if (pr) agregarPendiente(d, pr.id, pr.nombre); });
+    caja.append(sel);
+    const ninguno = el('button', 'btn chico', 'Descartar'); ninguno.type = 'button';
+    ninguno.addEventListener('click', () => { vozPropuesta.dudas.splice(vozPropuesta.dudas.indexOf(d), 1); vozPintarPlatos(); });
     caja.append(ninguno);
     dudas.append(caja);
-  });
+  }
 
   const total = vozPropuesta.lineas.reduce((s, l) => s + vozPrecioLinea(l), 0);
   $('voz-total').hidden = !vozPropuesta.lineas.length;

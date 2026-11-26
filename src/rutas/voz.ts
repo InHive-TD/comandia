@@ -18,6 +18,7 @@ import { ejecutar, fila, filas } from '../db.js';
 import { ErrorHttp, fallo } from '../errores.js';
 import { contexto } from '../ordenes.js';
 import { mesasParaElegir } from '../plano.js';
+import { modsDeNotas, resolverMods, sugerir, textoMod, type ModVoz } from '../vozEntender.js';
 import { LIMITE_VOZ_DEFECTO, MODELO_IA_DEFECTO, MODELO_STT_DEFECTO, leerConfigPlataforma, llaveOpenRouter } from './plataformaIntegraciones.js';
 
 const MAX_SEGUNDOS = 30;
@@ -155,16 +156,19 @@ export async function rutasVoz(app: FastifyInstance): Promise<void> {
       const catalogo = [...menu.values()].map((p) => `${p.id}|${p.categoria}|${p.nombre}${p.obligatorias ? '|requiere opción' : ''}${p.extras.size ? '|opciones: ' + [...p.extras].map(([id, n]) => `${id}=${p.grupos.get(id) ? p.grupos.get(id) + ': ' : ''}${n}`).join(', ') : ''}`).join('\n');
       const sistema = [
         'Eres el asistente de toma de pedidos de un restaurante. Recibes lo que dijo el mesero y el menú disponible (id|categoría|nombre|opciones).',
-        'Responde SOLO un JSON con esta forma exacta: {"lineas":[{"producto_id":0,"cantidad":1,"extras":[],"notas":"","plato":1,"llevar":false}],"dudas":[{"texto":"lo que dijo","cantidad":1,"opciones":[0]}],"no_encontrados":["texto"],"mesa_id":null,"nombre":null,"modalidad":null,"notas_pedido":null}.',
-        'Datos del pedido (solo si el mesero los dice; si no, null): "mesa_id" = id de la lista MESAS; "nombre" = nombre del cliente («a nombre de Juan»); "modalidad" = "aqui" (comer aquí), "llevar" (para llevar) o "recoger" (pasa a recoger); "notas_pedido" = indicaciones de TODO el pedido (ej. «todo sin picante», «cuenta separada»).',
-        'Platos: cada plato o persona es un número (plato 1, plato 2…). Si dicen «para la niña…» o «otro plato con…», usa el siguiente número. "llevar": true solo en los renglones de los platos que dicen que son para llevar; si TODO el pedido es para llevar usa modalidad "llevar".',
-        'Reglas: usa SOLO ids del menú. "extras" son ids de las opciones de ESE platillo. Cada «sin X», «con X», «extra X», «quítale X» o «aparte» DEBE convertirse en la opción equivalente de ese platillo, fijándote en el grupo y el nombre (ej. «Quitar: Queso» = «sin queso»). Usa "notas" SOLO si de verdad no existe una opción equivalente en ese platillo. "plato" es el número de plato o persona si lo dicen (1 por defecto). "llevar" true si dicen para llevar.',
-        'Si lo dicho puede ser varios platillos del menú, ponlo en "dudas" con hasta 4 ids posibles (no adivines). Si no existe nada parecido, ponlo en "no_encontrados". Cantidades en número (dos = 2).',
+        'Responde SOLO un JSON con esta forma exacta: {"lineas":[{"producto_id":0,"cantidad":1,"mods":[{"tipo":"sin","texto":"queso","extra_id":0}],"notas":"","plato":1,"llevar":false}],"dudas":[{"texto":"lo que dijo","cantidad":1,"opciones":[0],"plato":1,"llevar":false}],"no_encontrados":[{"texto":"lo que dijo","cantidad":1,"plato":1,"llevar":false}],"mesa_id":null,"nombre":null,"modalidad":null,"notas_pedido":null}.',
+        'Eres tolerante con la transcripción: puede traer errores, marcas mal escritas, plurales, diminutivos o muletillas («este», «eh», «agrégame», «ponme», «me das», «añade», «también»). Entiende la intención y empata con el menú por significado, no solo por letras (ej. «taco de alambre» = «Alambre» si es lo más parecido, «coca» = «Coca-Cola»). Cada cosa que pide el mesero es un renglón, aunque la diga al final o después de «y también…».',
+        'Datos del pedido (solo si el mesero los dice; si no, null): "mesa_id" = id de la lista MESAS; "nombre" = nombre del cliente («a nombre de Juan», «es para María»); "modalidad" = "aqui" (comer aquí), "llevar" (para llevar) o "recoger" (pasa a recoger); "notas_pedido" = indicaciones de TODO el pedido (ej. «todo sin picante», «cuenta separada»).',
+        'Platos: cada plato o persona es un número (plato 1, plato 2…). Si dicen «para la niña…», «otro plato con…» o «el segundo es…», usa el siguiente número. "llevar": true solo en los renglones de los platos que dicen que son para llevar; si TODO el pedido es para llevar usa modalidad "llevar".',
+        'MODIFICADORES: todo «sin X», «con X», «extra X», «más X», «con doble X», «quítale X», «ponle X», «aparte» o elección dicha para un platillo va en "mods" de ESE renglón, UNO por cada cosa: {"tipo":"sin"|"con"|"extra"|"elegir","texto":"lo dicho tal cual, solo el ingrediente (ej. queso)","extra_id":id de la opción del menú si estás seguro o 0}. «sin cebolla ni cilantro» son DOS mods «sin». «con todo» = un mod «con» texto «todo». «de pastor» / «de harina» cuando el platillo ofrece esa opción es "elegir". Si el mesero dice un modificador justo después de un platillo, es de ese platillo; si dice «el segundo sin…», es del segundo.',
+        '"notas" es SOLO para indicaciones que no son una opción del menú (ej. «bien cocido», «cortado en cuatro», «para regalo»). Nunca pongas «sin X» o «con X» en "notas" si X puede ser una opción: va en "mods" (el sistema lo empata con las opciones reales del platillo).',
+        'Reglas de menú: usa SOLO ids del menú. Si lo dicho puede ser varios platillos del menú, ponlo en "dudas" con hasta 4 ids posibles (no adivines entre opciones realmente distintas). Si no existe nada parecido a lo que pidió (ej. una bebida o marca que no está en el menú), ponlo en "no_encontrados" con su cantidad: nunca lo omitas ni lo cambies por otra cosa. Cantidades en número (dos = 2, un par = 2, media docena = 6).',
+        'Ejemplos: «dos tacos de alambre sin queso y con piña, uno para llevar» → un renglón Alambre cantidad 2 con mods [{sin,queso},{con,piña}] (si uno va para llevar y otro no, sepáralos en dos renglones con plato distinto). «un jugo boing» sin ese producto → no_encontrados [{texto:"jugo boing",cantidad:1}].',
       ].join('\n');
       const ia = await openRouter(llave, 'chat/completions', {
         model: modeloIa,
         temperature: 0,
-        max_tokens: 900,
+        max_tokens: 1500,
         response_format: { type: 'json_object' },
         messages: [{ role: 'system', content: sistema }, { role: 'user', content: `MENÚ:\n${catalogo}\n\nMESAS:\n${[...mesasOk].map(([id, n]) => `${id}=${n}`).join('\n') || '(ninguna)'}\n\nMESERO DIJO: ${texto}` }],
       });
@@ -174,25 +178,55 @@ export async function rutasVoz(app: FastifyInstance): Promise<void> {
     }
 
     // 3) Validar TODO contra el menú real
+    const lista = [...menu.values()].map((p) => ({ id: p.id, nombre: p.nombre, categoria: p.categoria }));
+    const modsDe = (v: unknown): ModVoz[] => (Array.isArray(v) ? v : []).map((m: any) => ({
+      tipo: (['sin', 'con', 'extra', 'elegir'].includes(String(m?.['tipo'])) ? String(m['tipo']) : 'con') as ModVoz['tipo'],
+      texto: String(m?.['texto'] ?? '').trim().slice(0, 60),
+      extra_id: entero(m?.['extra_id']) || undefined,
+    })).filter((m) => m.texto !== '').slice(0, 12);
+    /** Resuelve los modificadores de un platillo: opciones reales + lo que no se pudo (va a notas). */
+    const aplicarMods = (p: ProductoVoz, mods: ModVoz[], notasIA: string) => {
+      const dn = modsDeNotas(notasIA);
+      const extrasP = [...p.extras].map(([id, nombre]) => ({ id, nombre, grupo: p.grupos.get(id) ?? null }));
+      const r = resolverMods(extrasP, [...mods, ...dn.mods]);
+      const notas = [dn.resto, ...r.sinResolver.map(textoMod)].filter(Boolean).join(' · ').slice(0, 255);
+      return { ids: r.ids.slice(0, 12), notas, sinResolver: r.sinResolver.map(textoMod) };
+    };
+
     const lineas: unknown[] = [];
     for (const l of Array.isArray(respuesta['lineas']) ? respuesta['lineas'] : []) {
       const p = menu.get(entero(l?.['producto_id']));
       if (!p) continue;
       const cantidad = Math.min(50, Math.max(1, entero(l?.['cantidad']) || 1));
-      const extras = [...new Set((Array.isArray(l?.['extras']) ? l['extras'] : []).map(entero))].filter((id) => p.extras.has(id)).slice(0, 12);
+      const ap = aplicarMods(p, modsDe(l?.['mods']), String(l?.['notas'] ?? ''));
+      // compatibilidad: si la IA mandó ids de opciones directamente, se suman solo si son del platillo
+      const idsIA = (Array.isArray(l?.['extras']) ? l['extras'] : []).map(entero).filter((id: number) => p.extras.has(id));
+      const extras = [...new Set([...ap.ids, ...idsIA])].slice(0, 12);
       lineas.push({
-        producto_id: p.id, nombre: p.nombre, cantidad, extras: extras.map((id) => ({ id, nombre: p.extras.get(id) })),
-        notas: String(l?.['notas'] ?? '').trim().slice(0, 255), plato: Math.min(20, Math.max(1, entero(l?.['plato']) || 1)), llevar: l?.['llevar'] === true,
+        producto_id: p.id, nombre: p.nombre, cantidad, extras: extras.map((id) => ({ id, nombre: p.extras.get(id), grupo: p.grupos.get(id) ?? null })),
+        notas: ap.notas, sin_resolver: ap.sinResolver, plato: Math.min(20, Math.max(1, entero(l?.['plato']) || 1)), llevar: l?.['llevar'] === true,
         falta_opcion: p.obligatorias && extras.length === 0,
       });
     }
+    // Pendientes: la IA dudó entre varios, o no encontró nada. El mesero elige aquí mismo (sugerencias + todo el menú).
     const dudas: unknown[] = [];
-    for (const q of Array.isArray(respuesta['dudas']) ? respuesta['dudas'] : []) {
-      const opciones = [...new Set((Array.isArray(q?.['opciones']) ? q['opciones'] : []).map(entero))].filter((id) => menu.has(id)).slice(0, 4);
-      if (opciones.length === 0) continue;
-      dudas.push({ texto: String(q?.['texto'] ?? '').slice(0, 120), cantidad: Math.min(50, Math.max(1, entero(q?.['cantidad']) || 1)), opciones: opciones.map((id) => ({ id, nombre: menu.get(id)!.nombre })) });
+    const pendiente = (q: any, textoPor: string, sinCoincidencia: boolean) => {
+      const texto = String(q?.['texto'] ?? textoPor).slice(0, 120);
+      let ids = [...new Set((Array.isArray(q?.['opciones']) ? q['opciones'] : []).map(entero))].filter((id) => menu.has(id)).slice(0, 4) as number[];
+      if (ids.length === 0) ids = sugerir(lista, texto, 4);
+      dudas.push({
+        texto, cantidad: Math.min(50, Math.max(1, entero(q?.['cantidad']) || 1)), plato: Math.min(20, Math.max(1, entero(q?.['plato']) || 1)), llevar: q?.['llevar'] === true,
+        sin_coincidencia: sinCoincidencia && ids.length === 0 ? true : sinCoincidencia,
+        opciones: ids.map((id) => ({ id, nombre: menu.get(id)!.nombre })),
+      });
+    };
+    for (const q of Array.isArray(respuesta['dudas']) ? respuesta['dudas'] : []) pendiente(q, '', false);
+    for (const q of Array.isArray(respuesta['no_encontrados']) ? respuesta['no_encontrados'] : []) {
+      const o = typeof q === 'string' ? { texto: q } : q;
+      if (String(o?.['texto'] ?? '').trim() === '') continue;
+      pendiente(o, '', true);
     }
-    const noEncontrados = (Array.isArray(respuesta['no_encontrados']) ? respuesta['no_encontrados'] : []).map((x: unknown) => String(x).slice(0, 120)).filter(Boolean).slice(0, 10);
+    const noEncontrados: string[] = [];
 
     const mesaId = entero(respuesta['mesa_id']);
     const modalidadPedida = ['aqui', 'llevar', 'recoger'].includes(String(respuesta['modalidad'])) ? String(respuesta['modalidad']) : null;
