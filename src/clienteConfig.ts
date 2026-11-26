@@ -85,8 +85,8 @@ export function configEfectiva(a: AjustesCliente, sucursalId: number): ConfigCli
   const modalidades = s.modalidades ?? g.modalidades ?? [...TIPOS_PEDIDO];
   // "Uno aquí y otro para llevar" necesita que existan los dos tipos
   const mixto = (s.mixto ?? g.mixto ?? false) && modalidades.includes('aqui') && modalidades.includes('llevar');
-  // Transferencia: deben permitirla la empresa Y la sucursal (por defecto sí)
-  return { modalidades, mixto, pago: s.pago ?? g.pago, transferencia: (g.transferencia ?? true) && (s.transferencia ?? true), mesa: s.mesa ?? g.mesa ?? 'no' };
+  // Transferencia: deben permitirla la empresa Y la sucursal (por defecto NO: la empresa debe activarla; los negocios anteriores a la versión nueva ya quedan con ella activada)
+  return { modalidades, mixto, pago: s.pago ?? g.pago, transferencia: (g.transferencia ?? false) && (s.transferencia ?? true), mesa: s.mesa ?? g.mesa ?? 'no' };
 }
 
 export async function configClienteDe(negocioId: number, sucursalId: number): Promise<ConfigCliente> {

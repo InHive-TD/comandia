@@ -80,8 +80,8 @@ export async function rutasClienteConfig(app: FastifyInstance): Promise<void> {
         case 'transferencia': {
           const suf = await sufijo();
           const activo = noVacio(d['activo']);
-          if (activo && alcance !== null && !(nivelCliente(await cargarAjustesCliente(nid), null).transferencia ?? true)) {
-            throw fallo('El dueño desactivó el pago por transferencia en toda la empresa. Pídele que lo active para poder activarlo aquí.', 403);
+          if (activo && alcance !== null && !(nivelCliente(await cargarAjustesCliente(nid), null).transferencia ?? false)) {
+            throw fallo('El pago por transferencia no está activado en toda la empresa. Pídele al dueño que lo active para poder activarlo aquí.', 403);
           }
           await guardar(`cliente_transferencia${suf}`, activo ? '1' : '0');
           return estado();

@@ -101,6 +101,12 @@ export async function asegurarEsquema(): Promise<void> {
       INDEX idx_token_usuario (usuario_id)
     ) ENGINE=InnoDB`);
   });
+  // Pago por transferencia: lo nuevo llega apagado. Los negocios que ya existían (y ya tenían la página de pago) conservan el pago ENCENDIDO:
+  // se les guarda el valor explícito una sola vez (si el dueño ya lo había guardado, no se toca).
+  await ejecutar(`INSERT INTO ajustes (negocio_id, clave, valor)
+    SELECT n.id, 'cliente_transferencia', '1' FROM negocios n
+     WHERE n.creado_en < '2026-11-27'
+       AND NOT EXISTS (SELECT 1 FROM ajustes a WHERE a.negocio_id = n.id AND a.clave = 'cliente_transferencia')`).catch((e) => console.warn('No se pudo fijar transferencia de negocios existentes:', (e as Error).message));
   // Plano de mesas: zonas de una sucursal (Piso 1, Patio…) y la posición de cada mesa dentro de su zona (en % del lienzo)
   await ejecutar(`CREATE TABLE IF NOT EXISTS zonas (
     id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,

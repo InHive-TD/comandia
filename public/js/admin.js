@@ -1944,11 +1944,11 @@ function pgPintar() {
   $('pg-benef').value = mostrado ? mostrado.beneficiario : '';
   $('pg-inst').value = mostrado ? mostrado.institucion : '';
   // ¿Se acepta transferencia? El gerente no puede encenderla si el dueño la apagó para toda la empresa
-  const generalOk = cfgCliente.general.transferencia !== false;
+  const generalOk = cfgCliente.general.transferencia === true;
   $('pg-activo').checked = v === 'general' ? generalOk : (generalOk && suc.propio.transferencia !== false);
   $('pg-activo').disabled = v !== 'general' && !generalOk && !cfgCliente.puede_general;
   $('pg-activo-nota').hidden = !($('pg-activo').disabled || (v !== 'general' && !generalOk));
-  $('pg-activo-nota').textContent = !generalOk ? 'El dueño desactivó el pago por transferencia en toda la empresa.' + (cfgCliente.puede_general ? ' Actívalo en «Toda la empresa» para poder usarlo en una sucursal.' : ' Solo él puede volver a activarlo.') : '';
+  $('pg-activo-nota').textContent = !generalOk ? 'El pago por transferencia no está activado en toda la empresa.' + (cfgCliente.puede_general ? ' Actívalo en «Toda la empresa» para poder usarlo en una sucursal.' : ' Solo el dueño puede activarlo.') : '';
   $('pg-campos').hidden = !$('pg-activo').checked;
   $('pg-quitar').hidden = !(suc && propio);
   $('pg-nota').hidden = !(suc && !propio);
@@ -1962,7 +1962,7 @@ $('pg-guardar').addEventListener('click', async () => {
     const ambito = cfgAmbito($('pg-ambito'));
     const v = $('pg-ambito').value;
     const suc = cfgCliente.sucursales.find((s) => String(s.id) === v);
-    const antes = v === 'general' ? cfgCliente.general.transferencia !== false : suc.propio.transferencia !== false && cfgCliente.general.transferencia !== false;
+    const antes = v === 'general' ? cfgCliente.general.transferencia === true : suc.propio.transferencia !== false && cfgCliente.general.transferencia === true;
     if (!$('pg-activo').disabled && $('pg-activo').checked !== antes) await enviarJson(API + 'admin/cliente-config.php', { accion: 'transferencia', ...ambito, activo: $('pg-activo').checked });
     if ($('pg-activo').checked && ($('pg-clabe').value.trim() || !(v === 'general' ? cfgCliente.general.pago : (suc.propio.pago || suc.efectivo.pago)))) await enviarJson(API + 'admin/cliente-config.php', { accion: 'pago', ...ambito, clabe: $('pg-clabe').value, beneficiario: $('pg-benef').value, institucion: $('pg-inst').value });
     avisar('Pago por transferencia guardado');
