@@ -1,0 +1,10 @@
+# Bloques que se AÑADEN al Caddyfile del proyecto n8n (no se reemplaza nada de lo que ya hay).
+staging.comandia.mx {
+    encode zstd gzip
+    reverse_proxy comandia-staging-app-1:3000
+}
+# Producción se agrega después, cuando se pida:
+# comandia.mx {
+#     encode zstd gzip
+#     reverse_proxy comandia-prod-app-1:3000
+# }
