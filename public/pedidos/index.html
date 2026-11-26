@@ -18,7 +18,7 @@
   <link rel="stylesheet" href="../css/estilos.css?v=1795557467">
   <link rel="stylesheet" href="../css/admin.css?v=1795557467">
   <link rel="stylesheet" href="../css/menu-barra.css?v=1795557467">
-  <link rel="stylesheet" href="../css/pedidos.css?v=1795727000">
+  <link rel="stylesheet" href="../css/pedidos.css?v=1795729000">
   <link rel="stylesheet" href="../css/shell.css?v=1795557467">
   <link rel="stylesheet" href="../css/acceso.css?v=202611261215">
   <link rel="stylesheet" href="../css/plano.css?v=1795557467">
@@ -217,13 +217,16 @@
             <button type="button" data-mod="llevar">Para llevar</button>
             <button type="button" data-mod="recoger">Recoger</button>
           </div>
-          <label id="voz-mesa-fila" class="voz-campo">Mesa
-            <select id="voz-mesa"></select>
-            <button type="button" id="voz-mesa-plano" class="btn" style="display:none"></button>
-          </label>
-          <label id="voz-nombre-fila" class="voz-campo">Nombre del cliente
-            <input id="voz-nombre" type="text" maxlength="80" autocomplete="off">
-          </label>
+          <div class="voz-fila-mn">
+            <label id="voz-mesa-fila" class="voz-campo">Mesa
+              <select id="voz-mesa"></select>
+              <button type="button" id="voz-mesa-plano" class="btn" style="display:none"></button>
+            </label>
+            <label id="voz-nombre-fila" class="voz-campo">Nombre del cliente
+              <input id="voz-nombre" type="text" maxlength="80" autocomplete="off">
+            </label>
+
+          </div>
           <label class="voz-campo">Notas del pedido (opcional)
             <input id="voz-notas-pedido" type="text" maxlength="255" autocomplete="off">
           </label>
