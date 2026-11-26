@@ -9,7 +9,7 @@ body:has(#vista-login:not([hidden])) header, body:has(#vista-login:not([hidden])
   border: 1px solid var(--color-borde, #dde6e0); box-shadow: 0 18px 50px rgba(16, 36, 28, .12), 0 2px 6px rgba(16, 36, 28, .05);
   position: relative; overflow: hidden;
 }
-#vista-login.tarjeta::before, .ac-tarjeta::before { content: ""; position: absolute; inset: 0 0 auto 0; height: 6px; background: linear-gradient(90deg, var(--color-vino, #0a6b4e), var(--color-amarillo, #ff7a30)); }
+#vista-login.tarjeta::before, .ac-tarjeta::before { content: ""; position: absolute; inset: 0 0 auto 0; height: 6px; background: var(--color-vino, #0a6b4e); }
 .ac-marca { text-align: center; margin: 4px 0 18px; }
 .ac-logo { display: block; margin: 0 auto 10px; max-height: 78px; max-width: 220px; object-fit: contain; }
 .ac-negocio { margin: 0; font-size: 1.3rem; font-weight: 800; color: var(--color-oscuro, #10241c); letter-spacing: -.01em; }
