@@ -18,7 +18,7 @@
   <link rel="stylesheet" href="../css/estilos.css?v=1795557467">
   <link rel="stylesheet" href="../css/admin.css?v=1795557467">
   <link rel="stylesheet" href="../css/menu-barra.css?v=1795557467">
-  <link rel="stylesheet" href="../css/pedidos.css?v=1795729000">
+  <link rel="stylesheet" href="../css/pedidos.css?v=1795730000">
   <link rel="stylesheet" href="../css/shell.css?v=1795557467">
   <link rel="stylesheet" href="../css/acceso.css?v=202611261215">
   <link rel="stylesheet" href="../css/plano.css?v=1795557467">
@@ -210,7 +210,12 @@
         <button id="voz-grabar" class="btn principal voz-grabar" type="button">🎤 Empezar a hablar</button>
       </div>
       <div id="voz-resultado" hidden>
-        <p class="ayuda">Escuché: <em id="voz-texto"></em></p>
+        <div class="voz-oido">
+          <label class="voz-campo">Escuché (si está mal, corrígelo)
+            <textarea id="voz-texto" rows="2" maxlength="600"></textarea>
+          </label>
+          <button id="voz-reentender" class="btn chico" type="button">Entender de nuevo</button>
+        </div>
         <section id="voz-pedido" class="voz-pedido">
           <div id="voz-mod" class="voz-seg" role="group" aria-label="Tipo de pedido">
             <button type="button" data-mod="aqui">Comer aquí</button>
@@ -328,6 +333,6 @@
   <script src="../js/eventos.js?v=1795557467"></script>
   <script src="../js/codigos.js?v=1795557467"></script>
   <script src="../js/selectorMesa.js?v=1795557467"></script>
-  <script src="../js/pedidos.js?v=1795728000"></script>
+  <script src="../js/pedidos.js?v=1795730000"></script>
 </body>
 </html>

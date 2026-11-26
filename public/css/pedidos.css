@@ -453,3 +453,6 @@ main.contenedor:has(#vista-pedido:not([hidden])) { padding-top: 0; }
 .voz-campo { gap: 3px; font-size: .85rem; }
 .voz-campo input, .voz-campo select, .voz-campo .btn { min-height: 40px; }
 .voz-fila-mn #voz-mesa-plano { padding: 4px 8px; font-size: .85rem; line-height: 1.15; white-space: normal; overflow-wrap: anywhere; }
+.voz-oido { display: grid; gap: 6px; margin: 4px 0 8px; }
+.voz-oido textarea { width: 100%; box-sizing: border-box; padding: 8px 10px; border: 1px solid var(--color-borde); border-radius: 10px; font: inherit; font-style: italic; resize: vertical; background: var(--color-tarjeta); color: inherit; }
+.voz-oido .btn { justify-self: start; }

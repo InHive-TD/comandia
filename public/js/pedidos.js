@@ -294,11 +294,11 @@ function vozDetener(cancelar = false) {
 async function vozEmpezar() {
   $('voz-error').textContent = '';
   let flujo;
-  try { flujo = await navigator.mediaDevices.getUserMedia({ audio: true }); }
+  try { flujo = await navigator.mediaDevices.getUserMedia({ audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true, channelCount: 1 } }); }
   catch { $('voz-error').textContent = 'No se pudo usar el micrófono. Revisa el permiso del navegador.'; return; }
   vozPartes = [];
   const tipo = tipoAudio();
-  vozGrabador = new MediaRecorder(flujo, tipo ? { mimeType: tipo } : undefined);
+  vozGrabador = new MediaRecorder(flujo, { ...(tipo ? { mimeType: tipo } : {}), audioBitsPerSecond: 64000 });
   vozGrabador.ondataavailable = (e) => { if (e.data.size) vozPartes.push(e.data); };
   vozGrabador.onstop = vozEnviar;
   vozGrabador.start();
@@ -326,6 +326,7 @@ function vozActual() {
   const llevarMix = modalidad === 'aqui' && !ordenDestino;
   return carrito.map((l) => ({ producto_id: l.producto.id, nombre: l.producto.nombre, cantidad: l.cantidad, extras: l.extras.map((x) => x.id), notas: l.notas || '', plato: l.plato || 1, llevar: llevarMix && platosLlevar.has(l.plato) }));
 }
+let vozAntes = [], vozDudasAntes = [];   // cómo estaba el pedido antes del último dictado (para volver a entenderlo si se corrige el texto)
 let vozBase = 0;   // renglones que había en el pedido al abrir la ventana (si hay, lo que se confirme los reemplaza ya con los cambios)
 
 async function vozEnviar() {
@@ -339,7 +340,8 @@ async function vozEnviar() {
   $('voz-estado').textContent = 'Entendiendo el pedido…';
   try {
     const formato = tipo.includes('mp4') ? 'mp4' : tipo.includes('ogg') ? 'ogg' : 'webm';
-    const r = await enviarJson(API + 'voz.php', { audio: await aBase64(blob), formato, segundos, actual: vozActual() });
+    vozAntes = vozActual(); vozDudasAntes = [...vozPropuesta.dudas];
+    const r = await enviarJson(API + 'voz.php', { audio: await aBase64(blob), formato, segundos, actual: vozAntes });
     vozPintar(r, vozPropuesta.lineas.length > 0 || vozPropuesta.dudas.length > 0);
   } catch (err) {
     $('voz-error').textContent = err.message;
@@ -363,7 +365,7 @@ function vozPintar(r, continuando = false) {
     if (pd.nombre) $('voz-nombre').value = pd.nombre;
     if (pd.notas) $('voz-notas-pedido').value = pd.notas;
     campoVozMesa.refrescar();
-    $('voz-texto').textContent = r.texto ? `«${r.texto}»` : '(nada)';
+    $('voz-texto').value = r.texto || '';
     $('voz-no').textContent = (r.resumen || []).length ? 'Cambios: ' + r.resumen.join(' · ') : '';
     $('voz-no').classList.add('voz-resumen');
     $('voz-estado').textContent = r.aviso ? 'Ya llevas más del 80% del límite de voz de hoy.' : 'Revisa, corrige lo que haga falta y agrégalo al pedido.';
@@ -380,7 +382,7 @@ function vozPintar(r, continuando = false) {
   campoVozMesa.refrescar();
   $('voz-nombre').value = pd.nombre || $('cliente').value || '';
   $('voz-notas-pedido').value = pd.notas || '';
-  $('voz-texto').textContent = r.texto ? `«${r.texto}»` : '(nada)';
+  $('voz-texto').value = r.texto || '';
   $('voz-no').textContent = (r.resumen || []).length ? 'Cambios: ' + r.resumen.join(' · ') : '';
   $('voz-no').classList.add('voz-resumen');
   $('voz-estado').textContent = r.aviso ? 'Ya llevas más del 80% del límite de voz de hoy.' : 'Revisa, corrige lo que haga falta y agrégalo al pedido.';
@@ -609,6 +611,19 @@ function vozSiguienteOpcion() {
   abrirOpciones(p);
 }
 $('dlg-opciones').addEventListener('close', () => { if (vozPendientesOpciones.length) setTimeout(vozSiguienteOpcion, 150); });
+
+// El texto escuchado se puede corregir y volver a entender (sin volver a grabar ni gastar transcripción)
+$('voz-reentender').addEventListener('click', async () => {
+  const texto = $('voz-texto').value.trim();
+  if (!texto || vozProcesando) return;
+  vozProcesando = true; $('voz-reentender').disabled = true; $('voz-estado').textContent = 'Entendiendo el pedido…'; $('voz-error').textContent = '';
+  try {
+    const r = await enviarJson(API + 'voz.php', { texto, actual: vozAntes });
+    vozPropuesta.dudas = [...vozDudasAntes];
+    vozPintar(r, true);
+  } catch (err) { $('voz-error').textContent = err.message; $('voz-estado').textContent = 'No se pudo. Intenta otra vez.'; }
+  finally { vozProcesando = false; $('voz-reentender').disabled = false; }
+});
 
 // Al tocar el micrófono se abre la ventana y empieza a grabar de inmediato
 $('btn-voz').addEventListener('click', () => { vozReiniciar(); vozBase = carrito.length; dlgVoz.showModal(); vozEmpezar(); });

@@ -125,12 +125,16 @@ export async function rutasVoz(app: FastifyInstance): Promise<void> {
     const llave = await llaveOpenRouter();
     if (!llave) throw fallo('Falta configurar la voz en la plataforma.');
 
+    // Con «texto» (el mesero corrigió lo que se escuchó) no hay audio ni transcripción: solo se vuelve a entender el pedido
+    const textoCorregido = typeof d['texto'] === 'string' ? d['texto'].trim().slice(0, 600) : '';
     const audio = String(d['audio'] ?? '');
     const formato = String(d['formato'] ?? 'webm').toLowerCase();
-    const segundos = Math.min(MAX_SEGUNDOS, Math.max(1, entero(d['segundos'])));
-    if (audio.length < 200) throw fallo('No se escuchó nada. Habla un poco más y vuelve a intentar.');
-    if (audio.length > MAX_AUDIO_BASE64) throw fallo(`El audio es muy largo. Máximo ${MAX_SEGUNDOS} segundos.`);
-    if (!FORMATOS.has(formato) || !/^[A-Za-z0-9+/=]+$/.test(audio)) throw fallo('Formato de audio no válido.');
+    const segundos = textoCorregido ? 0 : Math.min(MAX_SEGUNDOS, Math.max(1, entero(d['segundos'])));
+    if (!textoCorregido) {
+      if (audio.length < 200) throw fallo('No se escuchó nada. Habla un poco más y vuelve a intentar.');
+      if (audio.length > MAX_AUDIO_BASE64) throw fallo(`El audio es muy largo. Máximo ${MAX_SEGUNDOS} segundos.`);
+      if (!FORMATOS.has(formato) || !/^[A-Za-z0-9+/=]+$/.test(audio)) throw fallo('Formato de audio no válido.');
+    }
 
     const menu = await menuParaVoz(c.nid, c.sid);
     if (menu.size === 0) throw fallo('No hay platillos disponibles en el menú.');
@@ -140,16 +144,16 @@ export async function rutasVoz(app: FastifyInstance): Promise<void> {
     let tokens = 0, costo = 0;
 
     // 1) Voz a texto
-    // Pista de vocabulario: los nombres reales del menú (y sus opciones) para que «Jugo Boing» no salga «boinks»
-    const vocab = new Set<string>();
-    for (const p of menu.values()) vocab.add(p.nombre);
-    for (const p of menu.values()) for (const n of p.extras.values()) vocab.add(n);
-    let pista = 'Pedido de comida en un restaurante, en español de México. Menú: ';
-    for (const v of vocab) { if (pista.length + v.length + 2 > 900) break; pista += v + ', '; }
-    const t = await openRouter(llave, 'audio/transcriptions', { model: modeloStt, input_audio: { data: audio, format: formato }, language: 'es', prompt: pista.replace(/, $/, '.') });
-    const texto = String(t['text'] ?? '').trim();
-    tokens += Number(t['usage']?.['total_tokens'] ?? 0);
-    costo += Number(t['usage']?.['cost'] ?? 0);
+    let texto = textoCorregido;
+    if (!textoCorregido) {
+      // Pista breve para la transcripción: contexto + nombres de platillos (una lista larga la confunde y mete platillos que nadie dijo)
+      let pista = 'Mesero tomando un pedido en un restaurante de México. Platillos: ';
+      for (const p of menu.values()) { if (pista.length + p.nombre.length + 2 > 420) break; pista += p.nombre + ', '; }
+      const t = await openRouter(llave, 'audio/transcriptions', { model: modeloStt, input_audio: { data: audio, format: formato }, language: 'es', prompt: pista.replace(/, $/, '.') });
+      texto = String(t['text'] ?? '').trim();
+      tokens += Number(t['usage']?.['total_tokens'] ?? 0);
+      costo += Number(t['usage']?.['cost'] ?? 0);
+    }
 
     // 2) Entender el pedido contra el menú de la sucursal
     // Mesas de la sucursal (para que «mesa 5» se convierta en la mesa real)
