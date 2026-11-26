@@ -5,12 +5,12 @@
  *   `cliente_mixto`        / `cliente_mixto@<sid>`        → "1"/"0": ¿puede elegir plato por plato (uno aquí y otro para llevar)?
  *   `cliente_pago`         / `cliente_pago@<sid>`         → JSON { clabe, beneficiario, institucion }: datos de la pestaña "Pagar"
  *   `cliente_mesa`         / `cliente_mesa@<sid>`         → "no" | "opcional" | "obligatoria": ¿pide la mesa en pedidos para comer aquí?
- *                                                           (obligatoria = el nombre pasa a ser opcional). Por defecto: opcional.
+ *                                                           (obligatoria = el nombre pasa a ser opcional). Por defecto: no.
  *   `cliente_transferencia` / `cliente_transferencia@<sid>` → "1"/"0": ¿la empresa acepta pago por transferencia? Si el dueño la apaga
  *                                                           para toda la empresa, ninguna sucursal puede encenderla.
  *
  * La sucursal manda si tiene su propio valor; si no, el de toda la empresa; si tampoco, el valor por defecto
- * (todos los tipos, mixto activado, y sin datos de pago).
+ * (todos los tipos, plato por plato APAGADO, mesa en el pedido APAGADA y sin datos de pago: lo nuevo es opcional y el dueño lo activa).
  */
 import { filas } from './db.js';
 
@@ -84,9 +84,9 @@ export function configEfectiva(a: AjustesCliente, sucursalId: number): ConfigCli
   const g = nivelCliente(a, null);
   const modalidades = s.modalidades ?? g.modalidades ?? [...TIPOS_PEDIDO];
   // "Uno aquí y otro para llevar" necesita que existan los dos tipos
-  const mixto = (s.mixto ?? g.mixto ?? true) && modalidades.includes('aqui') && modalidades.includes('llevar');
+  const mixto = (s.mixto ?? g.mixto ?? false) && modalidades.includes('aqui') && modalidades.includes('llevar');
   // Transferencia: deben permitirla la empresa Y la sucursal (por defecto sí)
-  return { modalidades, mixto, pago: s.pago ?? g.pago, transferencia: (g.transferencia ?? true) && (s.transferencia ?? true), mesa: s.mesa ?? g.mesa ?? 'opcional' };
+  return { modalidades, mixto, pago: s.pago ?? g.pago, transferencia: (g.transferencia ?? true) && (s.transferencia ?? true), mesa: s.mesa ?? g.mesa ?? 'no' };
 }
 
 export async function configClienteDe(negocioId: number, sucursalId: number): Promise<ConfigCliente> {
