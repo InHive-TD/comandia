@@ -4,10 +4,6 @@
 name: comandia
 
 x-app: &app
-  build:
-    context: ..
-    dockerfile: deploy/Dockerfile
-  image: comandia-app:local
   restart: unless-stopped
   depends_on:
     db:
@@ -36,14 +32,26 @@ services:
 
   staging:
     <<: *app
+    build:
+      context: ..
+      dockerfile: deploy/Dockerfile
+    image: comandia-app:local
     env_file: .env.staging
     volumes:
       - fotos_staging:/datos/uploads
     mem_limit: 320m
     cpus: 0.5
 
+  # Producción corre el código de la rama main (imagen comandia-app:prod, construida con
+  # deploy/construir-prod.sh), no el de develop. Así staging puede ir adelante sin arrastrar a producción.
   prod:
     <<: *app
+    image: comandia-app:prod
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:3000/').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
+      interval: 30s
+      timeout: 5s
+      start_period: 40s
     env_file: .env.prod
     volumes:
       - fotos_prod:/datos/uploads
