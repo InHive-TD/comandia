@@ -268,6 +268,7 @@ function vozReiniciar() {
 }
 
 function vozDetener(cancelar = false) {
+  $('voz-grabar').classList.remove('grabando');
   clearInterval(vozTimer);
   vozTimer = null;
   if (vozGrabador && vozGrabador.state !== 'inactive') {
@@ -291,6 +292,7 @@ async function vozEmpezar() {
   vozGrabador.start();
   vozInicio = Date.now();
   $('voz-grabar').textContent = '⏹ Listo, enviar';
+  $('voz-grabar').classList.add('grabando');
   const pintar = () => {
     const s = Math.floor((Date.now() - vozInicio) / 1000);
     $('voz-estado').textContent = `Escuchando… ${s} s (máximo ${MAX_VOZ_SEG})`;
@@ -430,7 +432,8 @@ function vozSiguienteOpcion() {
 }
 $('dlg-opciones').addEventListener('close', () => { if (vozPendientesOpciones.length) setTimeout(vozSiguienteOpcion, 150); });
 
-$('btn-voz').addEventListener('click', () => { vozReiniciar(); dlgVoz.showModal(); });
+// Al tocar el micrófono se abre la ventana y empieza a grabar de inmediato
+$('btn-voz').addEventListener('click', () => { vozReiniciar(); dlgVoz.showModal(); vozEmpezar(); });
 $('voz-grabar').addEventListener('click', () => {
   if (vozProcesando) return;
   if (vozGrabador && vozGrabador.state === 'recording') vozDetener(); else vozEmpezar();

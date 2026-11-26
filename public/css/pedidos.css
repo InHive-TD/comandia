@@ -400,3 +400,10 @@ main.contenedor:has(#vista-pedido:not([hidden])) { padding-top: 0; }
 .voz-duda { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin: 8px 0; padding: 8px 10px; border: 1px dashed var(--color-borde); border-radius: 10px; }
 .voz-duda .ayuda { flex: 1 1 100%; margin: 0; }
 .voz-datos { margin: 6px 0; padding: 8px 10px; border-radius: 10px; background: var(--color-fondo); font-weight: 600; }
+/* Botón de micrófono redondo, junto a «Agregar» */
+.codigo-rapido .btn.voz { width: 52px; height: 52px; min-height: 0; padding: 0; border-radius: 50%; flex: none; display: inline-grid; place-items: center; background: var(--color-principal, #0a6b4e); color: #fff; border-color: transparent; }
+.codigo-rapido .btn.voz[hidden] { display: none; }
+.codigo-rapido .btn.voz:hover { filter: brightness(1.08); }
+.voz-grabar.grabando { background: #c62828; border-color: #c62828; animation: voz-pulso 1.2s ease-in-out infinite; }
+@keyframes voz-pulso { 0%, 100% { box-shadow: 0 0 0 0 rgba(198,40,40,.45); } 50% { box-shadow: 0 0 0 10px rgba(198,40,40,0); } }
+@media (prefers-reduced-motion: reduce) { .voz-grabar.grabando { animation: none; } }
