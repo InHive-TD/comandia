@@ -4,7 +4,7 @@
 set -euo pipefail
 RAIZ="$(cd "$(dirname "$0")/.." && pwd)"
 DESTINO=/opt/comandia/main
-git -C "$RAIZ" fetch -q origin main
+git -C "$RAIZ" fetch -q origin +refs/heads/main:refs/remotes/origin/main
 if [ -d "$DESTINO" ]; then git -C "$RAIZ" worktree remove --force "$DESTINO"; fi
 git -C "$RAIZ" worktree add -q --detach "$DESTINO" origin/main
 cp "$RAIZ/.dockerignore" "$DESTINO/.dockerignore"
