@@ -181,18 +181,21 @@ export async function rutasVoz(app: FastifyInstance): Promise<void> {
     }
     const actualTexto = actual.map((l, i) => `${i + 1}|plato ${l.plato}|${l.cantidad} x ${l.nombre}${l.extras.length ? '|con: ' + l.extras.map((x) => (x.grupo ? x.grupo + ': ' : '') + x.nombre).join(', ') : ''}${l.notas ? '|nota: ' + l.notas : ''}${l.llevar ? '|para llevar' : ''}`).join('\n');
 
+    const ahoraBD = await fila("SELECT DATE_FORMAT(NOW(), '%H:%i') AS h");
+    const horaAhora = String(ahoraBD?.['h'] ?? '12:00');
     let respuesta: Record<string, any> = {};
     if (texto !== '') {
       const catalogo = [...menu.values()].map((p) => `${p.id}|${p.categoria}|${p.nombre}${p.obligatorias ? '|requiere opción' : ''}${p.extras.size ? '|opciones: ' + [...p.extras].map(([id, n]) => `${id}=${p.grupos.get(id) ? p.grupos.get(id) + ': ' : ''}${n}`).join(', ') : ''}`).join('\n');
       const sistema = [
         'Eres el asistente de toma de pedidos de un restaurante. Recibes lo que dijo el mesero y el menú disponible (id|categoría|nombre|opciones).',
-        'Responde SOLO un JSON con esta forma exacta: {"lineas":[{"producto_id":0,"cantidad":1,"mods":[{"tipo":"sin","texto":"queso","extra_id":0}],"notas":"","plato":1,"llevar":false}],"dudas":[{"texto":"lo que dijo","cantidad":1,"opciones":[0],"plato":1,"llevar":false}],"no_encontrados":[{"texto":"lo que dijo","cantidad":1,"plato":1,"llevar":false}],"cambios":[{"ref":1,"accion":"quitar","cantidad":1,"mods":[]}],"mesa_id":null,"nombre":null,"modalidad":null,"notas_pedido":null}.',
+        'Responde SOLO un JSON con esta forma exacta: {"lineas":[{"producto_id":0,"cantidad":1,"mods":[{"tipo":"sin","texto":"queso","extra_id":0}],"notas":"","plato":1,"llevar":false}],"dudas":[{"texto":"lo que dijo","cantidad":1,"opciones":[0],"plato":1,"llevar":false}],"no_encontrados":[{"texto":"lo que dijo","cantidad":1,"plato":1,"llevar":false}],"cambios":[{"ref":1,"accion":"quitar","cantidad":1,"mods":[]}],"mesa_id":null,"nombre":null,"modalidad":null,"notas_pedido":null,"para_hora":null,"en_minutos":null}.',
         'Eres tolerante con la transcripción: puede traer errores, marcas mal escritas, plurales, diminutivos o muletillas («este», «eh», «agrégame», «ponme», «me das», «añade», «también»). Entiende la intención y empata con el menú por significado, no solo por letras (ej. «taco de alambre» = «Alambre» si es lo más parecido, «coca» = «Coca-Cola»). Cada cosa que pide el mesero es un renglón, aunque la diga al final o después de «y también…».',
         'Datos del pedido (solo si el mesero los dice; si no, null): "mesa_id" = id de la lista MESAS; "nombre" = nombre del cliente («a nombre de Juan», «es para María»); "modalidad" = "aqui" (comer aquí), "llevar" (para llevar) o "recoger" (pasa a recoger); "notas_pedido" = indicaciones de TODO el pedido (ej. «todo sin picante», «cuenta separada»).',
         'Platos: cada plato o persona es un número (plato 1, plato 2…). Si dicen «para la niña…», «otro plato con…» o «el segundo es…», usa el siguiente número. "llevar": true solo en los renglones de los platos que dicen que son para llevar; si TODO el pedido es para llevar usa modalidad "llevar".',
         'MODIFICADORES: todo «sin X», «con X», «extra X», «más X», «con doble X», «quítale X», «ponle X», «aparte» o elección dicha para un platillo va en "mods" de ESE renglón, UNO por cada cosa: {"tipo":"sin"|"con"|"extra"|"elegir","texto":"lo dicho tal cual, solo el ingrediente (ej. queso)","extra_id":id de la opción del menú si estás seguro o 0}. «sin cebolla ni cilantro» son DOS mods «sin». «con todo» = un mod «con» texto «todo». «de pastor» / «de harina» cuando el platillo ofrece esa opción es "elegir". Si el mesero dice un modificador justo después de un platillo, es de ese platillo; si dice «el segundo sin…», es del segundo.',
         '"notas" es SOLO para indicaciones que no son una opción del menú (ej. «bien cocido», «cortado en cuatro», «para regalo»). Nunca pongas «sin X» o «con X» en "notas" si X puede ser una opción: va en "mods" (el sistema lo empata con las opciones reales del platillo).',
         'Reglas de menú: usa SOLO ids del menú. Si lo dicho puede ser varios platillos del menú, ponlo en "dudas" con hasta 4 ids posibles (no adivines entre opciones realmente distintas). Si no existe nada parecido a lo que pidió (ej. una bebida o marca que no está en el menú), ponlo en "no_encontrados" con su cantidad: nunca lo omitas ni lo cambies por otra cosa. Cantidades en número (dos = 2, un par = 2, media docena = 6).',
+        'PEDIDO PARA MÁS TARDE: si dicen para qué hora lo quieren («para las 3 de la tarde», «a las 7:30», «que esté listo en una hora», «para dentro de 40 minutos»), pon "para_hora" en formato 24 h "HH:MM" (hoy) o "en_minutos" (número) si lo dicen relativo; usa la HORA ACTUAL que viene abajo para decidir AM/PM (si dicen «a las 3» elige la próxima 3 que viene). Si no mencionan hora, ambos null.',
         'PEDIDO ACTUAL: si viene una sección PEDIDO ACTUAL (renglones numerados con ref), lo que dice el mesero se aplica SOBRE ese pedido, que ya existe y NO se repite. "lineas" lleva SOLO los platillos NUEVOS. Los cambios a renglones existentes van en "cambios" con su "ref": {"ref":n,"accion":"quitar"} («quita el pastor», «ya no quiero el refresco»); {"ref":n,"accion":"cantidad","cantidad":k} («que sean tres», «agrégame otro» = el nuevo total); {"ref":n,"accion":"mods","mods":[…]} («al alambre ponle sin queso»); {"ref":n,"accion":"quitar_mods","mods":[…]} («ya no lleves la piña», «sin el sin queso»). «Cámbiame X por Y» = quitar X + una línea nueva Y. Si piden «otro igual» o «uno más de lo mismo», usa la acción "cantidad" con el total nuevo. Si no hay PEDIDO ACTUAL, "cambios" va vacío.',
         'Ejemplos: «dos tacos de alambre sin queso y con piña, uno para llevar» → un renglón Alambre cantidad 2 con mods [{sin,queso},{con,piña}] (si uno va para llevar y otro no, sepáralos en dos renglones con plato distinto). «un jugo boing» sin ese producto → no_encontrados [{texto:"jugo boing",cantidad:1}].',
       ].join('\n');
@@ -201,7 +204,7 @@ export async function rutasVoz(app: FastifyInstance): Promise<void> {
         temperature: 0,
         max_tokens: 1800,
         response_format: { type: 'json_object' },
-        messages: [{ role: 'system', content: sistema }, { role: 'user', content: `MENÚ:\n${catalogo}\n\nMESAS:\n${[...mesasOk].map(([id, n]) => `${id}=${n}`).join('\n') || '(ninguna)'}\n\nPEDIDO ACTUAL:\n${actualTexto || '(vacío)'}\n\nMESERO DIJO: ${texto}` }],
+        messages: [{ role: 'system', content: sistema }, { role: 'user', content: `MENÚ:\n${catalogo}\n\nMESAS:\n${[...mesasOk].map(([id, n]) => `${id}=${n}`).join('\n') || '(ninguna)'}\n\nPEDIDO ACTUAL:\n${actualTexto || '(vacío)'}\n\nHORA ACTUAL: ${horaAhora}\n\nMESERO DIJO: ${texto}` }],
       });
       tokens += Number(ia['usage']?.['total_tokens'] ?? 0);
       costo += Number(ia['usage']?.['cost'] ?? 0);
@@ -295,7 +298,21 @@ export async function rutasVoz(app: FastifyInstance): Promise<void> {
     const modalidadPedida = ['aqui', 'llevar', 'recoger'].includes(String(respuesta['modalidad'])) ? String(respuesta['modalidad']) : null;
     const nombre = typeof respuesta['nombre'] === 'string' ? respuesta['nombre'].trim().slice(0, 80) : '';
     const notasPedido = typeof respuesta['notas_pedido'] === 'string' ? respuesta['notas_pedido'].trim().slice(0, 255) : '';
-    const pedido = { mesa_id: mesasOk.has(mesaId) ? mesaId : null, mesa: mesasOk.get(mesaId) ?? null, nombre: nombre || null, modalidad: modalidadPedida, notas: notasPedido || null };
+    // Hora para más tarde (solo hoy, hasta 12 h adelante): se valida igual que lo hace el servidor al crear el pedido
+    const aMin = (hhmm: string): number => { const [h, m] = hhmm.split(':').map(Number); return (h ?? 0) * 60 + (m ?? 0); };
+    let paraHora: string | null = null, avisoHora: string | null = null;
+    const ahoraMin = aMin(horaAhora);
+    let destino = -1;
+    const hDicha = String(respuesta['para_hora'] ?? '').trim();
+    if (/^([01]?\d|2[0-3]):[0-5]\d$/.test(hDicha)) destino = aMin(hDicha);
+    else if (entero(respuesta['en_minutos']) > 0) destino = ahoraMin + Math.min(720, entero(respuesta['en_minutos']));
+    if (destino >= 0) {
+      if (destino <= ahoraMin) avisoHora = 'Esa hora ya pasó. Elige una hora de hoy más adelante.';
+      else if (destino >= 24 * 60) avisoHora = 'Solo se pueden agendar pedidos para hoy.';
+      else if (destino - ahoraMin > 720) avisoHora = 'Solo se puede agendar hasta 12 horas adelante.';
+      else paraHora = `${String(Math.floor(destino / 60)).padStart(2, '0')}:${String(destino % 60).padStart(2, '0')}`;
+    }
+    const pedido = { para_hora: paraHora, aviso_hora: avisoHora, mesa_id: mesasOk.has(mesaId) ? mesaId : null, mesa: mesasOk.get(mesaId) ?? null, nombre: nombre || null, modalidad: modalidadPedida, notas: notasPedido || null };
 
     // 4) Contar el consumo del día (aunque no haya salido nada útil: igual se gastó)
     await ejecutar(

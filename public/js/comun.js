@@ -187,6 +187,7 @@ function montarCuando(caja, { abierto = false } = {}) {
     fijar(v) {
       poner(typeof v === 'string' ? v : '');
       if (v === null && !abierto) detalles.open = false;
+      if (typeof v === 'string' && v) detalles.open = true;
       refrescar();
     },
     datos() { const v = valor24(); return v ? { para_hora: v } : {}; },

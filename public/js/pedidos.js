@@ -271,6 +271,7 @@ function vozVista(v) {
 
 function vozReiniciar() {
   $('voz-error').textContent = '';
+  cuandoVoz.fijar(null);
   vozPropuesta = { lineas: [], dudas: [], pedido: {} };
   vozVista('grabando');
   $('voz-estado').textContent = 'Toca el micrófono y di el pedido.';
@@ -375,6 +376,7 @@ async function vozEnviar() {
   }
 }
 
+const cuandoVoz = montarCuando($('voz-cuando'));   // «Agendar pedido para más tarde», dentro de la ventana de voz
 const campoVozMesa = crearCampoMesa($('voz-mesa'), $('voz-mesa-plano'), () => vozPintarDatos());
 
 function vozPintar(r, continuando = false) {
@@ -387,6 +389,7 @@ function vozPintar(r, continuando = false) {
     if (pd.nombre) $('voz-nombre').value = pd.nombre;
     if (pd.notas) $('voz-notas-pedido').value = pd.notas;
     campoVozMesa.refrescar();
+    if (pd.para_hora) cuandoVoz.fijar(pd.para_hora);
     $('voz-texto').value = r.texto || '';
     $('voz-no').textContent = (r.resumen || []).length ? 'Cambios: ' + r.resumen.join(' · ') : '';
     $('voz-no').classList.add('voz-resumen');
@@ -402,13 +405,14 @@ function vozPintar(r, continuando = false) {
   campoVozMesa.poner({ mesas, zonas: zonasPed, plano: planoActivo }, 'Elige la mesa…');
   $('voz-mesa').value = pd.mesa_id && mesas.some((m) => m.id === pd.mesa_id) ? String(pd.mesa_id) : ($('mesa').value || '');
   campoVozMesa.refrescar();
+  cuandoVoz.fijar(pd.para_hora || null);
   $('voz-nombre').value = pd.nombre || $('cliente').value || '';
   $('voz-notas-pedido').value = pd.notas || '';
   $('voz-texto').value = r.texto || '';
   $('voz-no').textContent = (r.resumen || []).length ? 'Cambios: ' + r.resumen.join(' · ') : '';
   $('voz-no').classList.add('voz-resumen');
   $('voz-estado').textContent = r.aviso ? 'Ya llevas más del 80% del límite de voz de hoy.' : 'Revisa, corrige lo que haga falta y agrégalo al pedido.';
-  $('voz-error').textContent = '';
+  $('voz-error').textContent = pd.aviso_hora || '';
   vozVista('resultado');
   vozPintarDatos();
   vozPintarPlatos();
@@ -417,6 +421,7 @@ function vozPintar(r, continuando = false) {
 /** ¿Falta algo para poder levantar el pedido? Mismas reglas que el formulario normal. */
 function vozFalta() {
   if (ordenDestino) return null;
+  if (cuandoVoz.incompleto()) return { campo: 'voz-nombre', texto: 'Completa la hora del pedido agendado (hora, minutos y AM/PM) o quítala.' };
   const mesaVal = $('voz-mesa').value;
   if (vozMod === 'aqui' && mesas.length && pedirPorMesa && !mesaVal) return { campo: 'voz-mesa', texto: 'Elige la mesa del pedido.' };
   const opcional = vozMod === 'aqui' && mesas.length > 0 && (mesaVal !== '' || pedirPorMesa);
@@ -431,6 +436,7 @@ function vozPintarDatos() {
   for (const b of $('voz-mod').querySelectorAll('button')) b.setAttribute('aria-pressed', String(b.dataset.mod === vozMod));
   $('voz-mesa-fila').hidden = !(nuevo && vozMod === 'aqui' && mesas.length);
   $('voz-nombre-fila').hidden = !nuevo;
+  $('voz-cuando').hidden = !nuevo;
   const mesaVal = $('voz-mesa').value;
   const opcional = vozMod === 'aqui' && mesas.length > 0 && (mesaVal !== '' || pedirPorMesa);
   $('voz-nombre-fila').firstChild.textContent = opcional ? 'Nombre del cliente (opcional)' : 'Nombre del cliente';
@@ -606,6 +612,8 @@ function vozAgregar() {
     else if (vozMod === 'llevar' || (llevarPlatos.size > 0 && llevarPlatos.size === todosPlatos.size && !carrito.length)) fijarModalidad('llevar');
     else fijarModalidad('aqui');   // los platos «para llevar» se marcan al final, cuando ya existen en el pedido
     $('cliente').value = $('voz-nombre').value.trim();
+    const hora = cuandoVoz.datos().para_hora;
+    if (hora) cuando.fijar(hora);
     if (modalidad === 'aqui' && $('voz-mesa').value && mesas.some((m) => String(m.id) === $('voz-mesa').value)) $('mesa').value = $('voz-mesa').value;
   }
   const notasPedido = $('voz-notas-pedido').value.trim();
