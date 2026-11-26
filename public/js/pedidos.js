@@ -427,7 +427,11 @@ const vozPrecioLinea = (l) => {
 /** El pedido armado, ordenado por plato como se verá en las órdenes: tipo del plato, platillos, modificadores y notas. */
 function vozPintarPlatos() {
   const cont = $('voz-platos');
+  // Al repintar no se pierde dónde estaba el mesero: se recuerda el scroll de la ventana
+  const desplazables = [];
+  for (let n = cont; n; n = n.parentElement) if (n.scrollHeight > n.clientHeight + 1 && n.scrollTop > 0) desplazables.push([n, n.scrollTop]);
   cont.replaceChildren();
+  queueMicrotask(() => { for (const [n, y] of desplazables) n.scrollTop = y; });
   const numeros = [...new Set(vozPropuesta.lineas.map((l) => l.plato))].sort((a, b) => a - b);
   for (const n of numeros) {
     const lineas = vozPropuesta.lineas.filter((l) => l.plato === n);
@@ -487,7 +491,8 @@ function vozPintarPlatos() {
           }
           det.append(fil);
         }
-        if (l.extras.length === 0 || l.falta_opcion) det.open = !!l.falta_opcion;
+        det.open = l.abierto !== undefined ? l.abierto : !!l.falta_opcion;   // se queda abierto/cerrado como lo dejó el mesero
+        det.addEventListener('toggle', () => { l.abierto = det.open; });
         fila.append(det);
       }
       if (l.sin_resolver && l.sin_resolver.length) fila.append(el('div', 'voz-aviso', `«${l.sin_resolver.join(', ')}» no es una opción de este platillo: quedó como nota.`));
