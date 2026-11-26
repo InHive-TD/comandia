@@ -2,14 +2,16 @@
  * Sucursales de la empresa.
  *
  *   GET  → las sucursales (con # de mesas y de personas). El dueño ve todas; el gerente solo la suya.
- *   POST { accion: 'crear', nombre, direccion? }                       solo el dueño
+ *   POST { accion: 'crear', nombre, direccion?, carta? }               solo el dueño. carta: 'general' (usa la carta de la empresa, por defecto),
+ *                                                                       'copiar' (copia de la general, editable aparte) o 'vacia' (carta propia sin platillos)
  *   POST { accion: 'editar', id, nombre, direccion?, activa }          solo el dueño
  *
  * Una empresa siempre conserva al menos UNA sucursal activa (si no, nadie podría trabajar).
  */
 import type { FastifyInstance } from 'fastify';
 import { cuerpoJson, exigirMetodo, requerirGestion } from '../../auth.js';
-import { ejecutar, fila, filas } from '../../db.js';
+import { borrarFotosCopiadas, copiarCartaGeneral } from '../../copiarCarta.js';
+import { ejecutar, fila, filas, transaccion } from '../../db.js';
 import { ErrorHttp, fallo } from '../../errores.js';
 import { completarSlugsSucursales } from '../../negocio.js';
 import { entero, largo, noVacio } from '../../util.js';
@@ -38,7 +40,7 @@ export async function rutasSucursales(app: FastifyInstance): Promise<void> {
       if (req.method === 'GET') {
         await completarSlugsSucursales(nid);   // sucursales viejas o recién creadas reciben su nombre corto para el QR
         const r = await filas(
-          `SELECT s.id, s.slug, s.nombre, s.direccion, s.activa, s.orden,
+          `SELECT s.id, s.slug, s.nombre, s.direccion, s.activa, s.orden, s.carta_propia,
                   (SELECT COUNT(*) FROM mesas m WHERE m.sucursal_id = s.id AND m.activa = 1) AS mesas,
                   (SELECT COUNT(*) FROM usuarios u WHERE u.activo = 1 AND (u.sucursal_id = s.id OR EXISTS (SELECT 1 FROM usuario_sucursales x WHERE x.usuario_id = u.id AND x.sucursal_id = s.id))) AS usuarios
              FROM sucursales s WHERE s.negocio_id = ?${alcance !== null ? ' AND s.id = ?' : ''} ORDER BY s.activa DESC, s.orden, s.id`,
@@ -48,7 +50,7 @@ export async function rutasSucursales(app: FastifyInstance): Promise<void> {
           ok: true,
           sucursales: r.map((s) => ({
             id: Number(s['id']), slug: s['slug'], nombre: s['nombre'], direccion: s['direccion'], activa: Boolean(Number(s['activa'])),
-            orden: Number(s['orden']), mesas: Number(s['mesas']), usuarios: Number(s['usuarios']),
+            orden: Number(s['orden']), carta_propia: Boolean(Number(s['carta_propia'])), mesas: Number(s['mesas']), usuarios: Number(s['usuarios']),
           })),
         };
       }
@@ -59,10 +61,25 @@ export async function rutasSucursales(app: FastifyInstance): Promise<void> {
 
       switch (String(d['accion'] ?? '')) {
         case 'crear': {
+          const carta = String(d['carta'] ?? 'general');
+          if (!['general', 'copiar', 'vacia'].includes(carta)) throw fallo('Elige cómo será la carta de la sucursal.');
           const sig = await fila('SELECT COALESCE(MAX(orden), 0) + 1 AS n FROM sucursales WHERE negocio_id = ?', [nid]);
-          const r = await ejecutar('INSERT INTO sucursales (negocio_id, nombre, direccion, orden) VALUES (?, ?, ?, ?)', [nid, leerNombre(d), leerDireccion(d), Number(sig?.['n'])]);
+          const fotosNuevas: string[] = [];
+          let copiados = 0;
+          let id = 0;
+          try {
+            id = await transaccion(async (tx) => {
+              const r = await tx.ejecutar('INSERT INTO sucursales (negocio_id, nombre, direccion, orden, carta_propia) VALUES (?, ?, ?, ?, ?)',
+                [nid, leerNombre(d), leerDireccion(d), Number(sig?.['n']), carta === 'general' ? 0 : 1]);
+              if (carta === 'copiar') copiados = await copiarCartaGeneral(tx, nid, r.insertId, fotosNuevas);
+              return r.insertId;
+            });
+          } catch (e) {
+            await borrarFotosCopiadas(fotosNuevas);
+            throw e;
+          }
           reply.code(201);
-          return { ok: true, id: r.insertId };
+          return { ok: true, id, copiados };
         }
         case 'editar': {
           const id = entero(d['id']);

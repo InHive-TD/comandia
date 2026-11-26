@@ -20,6 +20,7 @@ import { ejecutar, fila, filas, transaccion } from '../../db.js';
 import { ErrorHttp, fallo } from '../../errores.js';
 import { type Formulario, leerFormulario } from '../../formulario.js';
 import { borrarFoto, procesarFoto } from '../../fotos.js';
+import { cartaOrigen } from '../../carta.js';
 import { sucursalesActivas } from '../../negocio.js';
 import { listarGruposExtras, listarVariantesPropias } from './extras.js';
 import { entero, esDuplicado, largo, mayusculas } from '../../util.js';
@@ -168,7 +169,7 @@ export async function guardarExtras(tx: { ejecutar: (sql: string, p?: unknown[])
 async function listar(nid: number, alcance: number | null): Promise<Record<string, unknown>> {
   // El gerente ve la carta general + sus productos propios, con los ajustes que hizo en su sucursal.
   const unirAjuste = alcance !== null ? ` LEFT JOIN producto_sucursal ps ON ps.producto_id = p.id AND ps.sucursal_id = ${alcance}` : ' LEFT JOIN producto_sucursal ps ON 1 = 0';
-  const soloVisibles = alcance !== null ? ` AND (p.sucursal_id IS NULL OR p.sucursal_id = ${alcance})` : '';
+  const soloVisibles = alcance !== null ? ` AND ${cartaOrigen(alcance)}` : '';
   const prods = await filas(
     `SELECT p.id, p.categoria_id, c.nombre AS categoria, p.nombre, p.descripcion, p.precio, p.foto, p.disponible, p.codigo, p.porcion,
             p.estacion_id, p.pedir_opciones, p.opciones_obligatorias, p.grupo_obligatorio, p.sucursal_id, sx.nombre AS sucursal, ps.oculto, ps.precio AS precio_sucursal

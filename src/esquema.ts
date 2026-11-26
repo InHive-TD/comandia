@@ -65,6 +65,8 @@ export async function asegurarEsquema(): Promise<void> {
   }
   await actualizarV2();
   await asegurarColumna('sucursales', 'slug', 'VARCHAR(60) NULL');
+  // 1 = la sucursal NO muestra la carta general: solo sus platillos propios (copiados de la general o cargados por ella)
+  await asegurarColumna('sucursales', 'carta_propia', 'TINYINT(1) NOT NULL DEFAULT 0');
   await asegurarColumna('orden_items', 'llevar', 'TINYINT(1) NOT NULL DEFAULT 0');
   await asegurarColumna('ordenes', 'pago_previsto', 'VARCHAR(15) NULL');
   // Precio propio de un extra en un platillo concreto (NULL = precio general del extra)

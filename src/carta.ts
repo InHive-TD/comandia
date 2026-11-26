@@ -6,6 +6,9 @@
  */
 export const cartaUnir = (suc: number): string => ` LEFT JOIN producto_sucursal ps ON ps.producto_id = p.id AND ps.sucursal_id = ${Math.trunc(suc)} `;
 export const cartaVisible = (suc: number): string =>
-  ` AND (p.sucursal_id IS NULL OR p.sucursal_id = ${Math.trunc(suc)}) AND COALESCE(ps.oculto, 0) = 0 `;
+  ` AND ${cartaOrigen(suc)} AND COALESCE(ps.oculto, 0) = 0 `;
+/** La carta general se ve salvo que la sucursal tenga carta propia (sucursales.carta_propia = 1). Siempre se ven sus platillos propios. */
+export const cartaOrigen = (suc: number, alias = 'p'): string =>
+  `(${alias}.sucursal_id = ${Math.trunc(suc)} OR (${alias}.sucursal_id IS NULL AND NOT EXISTS (SELECT 1 FROM sucursales sc WHERE sc.id = ${Math.trunc(suc)} AND sc.carta_propia = 1)))`;
 export const CARTA_PRECIO = 'COALESCE(ps.precio, p.precio)';
 export const CARTA_AGOTADO = '(p.agotado_fecha = CURDATE() OR ps.agotado_fecha = CURDATE())';

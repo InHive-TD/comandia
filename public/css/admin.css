@@ -819,3 +819,10 @@ body.menu-compacto .menu-desp-items { display: block; padding-left: 0; }
 
 .i-plano { --ico: url("data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 24 24%22 fill=%22none%22 stroke=%22black%22 stroke-width=%222%22 stroke-linecap=%22round%22 stroke-linejoin=%22round%22%3E%3Crect x=%223%22 y=%223%22 width=%2218%22 height=%2218%22 rx=%222%22/%3E%3Crect x=%226%22 y=%226%22 width=%224%22 height=%224%22/%3E%3Ccircle cx=%2216%22 cy=%2208%22 r=%222%22/%3E%3Crect x=%226%22 y=%2214%22 width=%2212%22 height=%224%22/%3E%3C/svg%3E"); }
 .pl-dialogo { max-width: 860px; }
+
+/* Elegir la carta al crear una sucursal */
+.su-carta { border: 1px solid var(--color-borde); border-radius: 12px; padding: 10px 14px 12px; margin: 4px 0 8px; display: grid; gap: 8px; }
+.su-carta legend { font-weight: 700; padding: 0 6px; }
+.su-carta .casilla-int { display: flex; align-items: flex-start; gap: 10px; font-weight: 400; cursor: pointer; }
+.su-carta .casilla-int input { margin-top: 4px; flex: none; }
+.su-carta .casilla-int span { font-size: .92rem; line-height: 1.35; }

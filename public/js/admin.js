@@ -1166,7 +1166,7 @@ async function cargarSucursales() {
     det.open = esGerente || sucAbierta.has(s.id);
     det.addEventListener('toggle', () => { if (det.open) sucAbierta.add(s.id); else sucAbierta.delete(s.id); });
     const resumen = el('summary', 'su-resumen');
-    resumen.append(el('span', 'cat-nombre', s.nombre), el('span', 'chip', `${s.mesas} mesas`), el('span', 'chip', `${s.usuarios} personas`), el('span', 'chip ' + (s.activa ? 'activo' : 'sin'), s.activa ? '● Activa' : 'Desactivada'));
+    resumen.append(el('span', 'cat-nombre', s.nombre), el('span', 'chip', `${s.mesas} mesas`), el('span', 'chip', `${s.usuarios} personas`), el('span', 'chip', s.carta_propia ? 'Carta propia' : 'Carta general'), el('span', 'chip ' + (s.activa ? 'activo' : 'sin'), s.activa ? '● Activa' : 'Desactivada'));
     det.append(resumen);
 
     const cuerpo = el('div', 'su-cuerpo');
@@ -1259,8 +1259,9 @@ $('btn-sucursales').addEventListener('click', async () => {
 $('su-cerrar').addEventListener('click', () => dlgSucursales.close());
 $('form-nueva-sucursal').addEventListener('submit', async (ev) => {
   ev.preventDefault();
-  const ok = await accionSucursal('admin/sucursales.php', { accion: 'crear', nombre: $('su-nombre').value.trim(), direccion: $('su-direccion').value.trim() }, 'Sucursal creada');
-  if (ok) { $('su-nombre').value = ''; $('su-direccion').value = ''; }
+  const carta = (document.querySelector('input[name="su-carta"]:checked') || {}).value || 'general';
+  const ok = await accionSucursal('admin/sucursales.php', { accion: 'crear', nombre: $('su-nombre').value.trim(), direccion: $('su-direccion').value.trim(), carta }, 'Sucursal creada');
+  if (ok) { $('su-nombre').value = ''; $('su-direccion').value = ''; document.querySelector('input[name="su-carta"][value="general"]').checked = true; }
 });
 
 /* ------------------------------------------------------------------ */
@@ -2038,11 +2039,24 @@ async function enviarCarga(confirmar) {
   datos.append('planilla', $('cm-planilla').files[0]);
   if ($('cm-zip').files[0]) datos.append('fotos', $('cm-zip').files[0]);
   datos.append('confirmar', confirmar ? '1' : '0');
+  if (!esGerente && $('cm-destino').value) datos.append('sucursal', $('cm-destino').value);
   return pedir(API + 'admin/productos-importar.php', { method: 'POST', body: datos });
 }
 
-$('btn-carga').addEventListener('click', () => {
+$('btn-carga').addEventListener('click', async () => {
   $('cm-error').textContent = '';
+  // El dueño elige dónde cargar: la carta general o directo en una sucursal (quedan como platillos propios de ella)
+  if (!esGerente) {
+    try {
+      const r = await pedir(API + 'admin/sucursales.php');
+      const sel = $('cm-destino');
+      const previo = sel.value;
+      sel.replaceChildren(new Option('Carta general de la empresa', ''));
+      for (const s of r.sucursales.filter((x) => x.activa)) sel.append(new Option('Solo en la sucursal: ' + s.nombre + (s.carta_propia ? ' (carta propia)' : ''), String(s.id)));
+      sel.value = [...sel.options].some((o) => o.value === previo) ? previo : '';
+      $('cm-destino-caja').hidden = r.sucursales.length < 2;
+    } catch { $('cm-destino-caja').hidden = true; }
+  }
   abrirPagina(dlgCarga, 'btn-carga');
 });
 $('cm-form').addEventListener('submit', async (ev) => {
@@ -2055,7 +2069,7 @@ $('cm-form').addEventListener('submit', async (ev) => {
   finally { b.disabled = false; b.textContent = 'Revisar planilla'; }
 });
 // Si cambian los archivos, la vista previa anterior ya no vale
-for (const id of ['cm-planilla', 'cm-zip']) $(id).addEventListener('change', () => { $('cm-resultado').hidden = true; });
+for (const id of ['cm-planilla', 'cm-zip', 'cm-destino']) $(id).addEventListener('change', () => { $('cm-resultado').hidden = true; });
 $('cm-importar').addEventListener('click', async () => {
   $('cm-error').textContent = '';
   const b = $('cm-importar');

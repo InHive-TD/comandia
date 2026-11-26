@@ -17,7 +17,7 @@
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Outfit:wght@600;700;800&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="../css/estilos.css?v=1795557467">
   <link rel="stylesheet" href="../css/plano.css?v=1795557467">
-  <link rel="stylesheet" href="../css/admin.css?v=1795557467">
+  <link rel="stylesheet" href="../css/admin.css?v=202611261300">
   <link rel="stylesheet" href="../css/tablero.css?v=1795557101">
   <link rel="stylesheet" href="../css/shell.css?v=1795557467">
   <link rel="stylesheet" href="../css/acceso.css?v=202611261215">
@@ -688,6 +688,12 @@
         <label>Dirección (opcional)
           <input id="su-direccion" type="text" maxlength="160" placeholder="Calle y colonia">
         </label>
+        <fieldset class="su-carta">
+          <legend>Carta (platillos) de esta sucursal</legend>
+          <label class="casilla-int"><input type="radio" name="su-carta" value="general" checked> <span><b>Usar la carta general</b> de la empresa. Si cambias un platillo en la carta general, cambia aquí también. La sucursal puede ocultar platillos, cambiar precios y agregar los suyos.</span></label>
+          <label class="casilla-int"><input type="radio" name="su-carta" value="copiar"> <span><b>Copiar la carta general</b> y editarla aparte. Empieza igual, pero después puede cambiar, quitar o agregar platillos sin afectar a las demás sucursales. Los códigos rápidos no se copian.</span></label>
+          <label class="casilla-int"><input type="radio" name="su-carta" value="vacia"> <span><b>Empezar de cero</b>, sin platillos. Los agrega uno por uno o con la carga masiva.</span></label>
+        </fieldset>
         <button class="btn principal" type="submit">Crear sucursal</button>
       </form>
       </details>
@@ -780,6 +786,9 @@
       </ol>
 
       <form id="cm-form" class="formulario">
+        <label id="cm-destino-caja" hidden>Cargar en
+          <select id="cm-destino"></select>
+        </label>
         <label>Planilla (Excel .xlsx)
           <input id="cm-planilla" type="file" accept=".xlsx" required>
         </label>
@@ -868,6 +877,6 @@
   <script src="../js/shell.js?v=1795557467"></script>
   <script src="../js/login.js?v=202611242250"></script>
   <script src="../js/vendor/qrcode.js"></script>
-  <script src="../js/admin.js?v=202611261200"></script>
+  <script src="../js/admin.js?v=202611261300"></script>
 </body>
 </html>
