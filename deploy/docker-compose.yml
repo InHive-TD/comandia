@@ -1,0 +1,62 @@
+# Comandia en el VPS: UNA MySQL con dos bases (staging y producción) y dos contenedores de la app.
+# Proyecto aparte del de n8n: no toca sus contenedores ni sus datos. Solo se une a la red de Caddy.
+# Ningún puerto se publica al exterior: ni las apps ni MySQL son alcanzables desde internet.
+name: comandia
+
+x-app: &app
+  build:
+    context: ..
+    dockerfile: deploy/Dockerfile
+  image: comandia-app:local
+  restart: unless-stopped
+  depends_on:
+    db:
+      condition: service_healthy
+  networks: [interna, caddy]
+  environment:
+    DB_HOST: db
+    DB_PORT: "3306"
+
+services:
+  db:
+    image: mysql:8.4
+    restart: unless-stopped
+    env_file: .env.db
+    command: ["--innodb-buffer-pool-size=160M", "--max-connections=80", "--performance-schema=OFF", "--character-set-server=utf8mb4", "--collation-server=utf8mb4_unicode_ci", "--default-time-zone=-06:00"]
+    volumes:
+      - datos:/var/lib/mysql
+      - ./init:/docker-entrypoint-initdb.d:ro
+    networks: [interna]
+    mem_limit: 512m
+    healthcheck:
+      test: ["CMD-SHELL", "mysqladmin ping -h 127.0.0.1 -u root -p\"$$MYSQL_ROOT_PASSWORD\" --silent"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+
+  staging:
+    <<: *app
+    env_file: .env.staging
+    volumes:
+      - fotos_staging:/datos/uploads
+    mem_limit: 320m
+    cpus: 0.5
+
+  prod:
+    <<: *app
+    env_file: .env.prod
+    volumes:
+      - fotos_prod:/datos/uploads
+    mem_limit: 320m
+    cpus: 0.5
+
+volumes:
+  datos:
+  fotos_staging:
+  fotos_prod:
+
+networks:
+  interna:
+  caddy:
+    external: true
+    name: n8n_default
