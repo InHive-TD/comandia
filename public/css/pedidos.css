@@ -407,3 +407,4 @@ main.contenedor:has(#vista-pedido:not([hidden])) { padding-top: 0; }
 .voz-grabar.grabando { background: #c62828; border-color: #c62828; animation: voz-pulso 1.2s ease-in-out infinite; }
 @keyframes voz-pulso { 0%, 100% { box-shadow: 0 0 0 0 rgba(198,40,40,.45); } 50% { box-shadow: 0 0 0 10px rgba(198,40,40,0); } }
 @media (prefers-reduced-motion: reduce) { .voz-grabar.grabando { animation: none; } }
+.codigo-rapido:has(.btn.voz:not([hidden])) { grid-template-columns: 1fr auto auto; align-items: center; }
