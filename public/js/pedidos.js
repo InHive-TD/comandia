@@ -239,7 +239,10 @@ const MAX_VOZ_SEG = 30;
 const dlgVoz = $('dlg-voz');
 let vozGrabador = null, vozPartes = [], vozTimer = null, vozInicio = 0, vozProcesando = false;
 let vozPropuesta = { lineas: [], dudas: [], pedido: {} };
+let vozMod = 'aqui';
 let vozPendientesOpciones = [];
+const NOMBRE_MOD = { aqui: 'Comer aquí', llevar: 'Para llevar', recoger: 'Recoger' };
+const MIC_SVG = '<svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="9" y="2" width="6" height="12" rx="3"/><path d="M5 11a7 7 0 0 0 14 0M12 18v4M8 22h8"/></svg>';
 
 /** Muestra el botón del micrófono solo si la voz está activada para esta empresa y hay micrófono disponible. */
 async function consultarVoz() {
@@ -257,18 +260,27 @@ function tipoAudio() {
   return '';
 }
 
+/** Qué se ve según el momento: 'grabando' (control grande) o 'resultado' (pedido armado + micrófono redondo arriba). */
+function vozVista(v) {
+  const resultado = v === 'resultado';
+  $('voz-controles').hidden = resultado;
+  $('voz-resultado').hidden = !resultado;
+  $('voz-agregar').hidden = !resultado;
+  $('voz-regrabar').hidden = !resultado;
+}
+
 function vozReiniciar() {
   $('voz-error').textContent = '';
-  $('voz-resultado').hidden = true;
-  $('voz-agregar').hidden = true;
   vozPropuesta = { lineas: [], dudas: [], pedido: {} };
-  $('voz-estado').textContent = 'Toca el micrófono y di el pedido. Ejemplo: «dos de arrachera con todo y uno de pastor sin cebolla».';
+  vozVista('grabando');
+  $('voz-estado').textContent = 'Toca el micrófono y di el pedido.';
   $('voz-grabar').textContent = '🎤 Empezar a hablar';
   $('voz-grabar').disabled = false;
 }
 
 function vozDetener(cancelar = false) {
   $('voz-grabar').classList.remove('grabando');
+  $('voz-regrabar').classList.remove('grabando');
   clearInterval(vozTimer);
   vozTimer = null;
   if (vozGrabador && vozGrabador.state !== 'inactive') {
@@ -291,6 +303,8 @@ async function vozEmpezar() {
   vozGrabador.onstop = vozEnviar;
   vozGrabador.start();
   vozInicio = Date.now();
+  vozVista('grabando');   // si venía de un resultado (hablar otra vez), vuelve al control de grabar
+  $('voz-grabar').disabled = false;
   $('voz-grabar').textContent = '⏹ Listo, enviar';
   $('voz-grabar').classList.add('grabando');
   const pintar = () => {
@@ -313,6 +327,7 @@ async function vozEnviar() {
   vozGrabador = null;
   vozProcesando = true;
   $('voz-grabar').disabled = true;
+  $('voz-grabar').classList.remove('grabando');
   $('voz-estado').textContent = 'Entendiendo el pedido…';
   try {
     const formato = tipo.includes('mp4') ? 'mp4' : tipo.includes('ogg') ? 'ogg' : 'webm';
@@ -321,41 +336,142 @@ async function vozEnviar() {
   } catch (err) {
     $('voz-error').textContent = err.message;
     $('voz-estado').textContent = 'No se pudo. Intenta otra vez.';
+    $('voz-grabar').textContent = '🎤 Hablar otra vez';
   } finally {
     vozProcesando = false;
     $('voz-grabar').disabled = false;
-    $('voz-grabar').textContent = '🎤 Hablar otra vez';
   }
 }
 
+const campoVozMesa = crearCampoMesa($('voz-mesa'), $('voz-mesa-plano'), () => vozPintarDatos());
+
 function vozPintar(r) {
-  vozPropuesta = { lineas: r.lineas || [], dudas: r.dudas || [], pedido: r.pedido || {} };
+  const pd = r.pedido || {};
+  vozPropuesta = { lineas: (r.lineas || []).map((l) => ({ ...l, plato: l.plato || 1 })), dudas: r.dudas || [], pedido: pd };
+  // Punto de partida: lo que dijo el mesero; si no dijo nada, lo que ya estaba elegido en la pantalla
+  vozMod = pd.modalidad || modalidad;
+  campoVozMesa.poner({ mesas, zonas: zonasPed, plano: planoActivo }, 'Elige la mesa…');
+  $('voz-mesa').value = pd.mesa_id && mesas.some((m) => m.id === pd.mesa_id) ? String(pd.mesa_id) : ($('mesa').value || '');
+  campoVozMesa.refrescar();
+  $('voz-nombre').value = pd.nombre || $('cliente').value || '';
+  $('voz-notas-pedido').value = pd.notas || '';
   $('voz-texto').textContent = r.texto ? `«${r.texto}»` : '(nada)';
   $('voz-no').textContent = (r.no_encontrados || []).length ? 'No encontré en el menú: ' + r.no_encontrados.join(', ') : '';
-  $('voz-estado').textContent = r.aviso ? 'Ya llevas más del 80% del límite de voz de hoy.' : 'Revisa y confirma:';
-  $('voz-resultado').hidden = false;
-  vozPintarListas();
+  $('voz-estado').textContent = r.aviso ? 'Ya llevas más del 80% del límite de voz de hoy.' : 'Revisa, corrige lo que haga falta y agrégalo al pedido.';
+  $('voz-error').textContent = '';
+  vozVista('resultado');
+  vozPintarDatos();
+  vozPintarPlatos();
 }
 
-const NOMBRE_MOD = { aqui: 'Comer aquí', llevar: 'Para llevar', recoger: 'Recoger' };
+/** ¿Falta algo para poder levantar el pedido? Mismas reglas que el formulario normal. */
+function vozFalta() {
+  if (ordenDestino) return null;
+  const mesaVal = $('voz-mesa').value;
+  if (vozMod === 'aqui' && mesas.length && pedirPorMesa && !mesaVal) return { campo: 'voz-mesa', texto: 'Elige la mesa del pedido.' };
+  const opcional = vozMod === 'aqui' && mesas.length > 0 && (mesaVal !== '' || pedirPorMesa);
+  if (!$('voz-nombre').value.trim() && !opcional) return { campo: 'voz-nombre', texto: vozMod === 'aqui' && mesas.length ? 'Elige la mesa o escribe el nombre del cliente.' : 'Escribe el nombre del cliente.' };
+  return null;
+}
 
-function vozPintarListas() {
-  // Datos del pedido que dijo el mesero (mesa, nombre, tipo, notas)
-  const pd = vozPropuesta.pedido || {};
-  const datos = [pd.mesa, pd.nombre ? `A nombre de ${pd.nombre}` : null, pd.modalidad ? NOMBRE_MOD[pd.modalidad] : null, pd.notas ? `Notas: ${pd.notas}` : null].filter(Boolean);
-  $('voz-datos').hidden = datos.length === 0 || !!ordenDestino;
-  $('voz-datos').textContent = datos.join(' · ');
-  const ul = $('voz-lineas');
-  ul.replaceChildren();
-  vozPropuesta.lineas.forEach((l, i) => {
-    const li = el('li', '');
-    const extras = l.extras.map((x) => x.nombre).join(', ');
-    li.append(el('span', 'voz-txt', `${l.cantidad} × ${l.nombre}${extras ? ' · ' + extras : ''}${l.notas ? ' · “' + l.notas + '”' : ''}${l.falta_opcion ? ' · (falta elegir opción)' : ''}`));
-    const quitar = el('button', 'btn chico', '✕'); quitar.type = 'button'; quitar.setAttribute('aria-label', 'Quitar');
-    quitar.addEventListener('click', () => { vozPropuesta.lineas.splice(i, 1); vozPintarListas(); });
-    li.append(quitar);
-    ul.append(li);
-  });
+/** Tipo de pedido, mesa y nombre (lo que cambia según el tipo). */
+function vozPintarDatos() {
+  const nuevo = !ordenDestino;
+  $('voz-mod').hidden = !nuevo;
+  for (const b of $('voz-mod').querySelectorAll('button')) b.setAttribute('aria-pressed', String(b.dataset.mod === vozMod));
+  $('voz-mesa-fila').hidden = !(nuevo && vozMod === 'aqui' && mesas.length);
+  $('voz-nombre-fila').hidden = !nuevo;
+  const mesaVal = $('voz-mesa').value;
+  const opcional = vozMod === 'aqui' && mesas.length > 0 && (mesaVal !== '' || pedirPorMesa);
+  $('voz-nombre-fila').firstChild.textContent = opcional ? 'Nombre del cliente (opcional)' : 'Nombre del cliente';
+  $('voz-mesa-fila').firstChild.textContent = pedirPorMesa ? 'Mesa (obligatoria)' : 'Mesa';
+  campoVozMesa.refrescar();
+  vozPintarPlatos();
+}
+for (const b of $('voz-mod').querySelectorAll('button')) b.addEventListener('click', () => { vozMod = b.dataset.mod; vozPintarDatos(); });
+$('voz-nombre').addEventListener('input', () => { $('voz-error').textContent = ''; vozPintarDatos(); });
+
+const vozPrecioLinea = (l) => {
+  const p = porId.get(l.producto_id);
+  if (!p) return 0;
+  const extras = l.extras.map((x) => p.extras.find((e) => e.id === x.id)).filter(Boolean);
+  return precioLinea({ producto: p, extras, cantidad: l.cantidad });
+};
+
+/** El pedido armado, ordenado por plato como se verá en las órdenes: tipo del plato, platillos, modificadores y notas. */
+function vozPintarPlatos() {
+  const cont = $('voz-platos');
+  cont.replaceChildren();
+  const numeros = [...new Set(vozPropuesta.lineas.map((l) => l.plato))].sort((a, b) => a - b);
+  for (const n of numeros) {
+    const lineas = vozPropuesta.lineas.filter((l) => l.plato === n);
+    const llevar = vozMod === 'llevar' || (vozMod === 'aqui' && lineas.every((l) => l.llevar));
+    const caja = el('section', 'voz-plato');
+    const cab = el('div', 'voz-plato-cab');
+    cab.append(el('b', '', numeros.length > 1 || n > 1 ? `Plato ${n}` : 'Pedido'));
+    if (vozMod === 'aqui' && !ordenDestino || (ordenDestino && ordenDestino.modalidad === 'aqui')) {
+      const seg = el('div', 'voz-seg chico');
+      for (const [valor, texto] of [[false, 'Aquí'], [true, 'Para llevar']]) {
+        const b = el('button', '', texto); b.type = 'button'; b.setAttribute('aria-pressed', String(llevar === valor));
+        b.addEventListener('click', () => { for (const l of lineas) l.llevar = valor; vozPintarPlatos(); });
+        seg.append(b);
+      }
+      cab.append(seg);
+    } else cab.append(el('span', 'chip-mod', NOMBRE_MOD[ordenDestino ? ordenDestino.modalidad : vozMod]));
+    caja.append(cab);
+
+    for (const l of lineas) {
+      const p = porId.get(l.producto_id);
+      const fila = el('div', 'voz-linea');
+      const arriba = el('div', 'voz-linea-arriba');
+      const cant = el('div', 'voz-cant');
+      const menos = el('button', 'btn chico', '−'); menos.type = 'button'; menos.setAttribute('aria-label', 'Menos');
+      const mas = el('button', 'btn chico', '＋'); mas.type = 'button'; mas.setAttribute('aria-label', 'Más');
+      menos.addEventListener('click', () => { if (l.cantidad > 1) l.cantidad--; vozPintarPlatos(); });
+      mas.addEventListener('click', () => { l.cantidad = Math.min(50, l.cantidad + 1); vozPintarPlatos(); });
+      cant.append(menos, el('output', '', String(l.cantidad)), mas);
+      const nombre = el('div', 'voz-nombre');
+      nombre.append(el('strong', '', l.nombre));
+      if (l.extras.length) nombre.append(el('div', 'voz-extras', l.extras.map((x) => x.nombre).join(' · ')));
+      if (l.falta_opcion) nombre.append(el('div', 'voz-aviso', 'Falta elegir la opción obligatoria'));
+      const precio = el('span', 'voz-precio', dinero.format(vozPrecioLinea(l)));
+      const quitar = el('button', 'btn chico', '✕'); quitar.type = 'button'; quitar.setAttribute('aria-label', 'Quitar');
+      quitar.addEventListener('click', () => { vozPropuesta.lineas.splice(vozPropuesta.lineas.indexOf(l), 1); vozPintarPlatos(); });
+      arriba.append(cant, nombre, precio, quitar);
+      fila.append(arriba);
+
+      // Modificadores del platillo: se eligen igual que en el menú (los marcados son los que se entendieron)
+      if (p && p.extras.length) {
+        const det = el('details', 'voz-mods');
+        det.append(el('summary', '', l.extras.length ? 'Cambiar modificadores' : 'Agregar modificadores'));
+        const grupos = new Map();
+        for (const x of p.extras) grupos.set(x.grupo || 'Extras', [...(grupos.get(x.grupo || 'Extras') || []), x]);
+        for (const [g, xs] of grupos) {
+          const fil = el('div', 'voz-mods-grupo');
+          fil.append(el('span', 'voz-mods-nombre', g));
+          for (const x of xs) {
+            const on = l.extras.some((e) => e.id === x.id);
+            const b = el('button', 'voz-chip', x.nombre + (x.precio > 0 ? ` +${dinero.format(x.precio)}` : '')); b.type = 'button'; b.setAttribute('aria-pressed', String(on));
+            b.addEventListener('click', () => {
+              l.extras = on ? l.extras.filter((e) => e.id !== x.id) : [...l.extras, { id: x.id, nombre: x.nombre }];
+              l.falta_opcion = p.obligatorias && l.extras.length === 0;
+              vozPintarPlatos();
+            });
+            fil.append(b);
+          }
+          det.append(fil);
+        }
+        if (l.extras.length === 0 || l.falta_opcion) det.open = !!l.falta_opcion;
+        fila.append(det);
+      }
+      if (l.notas) fila.append(el('div', 'voz-nota', 'Nota: ' + l.notas));
+      caja.append(fila);
+    }
+    cont.append(caja);
+  }
+  if (!numeros.length) cont.append(el('p', 'ayuda', 'No quedó ningún platillo. Toca el micrófono para volver a decirlo.'));
+
+  // Dudas: la IA no estaba segura; el mesero elige
   const dudas = $('voz-dudas');
   dudas.replaceChildren();
   vozPropuesta.dudas.forEach((d, i) => {
@@ -364,41 +480,53 @@ function vozPintarListas() {
     for (const o of d.opciones) {
       const b = el('button', 'btn chico', o.nombre); b.type = 'button';
       b.addEventListener('click', () => {
-        vozPropuesta.lineas.push({ producto_id: o.id, nombre: o.nombre, cantidad: d.cantidad, extras: [], notas: '', plato: 1, llevar: false, falta_opcion: false });
+        vozPropuesta.lineas.push({ producto_id: o.id, nombre: o.nombre, cantidad: d.cantidad, extras: [], notas: '', plato: 1, llevar: false, falta_opcion: !!(porId.get(o.id) || {}).obligatorias });
         vozPropuesta.dudas.splice(i, 1);
-        vozPintarListas();
+        vozPintarPlatos();
       });
       caja.append(b);
     }
     const ninguno = el('button', 'btn chico', 'Ninguno'); ninguno.type = 'button';
-    ninguno.addEventListener('click', () => { vozPropuesta.dudas.splice(i, 1); vozPintarListas(); });
+    ninguno.addEventListener('click', () => { vozPropuesta.dudas.splice(i, 1); vozPintarPlatos(); });
     caja.append(ninguno);
     dudas.append(caja);
   });
-  $('voz-agregar').hidden = vozPropuesta.lineas.length === 0 || vozPropuesta.dudas.length > 0;
+
+  const total = vozPropuesta.lineas.reduce((s, l) => s + vozPrecioLinea(l), 0);
+  $('voz-total').hidden = !vozPropuesta.lineas.length;
+  $('voz-total').textContent = 'Total: ' + dinero.format(total);
+  $('voz-agregar').disabled = vozPropuesta.lineas.length === 0 || vozPropuesta.dudas.length > 0;
 }
 
 /** Pasa lo confirmado al pedido en curso (con el mismo flujo de siempre). Los platillos que piden opción obligatoria abren su hoja de opciones. */
 function vozAgregar() {
-  const pd = vozPropuesta.pedido || {};
+  const falta = vozFalta();
+  if (falta) {   // se pide aquí mismo, para no perder lo que ya se armó
+    $('voz-error').textContent = falta.texto;
+    const campo = $(falta.campo);
+    if (campo.offsetParent === null && falta.campo === 'voz-mesa') $('voz-mesa-plano').click(); else campo.focus();
+    return;
+  }
   const faltan = [];
 
-  // Tipo de pedido y platos para llevar (solo en pedidos nuevos; a un pedido ya levantado solo se le agregan platillos)
+  // Tipo de pedido, nombre y mesa (solo en pedidos nuevos; a un pedido ya levantado solo se le agregan platillos)
   if (!ordenDestino) {
-    const base = pd.modalidad || modalidad;
-    const llevarPlatos = new Set(vozPropuesta.lineas.filter((l) => l.llevar).map((l) => l.plato || 1));
-    const todosPlatos = new Set(vozPropuesta.lineas.map((l) => l.plato || 1));
+    const llevarPlatos = new Set(vozPropuesta.lineas.filter((l) => l.llevar).map((l) => l.plato));
+    const todosPlatos = new Set(vozPropuesta.lineas.map((l) => l.plato));
     platosLlevar.clear();
-    if (base === 'recoger') fijarModalidad('recoger');
-    else if (base === 'llevar' || (llevarPlatos.size > 0 && llevarPlatos.size === todosPlatos.size && !carrito.length)) fijarModalidad('llevar');
+    if (vozMod === 'recoger') fijarModalidad('recoger');
+    else if (vozMod === 'llevar' || (llevarPlatos.size > 0 && llevarPlatos.size === todosPlatos.size && !carrito.length)) fijarModalidad('llevar');
     else {
       fijarModalidad('aqui');
       for (const n of llevarPlatos) platosLlevar.add(n);
     }
-    if (pd.nombre) $('cliente').value = pd.nombre;
-    if (pd.mesa_id && modalidad === 'aqui' && mesas.some((m) => m.id === pd.mesa_id)) { $('mesa').value = String(pd.mesa_id); campoMesa.refrescar(); actualizarMesa(); }
+    $('cliente').value = $('voz-nombre').value.trim();
+    if (modalidad === 'aqui' && $('voz-mesa').value && mesas.some((m) => String(m.id) === $('voz-mesa').value)) $('mesa').value = $('voz-mesa').value;
+  } else if (ordenDestino.modalidad === 'aqui') {
+    for (const l of vozPropuesta.lineas) if (l.llevar) platosLlevar.add(l.plato); else platosLlevar.delete(l.plato);
   }
-  if (pd.notas) { const a = $('notas-orden').value.trim(); if (!a.includes(pd.notas)) $('notas-orden').value = a ? `${a} · ${pd.notas}` : pd.notas; }
+  const notasPedido = $('voz-notas-pedido').value.trim();
+  if (notasPedido) { const a = $('notas-orden').value.trim(); if (!a.includes(notasPedido)) $('notas-orden').value = a ? `${a} · ${notasPedido}` : notasPedido; }
 
   for (const l of vozPropuesta.lineas) {
     const p = porId.get(l.producto_id);
@@ -412,14 +540,7 @@ function vozAgregar() {
   actualizarMesa();
   pintarCarrito();
   dlgVoz.close();
-
-  // Mismas reglas de siempre: sin mesa (si es obligatoria) o sin nombre no se puede levantar el pedido
-  let falta = '';
-  if (!ordenDestino) {
-    if (mesaObligatoria() && !$('mesa').value) falta = 'Falta elegir la mesa.';
-    else if (!$('cliente').value.trim() && !nombreOpcional()) falta = modalidad === 'aqui' && mesas.length ? 'Falta elegir la mesa o escribir el nombre.' : 'Falta escribir el nombre del cliente.';
-  }
-  avisar(falta ? 'Agregado al pedido. ' + falta : 'Agregado al pedido', !!falta);
+  avisar('Agregado al pedido');
   vozPendientesOpciones = faltan;
   vozSiguienteOpcion();
 }
@@ -438,6 +559,8 @@ $('voz-grabar').addEventListener('click', () => {
   if (vozProcesando) return;
   if (vozGrabador && vozGrabador.state === 'recording') vozDetener(); else vozEmpezar();
 });
+// «Hablar otra vez»: el micrófono redondo junto a «Agregar al pedido» vuelve a grabar de inmediato
+$('voz-regrabar').addEventListener('click', () => { if (!vozProcesando) vozEmpezar(); });
 $('voz-agregar').addEventListener('click', vozAgregar);
 $('voz-cancelar').addEventListener('click', () => dlgVoz.close());
 dlgVoz.addEventListener('close', () => vozDetener(true));

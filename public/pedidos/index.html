@@ -18,7 +18,7 @@
   <link rel="stylesheet" href="../css/estilos.css?v=1795557467">
   <link rel="stylesheet" href="../css/admin.css?v=1795557467">
   <link rel="stylesheet" href="../css/menu-barra.css?v=1795557467">
-  <link rel="stylesheet" href="../css/pedidos.css?v=1795723000">
+  <link rel="stylesheet" href="../css/pedidos.css?v=1795724000">
   <link rel="stylesheet" href="../css/shell.css?v=1795557467">
   <link rel="stylesheet" href="../css/acceso.css?v=202611261215">
   <link rel="stylesheet" href="../css/plano.css?v=1795557467">
@@ -205,21 +205,39 @@
   <dialog id="dlg-voz">
     <div class="formulario dialogo voz-dialogo">
       <h2>Pedir con voz</h2>
-      <p id="voz-estado" class="ayuda" role="status">Toca el micrófono y di el pedido. Ejemplo: «dos de arrachera con todo y uno de pastor sin cebolla».</p>
-      <div class="voz-controles">
+      <p id="voz-estado" class="ayuda" role="status">Toca el micrófono y di el pedido.</p>
+      <div id="voz-controles" class="voz-controles">
         <button id="voz-grabar" class="btn principal voz-grabar" type="button">🎤 Empezar a hablar</button>
       </div>
       <div id="voz-resultado" hidden>
         <p class="ayuda">Escuché: <em id="voz-texto"></em></p>
-        <p id="voz-datos" class="voz-datos" hidden></p>
-        <ul id="voz-lineas" class="voz-lista"></ul>
+        <section id="voz-pedido" class="voz-pedido">
+          <div id="voz-mod" class="voz-seg" role="group" aria-label="Tipo de pedido">
+            <button type="button" data-mod="aqui">Comer aquí</button>
+            <button type="button" data-mod="llevar">Para llevar</button>
+            <button type="button" data-mod="recoger">Recoger</button>
+          </div>
+          <label id="voz-mesa-fila" class="voz-campo">Mesa
+            <select id="voz-mesa"></select>
+            <button type="button" id="voz-mesa-plano" class="btn" style="display:none"></button>
+          </label>
+          <label id="voz-nombre-fila" class="voz-campo">Nombre del cliente
+            <input id="voz-nombre" type="text" maxlength="80" autocomplete="off">
+          </label>
+          <label class="voz-campo">Notas del pedido (opcional)
+            <input id="voz-notas-pedido" type="text" maxlength="255" autocomplete="off">
+          </label>
+        </section>
+        <div id="voz-platos"></div>
         <div id="voz-dudas"></div>
+        <p id="voz-total" class="voz-total" hidden></p>
         <p id="voz-no" class="msg-error" role="alert"></p>
       </div>
       <p id="voz-error" class="msg-error" role="alert"></p>
       <div class="acciones-dialogo">
         <button id="voz-cancelar" class="btn" type="button">Cerrar</button>
         <button id="voz-agregar" class="btn principal" type="button" hidden>Agregar al pedido</button>
+        <button id="voz-regrabar" class="btn voz-redondo" type="button" hidden title="Hablar otra vez" aria-label="Hablar otra vez"><svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="9" y="2" width="6" height="12" rx="3"/><path d="M5 11a7 7 0 0 0 14 0M12 18v4M8 22h8"/></svg></button>
       </div>
     </div>
   </dialog>
@@ -307,6 +325,6 @@
   <script src="../js/eventos.js?v=1795557467"></script>
   <script src="../js/codigos.js?v=1795557467"></script>
   <script src="../js/selectorMesa.js?v=1795557467"></script>
-  <script src="../js/pedidos.js?v=1795723000"></script>
+  <script src="../js/pedidos.js?v=1795724000"></script>
 </body>
 </html>

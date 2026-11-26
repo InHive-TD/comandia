@@ -43,7 +43,7 @@ async function estadoVoz(nid: number): Promise<Estado & { cfg: Map<string, strin
   return { disponible: motivo === null, motivo, usados, limite, cfg };
 }
 
-interface ProductoVoz { id: number; nombre: string; categoria: string; obligatorias: boolean; extras: Map<number, string> }
+interface ProductoVoz { id: number; nombre: string; categoria: string; obligatorias: boolean; extras: Map<number, string>; grupos: Map<number, string | null> }
 
 /** El menú de la sucursal (solo lo que se puede pedir hoy), igual que lo ve Tomar pedidos. */
 async function menuParaVoz(nid: number, suc: number): Promise<Map<number, ProductoVoz>> {
@@ -55,13 +55,18 @@ async function menuParaVoz(nid: number, suc: number): Promise<Map<number, Produc
     [nid],
   );
   const mapa = new Map<number, ProductoVoz>();
-  for (const f of prods) mapa.set(Number(f['id']), { id: Number(f['id']), nombre: String(f['nombre']), categoria: String(f['categoria']), obligatorias: Boolean(Number(f['opciones_obligatorias'])), extras: new Map() });
+  for (const f of prods) mapa.set(Number(f['id']), { id: Number(f['id']), nombre: String(f['nombre']), categoria: String(f['categoria']), obligatorias: Boolean(Number(f['opciones_obligatorias'])), extras: new Map(), grupos: new Map() });
   const ex = await filas(
-    `SELECT pe.producto_id, e.id, e.nombre FROM producto_extras pe JOIN extras e ON e.id = pe.extra_id
+    `SELECT pe.producto_id, e.id, e.nombre, e.grupo FROM producto_extras pe JOIN extras e ON e.id = pe.extra_id
       WHERE e.activo = 1 AND e.negocio_id = ? ORDER BY e.orden, e.id`,
     [nid],
   );
-  for (const x of ex) mapa.get(Number(x['producto_id']))?.extras.set(Number(x['id']), String(x['nombre']));
+  for (const x of ex) {
+    const pr = mapa.get(Number(x['producto_id']));
+    if (!pr) continue;
+    pr.extras.set(Number(x['id']), String(x['nombre']));
+    pr.grupos.set(Number(x['id']), x['grupo'] ? String(x['grupo']) : null);
+  }
   return mapa;
 }
 
@@ -147,13 +152,13 @@ export async function rutasVoz(app: FastifyInstance): Promise<void> {
 
     let respuesta: Record<string, any> = {};
     if (texto !== '') {
-      const catalogo = [...menu.values()].map((p) => `${p.id}|${p.categoria}|${p.nombre}${p.obligatorias ? '|requiere opción' : ''}${p.extras.size ? '|opciones: ' + [...p.extras].map(([id, n]) => `${id}=${n}`).join(', ') : ''}`).join('\n');
+      const catalogo = [...menu.values()].map((p) => `${p.id}|${p.categoria}|${p.nombre}${p.obligatorias ? '|requiere opción' : ''}${p.extras.size ? '|opciones: ' + [...p.extras].map(([id, n]) => `${id}=${p.grupos.get(id) ? p.grupos.get(id) + ': ' : ''}${n}`).join(', ') : ''}`).join('\n');
       const sistema = [
         'Eres el asistente de toma de pedidos de un restaurante. Recibes lo que dijo el mesero y el menú disponible (id|categoría|nombre|opciones).',
         'Responde SOLO un JSON con esta forma exacta: {"lineas":[{"producto_id":0,"cantidad":1,"extras":[],"notas":"","plato":1,"llevar":false}],"dudas":[{"texto":"lo que dijo","cantidad":1,"opciones":[0]}],"no_encontrados":["texto"],"mesa_id":null,"nombre":null,"modalidad":null,"notas_pedido":null}.',
         'Datos del pedido (solo si el mesero los dice; si no, null): "mesa_id" = id de la lista MESAS; "nombre" = nombre del cliente («a nombre de Juan»); "modalidad" = "aqui" (comer aquí), "llevar" (para llevar) o "recoger" (pasa a recoger); "notas_pedido" = indicaciones de TODO el pedido (ej. «todo sin picante», «cuenta separada»).',
         'Platos: cada plato o persona es un número (plato 1, plato 2…). Si dicen «para la niña…» o «otro plato con…», usa el siguiente número. "llevar": true solo en los renglones de los platos que dicen que son para llevar; si TODO el pedido es para llevar usa modalidad "llevar".',
-        'Reglas: usa SOLO ids del menú. "extras" son ids de las opciones de ESE platillo (sin cebolla, con queso…); lo que no sea una opción va en "notas". "plato" es el número de plato o persona si lo dicen (1 por defecto). "llevar" true si dicen para llevar.',
+        'Reglas: usa SOLO ids del menú. "extras" son ids de las opciones de ESE platillo. Cada «sin X», «con X», «extra X», «quítale X» o «aparte» DEBE convertirse en la opción equivalente de ese platillo, fijándote en el grupo y el nombre (ej. «Quitar: Queso» = «sin queso»). Usa "notas" SOLO si de verdad no existe una opción equivalente en ese platillo. "plato" es el número de plato o persona si lo dicen (1 por defecto). "llevar" true si dicen para llevar.',
         'Si lo dicho puede ser varios platillos del menú, ponlo en "dudas" con hasta 4 ids posibles (no adivines). Si no existe nada parecido, ponlo en "no_encontrados". Cantidades en número (dos = 2).',
       ].join('\n');
       const ia = await openRouter(llave, 'chat/completions', {
