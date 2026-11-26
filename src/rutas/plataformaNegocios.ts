@@ -34,6 +34,26 @@ function leerPlan(v: unknown): string {
  *  GET → lista con sus números · POST { accion: crear | editar | estado | clave_admin }
  */
 export async function rutasPlataformaNegocios(app: FastifyInstance): Promise<void> {
+  /** Todas las sucursales de todas las empresas (solo lectura). */
+  app.get('/sucursales', async (req) => {
+    await requerirPlataforma(req);
+    const r = await filas(
+      `SELECT s.id, s.nombre, s.direccion, s.activa, n.id AS negocio_id, n.nombre AS negocio, n.slug, n.activo AS negocio_activo,
+              (SELECT COUNT(*) FROM mesas m WHERE m.sucursal_id = s.id AND m.activa = 1) AS mesas,
+              (SELECT COUNT(*) FROM ordenes o WHERE o.sucursal_id = s.id AND o.fecha_turno = CURDATE() AND o.estado <> 'cancelada') AS pedidos_hoy
+         FROM sucursales s JOIN negocios n ON n.id = s.negocio_id
+        ORDER BY n.nombre, s.orden, s.nombre`,
+    );
+    return {
+      ok: true,
+      sucursales: r.map((f) => ({
+        id: Number(f['id']), nombre: String(f['nombre']), direccion: f['direccion'] ? String(f['direccion']) : null,
+        activa: Boolean(Number(f['activa'])), negocio_id: Number(f['negocio_id']), negocio: String(f['negocio']), slug: String(f['slug']),
+        negocio_activo: Boolean(Number(f['negocio_activo'])), mesas: Number(f['mesas']), pedidos_hoy: Number(f['pedidos_hoy']),
+      })),
+    };
+  });
+
   app.route({
     method: ['GET', 'POST'],
     url: '/negocios',

@@ -11,6 +11,7 @@ let negocios = [];
 function mostrar(vista) {
   for (const id of ['vista-login', 'vista-aviso', 'vista-panel']) $(id).hidden = id !== vista;
   $('btn-salir').hidden = vista === 'vista-login';
+  document.body.classList.toggle('en-panel', vista === 'vista-panel');   // en el panel, la barra lateral reemplaza al encabezado
 }
 
 let temporizadorAviso;
@@ -51,6 +52,10 @@ async function iniciar() {
 
 async function entrar(usuario) {
   $('quien').textContent = usuario.nombre;
+  $('usuario-nombre').textContent = usuario.nombre;
+  const ini = (usuario.nombre || '?').trim().charAt(0).toUpperCase();
+  $('usuario-ini').textContent = ini;
+  $('usuario-ini-movil').textContent = ini;
   mostrar('vista-panel');
   await cargar();
   await cargarIntegraciones();
@@ -78,6 +83,44 @@ $('btn-salir').addEventListener('click', async () => {
   try { await enviarJson(API + 'logout.php', {}); } catch { /* da igual */ }
   location.reload();
 });
+
+/* ---- Secciones de la barra lateral ---- */
+function irA(sec) {
+  for (const b of document.querySelectorAll('.menu-lateral [data-sec]')) {
+    const activa = b.dataset.sec === sec;
+    b.classList.toggle('activo', activa);
+    if (activa) { $('titulo-seccion').textContent = b.dataset.titulo; b.setAttribute('aria-current', 'page'); } else b.removeAttribute('aria-current');
+  }
+  for (const x of document.querySelectorAll('.sec-plat')) x.hidden = x.id !== 'sec-' + sec;
+  if (sec === 'sucursales') cargarSucursales();
+  menuAbierto(false);
+  window.scrollTo(0, 0);
+}
+for (const b of document.querySelectorAll('.menu-lateral [data-sec]')) b.addEventListener('click', () => irA(b.dataset.sec));
+
+async function cargarSucursales() {
+  const cont = $('lista-sucursales');
+  let lista;
+  try { lista = (await pedir(API + 'sucursales.php')).sucursales; } catch (err) { avisar(err.message, true); return; }
+  cont.replaceChildren();
+  if (!lista.length) { cont.append(el('p', 'ayuda', 'Aún no hay sucursales.')); return; }
+  let actual = null;
+  for (const x of lista) {
+    if (x.negocio_id !== actual) {
+      actual = x.negocio_id;
+      cont.append(el('h3', 'grupo-empresa', x.negocio + (x.negocio_activo ? '' : ' (pausada)')));
+    }
+    const t = el('article', 'empresa' + (x.activa && x.negocio_activo ? '' : ' pausada'));
+    const cab = el('div', 'empresa-cab');
+    cab.append(el('h3', '', x.nombre), el('span', 'etiqueta-estado ' + (x.activa ? '' : 'pausada'), x.activa ? 'Activa' : 'Inactiva'));
+    const cifras = el('div', 'cifras');
+    cifras.append(el('span', '', `${x.mesas} mesa${x.mesas === 1 ? '' : 's'}`), el('span', '', `Hoy: ${x.pedidos_hoy} pedidos`));
+    t.append(cab);
+    if (x.direccion) t.append(el('p', 'nota', x.direccion));
+    t.append(cifras);
+    cont.append(t);
+  }
+}
 
 /* ---- Lista ---- */
 function dominioBase() {
@@ -361,5 +404,18 @@ async function cargarModelos() {
 $('int-modelos').addEventListener('click', cargarModelos);
 $('int-modelo-ia').addEventListener('input', () => pintarPrecio('ia'));
 $('int-modelo-stt').addEventListener('input', () => pintarPrecio('stt'));
+
+$('btn-salir-menu').addEventListener('click', () => $('btn-salir').click());
+
+/* Menú lateral como capa deslizable en celular y tablet vertical */
+function menuAbierto(abrir) {
+  document.body.classList.toggle('menu-abierto', abrir);
+  $('btn-menu').setAttribute('aria-expanded', String(abrir));
+  $('btn-menu').setAttribute('aria-label', abrir ? 'Cerrar menú' : 'Abrir menú');
+}
+$('btn-menu').addEventListener('click', () => menuAbierto(!document.body.classList.contains('menu-abierto')));
+$('menu-velo').addEventListener('click', () => menuAbierto(false));
+$('usuario-ini-movil').addEventListener('click', () => menuAbierto(true));
+document.addEventListener('keydown', (ev) => { if (ev.key === 'Escape') menuAbierto(false); });
 
 iniciar();

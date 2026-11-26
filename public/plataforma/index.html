@@ -11,7 +11,7 @@
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Outfit:wght@600;700;800&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="../css/estilos.css?v=1795557467">
   <link rel="stylesheet" href="../css/admin.css?v=1795557467">
-  <link rel="stylesheet" href="../css/plataforma.css?v=1795719000">
+  <link rel="stylesheet" href="../css/plataforma.css?v=1795720000">
   <link rel="stylesheet" href="../css/acceso.css?v=202611261215">
 </head>
 <body>
@@ -54,15 +54,49 @@
       <p id="aviso-texto"></p>
     </section>
 
-    <section id="vista-panel" hidden>
-      <div class="barra-acciones">
-        <button id="btn-nueva" class="btn principal" type="button">＋ Nueva empresa</button>
-      </div>
-      <div id="resumen" class="resumen-plat"></div>
-      <div id="lista" class="lista-empresas" aria-live="polite"></div>
+    <section id="vista-panel" class="panel-lateral" hidden>
+      <div id="menu-velo" class="menu-velo" hidden></div>
+      <nav id="menu-principal" class="menu-lateral" aria-label="Secciones de la plataforma"><div class="menu-caja">
+        <div class="menu-marca">
+          <a class="marca-logo" href="./" aria-label="Comandia"><svg viewBox="0 0 120 120" aria-hidden="true"><path d="M18 80A42 42 0 0 1 102 80Z" fill="#FF7A30"/><rect x="8" y="84" width="104" height="12" rx="6" fill="#F3F7F4"/><circle cx="60" cy="30" r="8" fill="#F3F7F4"/></svg><span>coman<b>dia</b></span></a>
+          <span class="menu-negocio">Panel de plataforma</span>
+        </div>
+        <div class="menu-fijo">
+          <button id="nav-empresas" data-sec="empresas" data-titulo="Empresas" class="btn nav-ico i-empresas activo" type="button">Empresas</button>
+          <button id="nav-sucursales" data-sec="sucursales" data-titulo="Sucursales" class="btn nav-ico i-sucursales" type="button">Sucursales</button>
+          <button id="nav-ia" data-sec="ia" data-titulo="AI Models" class="btn nav-ico i-ia" type="button">AI Models</button>
+        </div>
+        <div class="menu-usuario">
+          <span id="usuario-ini" class="avatar" aria-hidden="true"></span>
+          <span class="usuario-datos"><strong id="usuario-nombre"></strong><span>Administrador de plataforma</span></span>
+          <button id="btn-salir-menu" class="btn-salir-menu" type="button" title="Salir" aria-label="Salir"></button>
+        </div>
+      </div></nav>
+      <div class="panel-derecha">
+        <div class="barra-movil">
+          <button id="btn-menu" class="btn-menu" type="button" aria-label="Abrir menú" aria-controls="menu-principal" aria-expanded="false"></button>
+          <a class="marca-logo" href="./" aria-label="Comandia"><svg viewBox="0 0 120 120" aria-hidden="true"><path d="M18 80A42 42 0 0 1 102 80Z" fill="#FF7A30"/><rect x="8" y="84" width="104" height="12" rx="6" fill="#F3F7F4"/><circle cx="60" cy="30" r="8" fill="#F3F7F4"/></svg><span>coman<b>dia</b></span></a>
+          <button id="usuario-ini-movil" class="avatar chico avatar-btn" type="button" aria-label="Abrir menú"></button>
+        </div>
+        <div class="barra-panel"><h2 id="titulo-seccion">Empresas</h2></div>
+        <div class="panel-contenido">
 
+          <section id="sec-empresas" class="sec-plat">
+            <div class="barra-acciones">
+              <button id="btn-nueva" class="btn principal" type="button">＋ Nueva empresa</button>
+            </div>
+            <div id="resumen" class="resumen-plat"></div>
+            <div id="lista" class="lista-empresas" aria-live="polite"></div>
+          </section>
+
+          <section id="sec-sucursales" class="sec-plat" hidden>
+            <p class="ayuda">Todas las sucursales de todas las empresas. Para cambiar una sucursal, entra al administrador de esa empresa.</p>
+            <div id="lista-sucursales" class="lista-empresas" aria-live="polite"></div>
+          </section>
+
+          <section id="sec-ia" class="sec-plat" hidden>
       <section id="integraciones" class="tarjeta integraciones">
-        <h2>Integraciones · Voz con IA (OpenRouter)</h2>
+        <h3>OpenRouter · voz con IA</h3>
         <p class="ayuda">La llave se guarda cifrada y no se puede volver a ver. Los créditos son de la plataforma; cada empresa con la voz activa los gasta.</p>
         <div class="fila-llave">
           <label for="int-llave">Llave de OpenRouter</label>
@@ -85,6 +119,10 @@
         <div class="acciones-int"><button id="int-modelos" class="btn" type="button">Cargar lista de modelos</button> <button id="int-guardar" class="btn principal" type="button">Guardar ajustes</button></div>
         <p id="int-resultado" class="ayuda" role="status"></p>
       </section>
+          </section>
+
+        </div>
+      </div>
     </section>
   </main>
 
@@ -153,6 +191,6 @@
   <div id="toast" class="toast" role="status" hidden></div>
 
   <script src="../js/comun.js?v=1795557467"></script>
-  <script src="../js/plataforma.js?v=1795719000"></script>
+  <script src="../js/plataforma.js?v=1795720000"></script>
 </body>
 </html>
