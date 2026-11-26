@@ -18,7 +18,7 @@
   <link rel="stylesheet" href="../css/estilos.css?v=1795557467">
   <link rel="stylesheet" href="../css/admin.css?v=1795557467">
   <link rel="stylesheet" href="../css/menu-barra.css?v=1795557467">
-  <link rel="stylesheet" href="../css/pedidos.css?v=1795716000">
+  <link rel="stylesheet" href="../css/pedidos.css?v=1795721000">
   <link rel="stylesheet" href="../css/shell.css?v=1795557467">
   <link rel="stylesheet" href="../css/acceso.css?v=202611261215">
   <link rel="stylesheet" href="../css/plano.css?v=1795557467">
@@ -72,6 +72,7 @@
           <input id="codigo-rapido" type="text" autocapitalize="characters" spellcheck="false"
                  placeholder="Código rápido: 2 AH XQ  /  3 TB (la / separa platos)" aria-label="Código rápido">
           <button class="btn" type="submit">Agregar</button>
+          <button id="btn-voz" class="btn voz" type="button" hidden title="Pedir con voz" aria-label="Pedir con voz">🎤 Voz</button>
         </form>
         <p id="codigo-msg" class="msg-error" role="alert"></p>
 
@@ -201,6 +202,27 @@
     </div>
   </dialog>
 
+  <dialog id="dlg-voz">
+    <div class="formulario dialogo voz-dialogo">
+      <h2>Pedir con voz</h2>
+      <p id="voz-estado" class="ayuda" role="status">Toca el micrófono y di el pedido. Ejemplo: «dos de arrachera con todo y uno de pastor sin cebolla».</p>
+      <div class="voz-controles">
+        <button id="voz-grabar" class="btn principal voz-grabar" type="button">🎤 Empezar a hablar</button>
+      </div>
+      <div id="voz-resultado" hidden>
+        <p class="ayuda">Escuché: <em id="voz-texto"></em></p>
+        <ul id="voz-lineas" class="voz-lista"></ul>
+        <div id="voz-dudas"></div>
+        <p id="voz-no" class="msg-error" role="alert"></p>
+      </div>
+      <p id="voz-error" class="msg-error" role="alert"></p>
+      <div class="acciones-dialogo">
+        <button id="voz-cancelar" class="btn" type="button">Cerrar</button>
+        <button id="voz-agregar" class="btn principal" type="button" hidden>Agregar al pedido</button>
+      </div>
+    </div>
+  </dialog>
+
   <dialog id="dlg-opciones">
     <form id="form-opciones" class="formulario dialogo">
       <!-- Lo ya agregado en esta ventana: va arriba (justo bajo la barra) para que se vea sin hacer scroll -->
@@ -284,6 +306,6 @@
   <script src="../js/eventos.js?v=1795557467"></script>
   <script src="../js/codigos.js?v=1795557467"></script>
   <script src="../js/selectorMesa.js?v=1795557467"></script>
-  <script src="../js/pedidos.js?v=1795557467"></script>
+  <script src="../js/pedidos.js?v=1795721000"></script>
 </body>
 </html>

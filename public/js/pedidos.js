@@ -224,11 +224,183 @@ async function cargarMenu() {
     pintarCategorias();
     pintarProductos();
     pintarCarrito();
+    consultarVoz();
   } catch (err) {
     if (err.estado === 401) { await iniciar(); return; }
     avisar(err.message, true);
   }
 }
+
+/* ------------------------------------------------------------------ */
+/*  Pedir con voz                                                      */
+/* ------------------------------------------------------------------ */
+
+const MAX_VOZ_SEG = 30;
+const dlgVoz = $('dlg-voz');
+let vozGrabador = null, vozPartes = [], vozTimer = null, vozInicio = 0, vozProcesando = false;
+let vozPropuesta = { lineas: [], dudas: [] };
+let vozPendientesOpciones = [];
+
+/** Muestra el botón del micrófono solo si la voz está activada para esta empresa y hay micrófono disponible. */
+async function consultarVoz() {
+  const btn = $('btn-voz');
+  btn.hidden = true;
+  if (!navigator.mediaDevices || !window.MediaRecorder) return;
+  try {
+    const r = await pedir(API + 'voz/estado.php');
+    btn.hidden = !r.disponible;
+  } catch { /* sin voz: no pasa nada */ }
+}
+
+function tipoAudio() {
+  for (const t of ['audio/webm;codecs=opus', 'audio/webm', 'audio/mp4', 'audio/ogg;codecs=opus']) if (MediaRecorder.isTypeSupported(t)) return t;
+  return '';
+}
+
+function vozReiniciar() {
+  $('voz-error').textContent = '';
+  $('voz-resultado').hidden = true;
+  $('voz-agregar').hidden = true;
+  vozPropuesta = { lineas: [], dudas: [] };
+  $('voz-estado').textContent = 'Toca el micrófono y di el pedido. Ejemplo: «dos de arrachera con todo y uno de pastor sin cebolla».';
+  $('voz-grabar').textContent = '🎤 Empezar a hablar';
+  $('voz-grabar').disabled = false;
+}
+
+function vozDetener(cancelar = false) {
+  clearInterval(vozTimer);
+  vozTimer = null;
+  if (vozGrabador && vozGrabador.state !== 'inactive') {
+    if (cancelar) vozGrabador.onstop = null;
+    vozGrabador.stop();
+  }
+  if (vozGrabador) for (const t of vozGrabador.stream.getTracks()) t.stop();
+  if (cancelar) vozGrabador = null;
+}
+
+async function vozEmpezar() {
+  $('voz-error').textContent = '';
+  let flujo;
+  try { flujo = await navigator.mediaDevices.getUserMedia({ audio: true }); }
+  catch { $('voz-error').textContent = 'No se pudo usar el micrófono. Revisa el permiso del navegador.'; return; }
+  vozPartes = [];
+  const tipo = tipoAudio();
+  vozGrabador = new MediaRecorder(flujo, tipo ? { mimeType: tipo } : undefined);
+  vozGrabador.ondataavailable = (e) => { if (e.data.size) vozPartes.push(e.data); };
+  vozGrabador.onstop = vozEnviar;
+  vozGrabador.start();
+  vozInicio = Date.now();
+  $('voz-grabar').textContent = '⏹ Listo, enviar';
+  const pintar = () => {
+    const s = Math.floor((Date.now() - vozInicio) / 1000);
+    $('voz-estado').textContent = `Escuchando… ${s} s (máximo ${MAX_VOZ_SEG})`;
+    if (s >= MAX_VOZ_SEG) vozDetener();
+  };
+  pintar();
+  vozTimer = setInterval(pintar, 500);
+}
+
+function aBase64(blob) {
+  return new Promise((ok, mal) => { const r = new FileReader(); r.onload = () => ok(String(r.result).split(',')[1] || ''); r.onerror = mal; r.readAsDataURL(blob); });
+}
+
+async function vozEnviar() {
+  const segundos = Math.max(1, Math.round((Date.now() - vozInicio) / 1000));
+  const tipo = (vozGrabador && vozGrabador.mimeType) || 'audio/webm';
+  const blob = new Blob(vozPartes, { type: tipo });
+  vozGrabador = null;
+  vozProcesando = true;
+  $('voz-grabar').disabled = true;
+  $('voz-estado').textContent = 'Entendiendo el pedido…';
+  try {
+    const formato = tipo.includes('mp4') ? 'mp4' : tipo.includes('ogg') ? 'ogg' : 'webm';
+    const r = await enviarJson(API + 'voz.php', { audio: await aBase64(blob), formato, segundos });
+    vozPintar(r);
+  } catch (err) {
+    $('voz-error').textContent = err.message;
+    $('voz-estado').textContent = 'No se pudo. Intenta otra vez.';
+  } finally {
+    vozProcesando = false;
+    $('voz-grabar').disabled = false;
+    $('voz-grabar').textContent = '🎤 Hablar otra vez';
+  }
+}
+
+function vozPintar(r) {
+  vozPropuesta = { lineas: r.lineas || [], dudas: r.dudas || [] };
+  $('voz-texto').textContent = r.texto ? `«${r.texto}»` : '(nada)';
+  $('voz-no').textContent = (r.no_encontrados || []).length ? 'No encontré en el menú: ' + r.no_encontrados.join(', ') : '';
+  $('voz-estado').textContent = r.aviso ? 'Ya llevas más del 80% del límite de voz de hoy.' : 'Revisa y confirma:';
+  $('voz-resultado').hidden = false;
+  vozPintarListas();
+}
+
+function vozPintarListas() {
+  const ul = $('voz-lineas');
+  ul.replaceChildren();
+  vozPropuesta.lineas.forEach((l, i) => {
+    const li = el('li', '');
+    const extras = l.extras.map((x) => x.nombre).join(', ');
+    li.append(el('span', 'voz-txt', `${l.cantidad} × ${l.nombre}${extras ? ' · ' + extras : ''}${l.notas ? ' · “' + l.notas + '”' : ''}${l.falta_opcion ? ' · (falta elegir opción)' : ''}`));
+    const quitar = el('button', 'btn chico', '✕'); quitar.type = 'button'; quitar.setAttribute('aria-label', 'Quitar');
+    quitar.addEventListener('click', () => { vozPropuesta.lineas.splice(i, 1); vozPintarListas(); });
+    li.append(quitar);
+    ul.append(li);
+  });
+  const dudas = $('voz-dudas');
+  dudas.replaceChildren();
+  vozPropuesta.dudas.forEach((d, i) => {
+    const caja = el('div', 'voz-duda');
+    caja.append(el('p', 'ayuda', `No estoy seguro de «${d.texto}» (${d.cantidad}). ¿Cuál es?`));
+    for (const o of d.opciones) {
+      const b = el('button', 'btn chico', o.nombre); b.type = 'button';
+      b.addEventListener('click', () => {
+        vozPropuesta.lineas.push({ producto_id: o.id, nombre: o.nombre, cantidad: d.cantidad, extras: [], notas: '', plato: 1, llevar: false, falta_opcion: false });
+        vozPropuesta.dudas.splice(i, 1);
+        vozPintarListas();
+      });
+      caja.append(b);
+    }
+    const ninguno = el('button', 'btn chico', 'Ninguno'); ninguno.type = 'button';
+    ninguno.addEventListener('click', () => { vozPropuesta.dudas.splice(i, 1); vozPintarListas(); });
+    caja.append(ninguno);
+    dudas.append(caja);
+  });
+  $('voz-agregar').hidden = vozPropuesta.lineas.length === 0 || vozPropuesta.dudas.length > 0;
+}
+
+/** Pasa lo confirmado al pedido en curso (con el mismo flujo de siempre). Los platillos que piden opción obligatoria abren su hoja de opciones. */
+function vozAgregar() {
+  const faltan = [];
+  for (const l of vozPropuesta.lineas) {
+    const p = porId.get(l.producto_id);
+    if (!p || p.agotado) { avisar(`${l.nombre} ya no está disponible`, true); continue; }
+    if (l.falta_opcion) { faltan.push(p); continue; }
+    const extras = l.extras.map((x) => p.extras.find((e) => e.id === x.id)).filter(Boolean);
+    agregarLinea(p, extras, l.cantidad, l.notas + (l.llevar ? (l.notas ? ' · ' : '') + 'para llevar' : ''), l.plato > 1 ? l.plato : platoActual);
+  }
+  dlgVoz.close();
+  avisar('Agregado al pedido');
+  vozPendientesOpciones = faltan;
+  vozSiguienteOpcion();
+}
+
+function vozSiguienteOpcion() {
+  const p = vozPendientesOpciones.shift();
+  if (!p) return;
+  avisar(`Elige la opción de ${p.nombre}`);
+  abrirOpciones(p);
+}
+$('dlg-opciones').addEventListener('close', () => { if (vozPendientesOpciones.length) setTimeout(vozSiguienteOpcion, 150); });
+
+$('btn-voz').addEventListener('click', () => { vozReiniciar(); dlgVoz.showModal(); });
+$('voz-grabar').addEventListener('click', () => {
+  if (vozProcesando) return;
+  if (vozGrabador && vozGrabador.state === 'recording') vozDetener(); else vozEmpezar();
+});
+$('voz-agregar').addEventListener('click', vozAgregar);
+$('voz-cancelar').addEventListener('click', () => dlgVoz.close());
+dlgVoz.addEventListener('close', () => vozDetener(true));
 
 function pintarCategorias() {
   const caja = $('cats');

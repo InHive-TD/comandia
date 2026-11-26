@@ -33,6 +33,7 @@ import { rutasTema } from './tema.js';
 import { rutasMenu } from './menu.js';
 import { rutasPerfil } from './perfil.js';
 import { rutasOrdenes } from './ordenes.js';
+import { rutasVoz } from './voz.js';
 
 /** Hash falso para tardar lo mismo cuando el usuario no existe (no delatar qué usuarios hay). */
 const HASH_RELLENO = bcrypt.hashSync('relleno-para-igualar-tiempos', 10);
@@ -45,7 +46,7 @@ export async function rutasEmpresa(app: FastifyInstance): Promise<void> {
   await app.register(rutasEventos);
   await app.register(rutasManifiesto);
   // Menú y administración del catálogo (cada archivo documenta sus reglas y permisos)
-  for (const grupo of [rutasPerfil, rutasMenu, rutasCategorias, rutasEstaciones, rutasExtras, rutasAdminProductos, rutasAdminImportar, rutasSucursales, rutasAdminMesas, rutasUsuarios, rutasOrdenes, rutasCocina, rutasCaja, rutasPrioridades, rutasTiempos, rutasMarca, rutasReportes, rutasCliente, rutasTema, rutasClientePedidos, rutasClienteConfig, rutasAdminPlano, rutasAcceso]) {
+  for (const grupo of [rutasPerfil, rutasMenu, rutasCategorias, rutasEstaciones, rutasExtras, rutasAdminProductos, rutasAdminImportar, rutasSucursales, rutasAdminMesas, rutasUsuarios, rutasOrdenes, rutasVoz, rutasCocina, rutasCaja, rutasPrioridades, rutasTiempos, rutasMarca, rutasReportes, rutasCliente, rutasTema, rutasClientePedidos, rutasClienteConfig, rutasAdminPlano, rutasAcceso]) {
     await app.register(grupo);
   }
 

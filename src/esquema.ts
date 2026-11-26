@@ -214,4 +214,14 @@ async function actualizarV2(): Promise<void> {
     valor TEXT NOT NULL,
     actualizado_en TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
   ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4`);
+  // Consumo de la voz con IA por empresa y por día (para el límite de tokens y para saber cuánto cuesta)
+  await ejecutar(`CREATE TABLE IF NOT EXISTS voz_uso (
+    negocio_id INT UNSIGNED NOT NULL,
+    dia DATE NOT NULL,
+    tokens INT UNSIGNED NOT NULL DEFAULT 0,
+    audio_seg INT UNSIGNED NOT NULL DEFAULT 0,
+    peticiones INT UNSIGNED NOT NULL DEFAULT 0,
+    costo DECIMAL(12,6) NOT NULL DEFAULT 0,
+    PRIMARY KEY (negocio_id, dia)
+  ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4`);
 }
