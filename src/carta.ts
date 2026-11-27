@@ -12,3 +12,7 @@ export const cartaOrigen = (suc: number, alias = 'p'): string =>
   `(${alias}.sucursal_id = ${Math.trunc(suc)} OR (${alias}.sucursal_id IS NULL AND NOT EXISTS (SELECT 1 FROM sucursales sc WHERE sc.id = ${Math.trunc(suc)} AND sc.carta_propia = 1)))`;
 export const CARTA_PRECIO = 'COALESCE(ps.precio, p.precio)';
 export const CARTA_AGOTADO = '(p.agotado_fecha = CURDATE() OR ps.agotado_fecha = CURDATE())';
+
+/** SQL: el modificador `alias` se ve en la sucursal `suc` (es general o de esa sucursal, y no está deshabilitado ahí). */
+export const extraVisible = (suc: number, alias = 'e'): string =>
+  `(${alias}.sucursal_id IS NULL OR ${alias}.sucursal_id = ${Number(suc)}) AND NOT EXISTS (SELECT 1 FROM extra_sucursal_off eso WHERE eso.extra_id = ${alias}.id AND eso.sucursal_id = ${Number(suc)})`;

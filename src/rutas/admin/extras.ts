@@ -1,5 +1,11 @@
 /**
- * Administración de extras / variantes (con queso, sin cebolla, orden doble...). Solo el dueño de la empresa.
+ * Administración de modificadores (con queso, sin cebolla, orden doble...).
+ *
+ * Quién es dueño de qué:
+ *   · Lo que crea el administrador de la empresa es GENERAL (sucursal_id NULL): lo ven todas las sucursales.
+ *   · Lo que crea el gerente es de SU sucursal (sucursal_id = la suya): solo existe ahí.
+ * El gerente puede crear, editar y eliminar lo suyo; de lo general solo puede DESHABILITARLO en su sucursal
+ * (sucursal_deshabilitar), nunca editarlo, moverlo ni eliminarlo.
  *
  *   POST (JSON) → { accion, ... }
  *     crear      { nombre, precio, codigo, grupo }       precio 0 = sin costo; código y grupo opcionales
@@ -7,14 +13,16 @@
  *     eliminar   { id }
  *     asignar    { id, categoria_id, asignar }           pone o quita el extra a TODOS los productos de una categoría
  *     asignar_platillos { id, agregar: [producto_id], quitar: [producto_id] }   pone o quita el extra en platillos concretos
- *     crear_varios { extras: [{ nombre, precio, grupo }], categorias: [id] }   crea muchos de un golpe (variantes de un ingrediente)
- *                                                              y, si se piden categorías, los pone en todos sus productos
- *     grupo_crear / grupo_renombrar / grupo_eliminar / grupo_mover   secciones de extras (Quitar, Aparte, Solo...)
+ *     predeterminado { id, valor }          (solo el administrador) valor=1: va en TODOS los platillos, también los nuevos
+ *     sucursal_deshabilitar { id, deshabilitar }   el gerente apaga o enciende un modificador GENERAL solo en su sucursal
+ *     grupo_crear / grupo_renombrar / grupo_eliminar   secciones de extras (Quitar, Aparte, Solo...)
+ *     grupo_mover { nombre, direccion: subir | bajar | inicio | fin }
  *
  * La lista de extras viene dentro de GET /admin/productos.
  */
 import type { FastifyInstance } from 'fastify';
-import { cuerpoJson, exigirMetodo, requerirRol } from '../../auth.js';
+import { cuerpoJson, exigirMetodo, requerirGestion } from '../../auth.js';
+import { cartaOrigen } from '../../carta.js';
 import { ejecutar, fila, filas, transaccion } from '../../db.js';
 import { ErrorHttp, fallo } from '../../errores.js';
 import { entero, largo, mayusculas, noVacio } from '../../util.js';
@@ -57,26 +65,22 @@ async function leerCodigo(nid: number, d: Record<string, unknown>, idActual = 0)
  * Secciones de extras. Las que ya existen escritas en algún extra (extras.grupo) se "adoptan" solas en la tabla
  * extra_grupos, para que la lista siempre esté completa y ordenable. Devuelve las secciones en su orden.
  */
-/** Variantes propias del negocio (patrones tipo "Bien cocido {x}") guardadas en ajustes como JSON. */
-export interface VariantePropia { texto: string; seccion: string; precio: string }
-const CLAVE_VARIANTES = 'variantes_propias';
+export interface GrupoExtra { nombre: string; orden: number; sucursal_id: number | null }
 
-export async function listarVariantesPropias(nid: number): Promise<VariantePropia[]> {
-  const r = await fila('SELECT valor FROM ajustes WHERE negocio_id = ? AND clave = ?', [nid, CLAVE_VARIANTES]);
-  try {
-    const v: unknown = JSON.parse(String(r?.['valor'] ?? '[]'));
-    return Array.isArray(v) ? (v as VariantePropia[]) : [];
-  } catch { return []; }
-}
-
-export async function listarGruposExtras(nid: number): Promise<{ nombre: string; orden: number }[]> {
+export async function listarGruposExtras(nid: number, alcance: number | null = null): Promise<GrupoExtra[]> {
   await ejecutar(
-    `INSERT IGNORE INTO extra_grupos (negocio_id, nombre, orden)
-     SELECT ?, e.grupo, (SELECT COALESCE(MAX(orden), 0) FROM extra_grupos WHERE negocio_id = ?) + MIN(e.orden) + 1
+    `INSERT IGNORE INTO extra_grupos (negocio_id, nombre, orden, sucursal_id)
+     SELECT ?, e.grupo, (SELECT COALESCE(MAX(orden), 0) FROM extra_grupos WHERE negocio_id = ?) + MIN(e.orden) + 1,
+            IF(SUM(e.sucursal_id IS NULL) > 0, NULL, MIN(e.sucursal_id))
        FROM extras e WHERE e.negocio_id = ? AND e.grupo IS NOT NULL AND e.grupo <> '' GROUP BY e.grupo ORDER BY MIN(e.orden)`,
     [nid, nid, nid],
   );
-  return (await filas('SELECT nombre, orden FROM extra_grupos WHERE negocio_id = ? ORDER BY orden, id', [nid])).map((g) => ({ nombre: String(g['nombre']), orden: Number(g['orden']) }));
+  // El gerente ve primero las secciones generales y después las suyas; las de otras sucursales no existen para él.
+  const donde = alcance === null ? '' : ` AND (sucursal_id IS NULL OR sucursal_id = ${Number(alcance)})`;
+  const orden = alcance === null ? 'orden, id' : '(sucursal_id IS NOT NULL), orden, id';
+  return (await filas(`SELECT nombre, orden, sucursal_id FROM extra_grupos WHERE negocio_id = ?${donde} ORDER BY ${orden}`, [nid])).map((g) => ({
+    nombre: String(g['nombre']), orden: Number(g['orden']), sucursal_id: g['sucursal_id'] === null ? null : Number(g['sucursal_id']),
+  }));
 }
 
 function leerNombreGrupo(v: unknown): string {
@@ -85,10 +89,37 @@ function leerNombreGrupo(v: unknown): string {
   return n;
 }
 
-/** Comprueba que el extra exista en ESTA empresa (404 si no). */
-async function extraExiste(nid: number, id: number): Promise<void> {
-  const n = await fila('SELECT COUNT(*) AS n FROM extras WHERE id = ? AND negocio_id = ?', [id, nid]);
-  if (Number(n?.['n']) === 0) throw new ErrorHttp(404, 'validacion', 'Ese modificador ya no existe.');
+const AVISO_NO_TUYO = 'No puedes cambiarlo ni quitarlo porque no fue creado por ti. Lo que sí puedes hacer es deshabilitarlo en tu sucursal.';
+
+/**
+ * Trae el extra de ESTA empresa y comprueba que quien pide pueda tocarlo: el administrador, cualquiera; el gerente,
+ * solo los de su sucursal (los generales no se tocan y los de otra sucursal ni siquiera existen para él).
+ */
+async function extraDe(nid: number, id: number, alcance: number | null, { soloVer = false } = {}): Promise<{ id: number; nombre: string; sucursal_id: number | null }> {
+  const x = await fila('SELECT id, nombre, sucursal_id FROM extras WHERE id = ? AND negocio_id = ?', [id, nid]);
+  const sid = x && x['sucursal_id'] !== null ? Number(x['sucursal_id']) : null;
+  if (!x || (alcance !== null && sid !== null && sid !== alcance)) throw new ErrorHttp(404, 'validacion', 'Ese modificador ya no existe.');
+  if (alcance !== null && sid === null && !soloVer) throw new ErrorHttp(403, 'sin_permiso', AVISO_NO_TUYO);
+  return { id: Number(x['id']), nombre: String(x['nombre']), sucursal_id: sid };
+}
+
+/** Un gerente solo puede asignar a platillos de la carta general o de su sucursal. */
+const soloSuyos = (alcance: number | null): string => (alcance === null ? '' : ` AND ${cartaOrigen(alcance)}`);
+
+/** Una sección existente debe ser general o de la sucursal de quien pide (la de otra sucursal "no existe"). */
+async function grupoUsable(nid: number, alcance: number | null, nombre: string | null): Promise<void> {
+  if (nombre === null || alcance === null) return;
+  const g = await fila('SELECT sucursal_id FROM extra_grupos WHERE negocio_id = ? AND nombre = ?', [nid, nombre]);
+  if (g && g['sucursal_id'] !== null && Number(g['sucursal_id']) !== alcance) throw fallo('Esa sección no existe en tu sucursal. Elige otra o crea una nueva.');
+}
+
+/** Secciones que quien pide puede mover/renombrar/quitar: todas para el administrador; solo las suyas para el gerente. */
+async function grupoPropio(nid: number, alcance: number | null, nombre: string): Promise<void> {
+  const g = await fila('SELECT sucursal_id FROM extra_grupos WHERE negocio_id = ? AND nombre = ?', [nid, nombre]);
+  if (!g) throw new ErrorHttp(404, 'validacion', 'Esa sección ya no existe.');
+  if (alcance === null) return;
+  if (g['sucursal_id'] === null) throw new ErrorHttp(403, 'sin_permiso', 'No puedes cambiar ni quitar esta sección porque no fue creada por ti.');
+  if (Number(g['sucursal_id']) !== alcance) throw new ErrorHttp(404, 'validacion', 'Esa sección ya no existe.');
 }
 
 export async function rutasExtras(app: FastifyInstance): Promise<void> {
@@ -97,7 +128,8 @@ export async function rutasExtras(app: FastifyInstance): Promise<void> {
     url: '/admin/extras',
     handler: async (req, reply) => {
       exigirMetodo(req, 'POST');
-      await requerirRol(req, 'admin');
+      const yo = await requerirGestion(req);
+      const alcance = yo.alcance;   // null = administrador de la empresa; id = gerente de esa sucursal
       const nid = req.negocio.id;
       const d = cuerpoJson(req);
       const id = entero(d['id']);
@@ -107,27 +139,59 @@ export async function rutasExtras(app: FastifyInstance): Promise<void> {
           const nombre = leerNombre(d);
           const precio = leerPrecio(d);
           const sig = await fila('SELECT COALESCE(MAX(orden), 0) + 1 AS n FROM extras WHERE negocio_id = ?', [nid]);
-          const r = await ejecutar('INSERT INTO extras (negocio_id, nombre, precio, orden, codigo, grupo) VALUES (?, ?, ?, ?, ?, ?)', [
-            nid, nombre, precio, Number(sig?.['n']), await leerCodigo(nid, d), leerGrupo(d),
+          const grupo = leerGrupo(d);
+          await grupoUsable(nid, alcance, grupo);
+          const r = await ejecutar('INSERT INTO extras (negocio_id, sucursal_id, nombre, precio, orden, codigo, grupo) VALUES (?, ?, ?, ?, ?, ?, ?)', [
+            nid, alcance, nombre, precio, Number(sig?.['n']), await leerCodigo(nid, d), grupo,
           ]);
           reply.code(201);
           return { ok: true, id: r.insertId };
         }
-        case 'actualizar':
-          await extraExiste(nid, id);
+        case 'actualizar': {
+          await extraDe(nid, id, alcance);
+          const grupo = leerGrupo(d);
+          await grupoUsable(nid, alcance, grupo);
           await ejecutar('UPDATE extras SET nombre = ?, precio = ?, activo = ?, codigo = ?, grupo = ? WHERE id = ? AND negocio_id = ?', [
-            leerNombre(d), leerPrecio(d), noVacio(d['activo']) ? 1 : 0, await leerCodigo(nid, d, id), leerGrupo(d), id, nid,
+            leerNombre(d), leerPrecio(d), noVacio(d['activo']) ? 1 : 0, await leerCodigo(nid, d, id), grupo, id, nid,
           ]);
           return { ok: true };
-
+        }
         case 'eliminar':
           // Las ventas pasadas no se alteran: guardan el texto del extra al momento de venderse.
-          await extraExiste(nid, id);
+          await extraDe(nid, id, alcance);
           await ejecutar('DELETE FROM extras WHERE id = ? AND negocio_id = ?', [id, nid]);
           return { ok: true };
 
+        case 'predeterminado': {
+          // Solo el administrador: el modificador general va en todos los platillos (los de hoy y, al crearlos, los nuevos).
+          if (alcance !== null) throw new ErrorHttp(403, 'sin_permiso', 'Solo el administrador de la empresa puede poner un modificador en todos los platillos.');
+          const x = await extraDe(nid, id, null);
+          if (x.sucursal_id !== null) throw fallo('Solo los modificadores generales pueden ir en todos los platillos.');
+          const poner = noVacio(d['valor']);
+          await transaccion(async (tx) => {
+            await tx.ejecutar('UPDATE extras SET todos = ? WHERE id = ? AND negocio_id = ?', [poner ? 1 : 0, id, nid]);
+            if (poner) {
+              await tx.ejecutar(
+                `INSERT INTO producto_extras (producto_id, extra_id)
+                 SELECT p.id, ? FROM productos p WHERE p.negocio_id = ? AND NOT EXISTS (SELECT 1 FROM producto_extras pe WHERE pe.producto_id = p.id AND pe.extra_id = ?)`,
+                [id, nid, id],
+              );
+            }
+          });
+          return { ok: true };
+        }
+        case 'sucursal_deshabilitar': {
+          // El gerente apaga (o vuelve a encender) un modificador GENERAL solo en su sucursal; no lo toca para las demás.
+          if (alcance === null) throw fallo('Esta acción es de los gerentes. El administrador usa “Activo” en el modificador.');
+          const x = await extraDe(nid, id, alcance, { soloVer: true });
+          if (x.sucursal_id !== null) throw fallo('Tus propios modificadores se editan o se desactivan con “Activo”.');
+          if (noVacio(d['deshabilitar'])) await ejecutar('INSERT IGNORE INTO extra_sucursal_off (extra_id, sucursal_id) VALUES (?, ?)', [id, alcance]);
+          else await ejecutar('DELETE FROM extra_sucursal_off WHERE extra_id = ? AND sucursal_id = ?', [id, alcance]);
+          return { ok: true };
+        }
+
         case 'asignar': {
-          await extraExiste(nid, id);
+          await extraDe(nid, id, alcance);
           const categoriaId = entero(d['categoria_id']);
           const cat = await fila('SELECT COUNT(*) AS n FROM categorias WHERE id = ? AND negocio_id = ?', [categoriaId, nid]);
           if (Number(cat?.['n']) === 0) throw new ErrorHttp(404, 'validacion', 'Esa categoría ya no existe.');
@@ -136,40 +200,22 @@ export async function rutasExtras(app: FastifyInstance): Promise<void> {
             await ejecutar(
               `INSERT INTO producto_extras (producto_id, extra_id)
                SELECT p.id, ? FROM productos p
-                WHERE p.negocio_id = ? AND p.categoria_id = ?
+                WHERE p.negocio_id = ? AND p.categoria_id = ?${soloSuyos(alcance)}
                   AND NOT EXISTS (SELECT 1 FROM producto_extras pe WHERE pe.producto_id = p.id AND pe.extra_id = ?)`,
               [id, nid, categoriaId, id],
             );
           } else {
             await ejecutar(
               `DELETE FROM producto_extras
-                WHERE extra_id = ? AND producto_id IN (SELECT id FROM productos WHERE negocio_id = ? AND categoria_id = ?)`,
+                WHERE extra_id = ? AND producto_id IN (SELECT p.id FROM productos p WHERE p.negocio_id = ? AND p.categoria_id = ?${soloSuyos(alcance)})`,
               [id, nid, categoriaId],
             );
           }
           return { ok: true };
         }
-        case 'variantes_guardar': {
-          // Reemplaza la lista de variantes propias del negocio. Cada texto lleva {x} donde va el ingrediente.
-          const lista = Array.isArray(d['lista']) ? (d['lista'] as Record<string, unknown>[]) : [];
-          if (lista.length > 30) throw fallo('Máximo 30 variantes propias.');
-          const limpias: VariantePropia[] = [];
-          for (const v of lista) {
-            let texto = String(v['texto'] ?? '').trim();
-            if (texto === '') continue;
-            if (largo(texto) > 50) throw fallo('El texto de una variante no puede pasar de 50 caracteres.');
-            if (!texto.includes('{x}')) texto += ' {x}';
-            const seccion = String(v['seccion'] ?? '').trim().slice(0, 40);
-            const precio = String(v['precio'] ?? '').trim().replace(',', '.');
-            if (precio !== '' && !(Number(precio) >= 0 && Number(precio) < 100000)) throw fallo('Un costo de variante no es válido.');
-            if (!limpias.some((x) => x.texto.toLowerCase() === texto.toLowerCase())) limpias.push({ texto, seccion, precio });
-          }
-          await ejecutar('INSERT INTO ajustes (negocio_id, clave, valor) VALUES (?, ?, ?) ON DUPLICATE KEY UPDATE valor = VALUES(valor)', [nid, CLAVE_VARIANTES, JSON.stringify(limpias)]);
-          return { ok: true };
-        }
         case 'asignar_platillos': {
           // Elegir platillo por platillo: solo toca los ids pedidos (no pierde el precio propio de los que se quedan).
-          await extraExiste(nid, id);
+          await extraDe(nid, id, alcance);
           const ids = (v: unknown): number[] => (Array.isArray(v) ? [...new Set(v.map((n) => entero(n)).filter((n) => n > 0))].slice(0, 2000) : []);
           const agregar = ids(d['agregar']);
           const quitar = ids(d['quitar']);
@@ -177,14 +223,14 @@ export async function rutasExtras(app: FastifyInstance): Promise<void> {
             await ejecutar(
               `INSERT INTO producto_extras (producto_id, extra_id)
                SELECT p.id, ? FROM productos p
-                WHERE p.negocio_id = ? AND p.id IN (${agregar.map(() => '?').join(',')})
+                WHERE p.negocio_id = ? AND p.id IN (${agregar.map(() => '?').join(',')})${soloSuyos(alcance)}
                   AND NOT EXISTS (SELECT 1 FROM producto_extras pe WHERE pe.producto_id = p.id AND pe.extra_id = ?)`,
               [id, nid, ...agregar, id],
             );
           }
           if (quitar.length > 0) {
             await ejecutar(
-              `DELETE FROM producto_extras WHERE extra_id = ? AND producto_id IN (SELECT id FROM productos WHERE negocio_id = ? AND id IN (${quitar.map(() => '?').join(',')}))`,
+              `DELETE FROM producto_extras WHERE extra_id = ? AND producto_id IN (SELECT p.id FROM productos p WHERE p.negocio_id = ? AND p.id IN (${quitar.map(() => '?').join(',')})${soloSuyos(alcance)})`,
               [id, nid, ...quitar],
             );
           }
@@ -193,61 +239,32 @@ export async function rutasExtras(app: FastifyInstance): Promise<void> {
         case 'asignar_todos': {
           // Pone (o quita) el extra en TODOS los platillos de la empresa de golpe, sin duplicar los que ya lo tenían.
           // Después el dueño puede quitarlo o cambiarle el precio platillo por platillo desde el editor del producto.
-          await extraExiste(nid, id);
+          await extraDe(nid, id, alcance);
           if (noVacio(d['asignar'])) {
             await ejecutar(
               `INSERT INTO producto_extras (producto_id, extra_id)
                SELECT p.id, ? FROM productos p
-                WHERE p.negocio_id = ?
+                WHERE p.negocio_id = ?${soloSuyos(alcance)}
                   AND NOT EXISTS (SELECT 1 FROM producto_extras pe WHERE pe.producto_id = p.id AND pe.extra_id = ?)`,
               [id, nid, id],
             );
           } else {
-            await ejecutar('DELETE FROM producto_extras WHERE extra_id = ? AND producto_id IN (SELECT id FROM productos WHERE negocio_id = ?)', [id, nid]);
+            await ejecutar(`DELETE FROM producto_extras WHERE extra_id = ? AND producto_id IN (SELECT p.id FROM productos p WHERE p.negocio_id = ?${soloSuyos(alcance)})`, [id, nid]);
           }
           return { ok: true };
         }
         case 'precio_general': {
           // Borra los precios propios por platillo: todos vuelven a cobrar el precio general del extra.
-          await extraExiste(nid, id);
+          await extraDe(nid, id, alcance);
           await ejecutar('UPDATE producto_extras SET precio = NULL WHERE extra_id = ? AND producto_id IN (SELECT id FROM productos WHERE negocio_id = ?)', [id, nid]);
           return { ok: true };
         }
-        case 'crear_varios': {
-          // Variantes de uno o más ingredientes (Sin X, X aparte, Solo X...). Los que ya existen con ese nombre se omiten.
-          const lista = Array.isArray(d['extras']) ? (d['extras'] as Record<string, unknown>[]) : [];
-          if (lista.length === 0 || lista.length > 100) throw fallo('Elige al menos un modificador para crear (máximo 100 a la vez).');
-          const categoriasIds = [...new Set((Array.isArray(d['categorias']) ? d['categorias'] : []).map(entero))].filter((c) => c > 0);
-          for (const c of categoriasIds) {
-            const ok = await fila('SELECT COUNT(*) AS n FROM categorias WHERE id = ? AND negocio_id = ?', [c, nid]);
-            if (Number(ok?.['n']) === 0) throw new ErrorHttp(404, 'validacion', 'Una de las categorías ya no existe.');
-          }
-          const validados = lista.map((x) => ({ nombre: leerNombre(x), precio: leerPrecio(x), grupo: leerGrupo(x) }));
-          const creados: string[] = [];
-          const omitidos: string[] = [];
-          await transaccion(async (tx) => {
-            for (const x of validados) {
-              const existe = (await tx.filas('SELECT id FROM extras WHERE negocio_id = ? AND LOWER(nombre) = LOWER(?) AND COALESCE(grupo, \'\') = COALESCE(?, \'\')', [nid, x.nombre, x.grupo]))[0];
-              if (existe) { omitidos.push(x.nombre); continue; }
-              const sig = (await tx.filas('SELECT COALESCE(MAX(orden), 0) + 1 AS n FROM extras WHERE negocio_id = ?', [nid]))[0];
-              const r = await tx.ejecutar('INSERT INTO extras (negocio_id, nombre, precio, orden, grupo) VALUES (?, ?, ?, ?, ?)', [nid, x.nombre, x.precio, Number(sig?.['n']), x.grupo]);
-              creados.push(x.nombre);
-              for (const c of categoriasIds) {
-                await tx.ejecutar('INSERT INTO producto_extras (producto_id, extra_id) SELECT p.id, ? FROM productos p WHERE p.negocio_id = ? AND p.categoria_id = ?', [r.insertId, nid, c]);
-              }
-            }
-          });
-          await listarGruposExtras(nid);   // las secciones nuevas quedan registradas
-          reply.code(201);
-          return { ok: true, creados, omitidos };
-        }
-
         case 'grupo_crear': {
           const nombre = leerNombreGrupo(d['nombre']);
           await listarGruposExtras(nid);
           const sig = await fila('SELECT COALESCE(MAX(orden), 0) + 1 AS n FROM extra_grupos WHERE negocio_id = ?', [nid]);
-          const r = await ejecutar('INSERT IGNORE INTO extra_grupos (negocio_id, nombre, orden) VALUES (?, ?, ?)', [nid, nombre, Number(sig?.['n'])]);
-          if (r.affectedRows === 0) throw new ErrorHttp(409, 'validacion', `Ya existe una sección llamada “${nombre}”.`);
+          const r = await ejecutar('INSERT IGNORE INTO extra_grupos (negocio_id, nombre, orden, sucursal_id) VALUES (?, ?, ?, ?)', [nid, nombre, Number(sig?.['n']), alcance]);
+          if (r.affectedRows === 0) throw new ErrorHttp(409, 'validacion', `Ya existe una sección llamada “${nombre}”. Usa otro nombre.`);
           reply.code(201);
           return { ok: true };
         }
@@ -255,11 +272,10 @@ export async function rutasExtras(app: FastifyInstance): Promise<void> {
           const actual = leerNombreGrupo(d['nombre']);
           const nuevo = leerNombreGrupo(d['nuevo']);
           await listarGruposExtras(nid);
-          const hay = await fila('SELECT COUNT(*) AS n FROM extra_grupos WHERE negocio_id = ? AND nombre = ?', [nid, actual]);
-          if (Number(hay?.['n']) === 0) throw new ErrorHttp(404, 'validacion', 'Esa sección ya no existe.');
+          await grupoPropio(nid, alcance, actual);
           if (nuevo.toLowerCase() !== actual.toLowerCase()) {
             const otra = await fila('SELECT COUNT(*) AS n FROM extra_grupos WHERE negocio_id = ? AND nombre = ?', [nid, nuevo]);
-            if (Number(otra?.['n']) > 0) throw new ErrorHttp(409, 'validacion', `Ya existe una sección llamada “${nuevo}”.`);
+            if (Number(otra?.['n']) > 0) throw new ErrorHttp(409, 'validacion', `Ya existe una sección llamada “${nuevo}”. Usa otro nombre.`);
           }
           await transaccion(async (tx) => {
             await tx.ejecutar('UPDATE extra_grupos SET nombre = ? WHERE negocio_id = ? AND nombre = ?', [nuevo, nid, actual]);
@@ -270,6 +286,8 @@ export async function rutasExtras(app: FastifyInstance): Promise<void> {
         case 'grupo_eliminar': {
           // Solo se borra la sección: sus extras NO se eliminan, pasan a "Otros" (sin sección).
           const nombre = leerNombreGrupo(d['nombre']);
+          await listarGruposExtras(nid);
+          await grupoPropio(nid, alcance, nombre);
           await transaccion(async (tx) => {
             await tx.ejecutar('UPDATE extras SET grupo = NULL WHERE negocio_id = ? AND grupo = ?', [nid, nombre]);
             await tx.ejecutar('DELETE FROM extra_grupos WHERE negocio_id = ? AND nombre = ?', [nid, nombre]);
@@ -277,17 +295,25 @@ export async function rutasExtras(app: FastifyInstance): Promise<void> {
           return { ok: true };
         }
         case 'grupo_mover': {
+          // subir / bajar (un lugar) · inicio / fin (hasta arriba o hasta abajo). El gerente solo mueve las suyas, entre ellas.
           const nombre = leerNombreGrupo(d['nombre']);
-          const sube = String(d['direccion'] ?? '') === 'subir';
-          const grupos = await listarGruposExtras(nid);
-          const i = grupos.findIndex((g) => g.nombre === nombre);
-          const j = sube ? i - 1 : i + 1;
-          if (i < 0 || j < 0 || j >= grupos.length) return { ok: true };
-          // Se reasignan los números de orden en secuencia para no depender de valores repetidos.
-          const nuevoOrden = grupos.map((g) => g.nombre);
-          [nuevoOrden[i], nuevoOrden[j]] = [nuevoOrden[j] as string, nuevoOrden[i] as string];
+          const dir = String(d['direccion'] ?? '');
+          if (!['subir', 'bajar', 'inicio', 'fin'].includes(dir)) throw fallo('Dirección no válida.');
+          const todos = await listarGruposExtras(nid, alcance);
+          await grupoPropio(nid, alcance, nombre);
+          const ambito = alcance === null ? todos : todos.filter((g) => g.sucursal_id === alcance);
+          const i = ambito.findIndex((g) => g.nombre === nombre);
+          if (i < 0) return { ok: true };
+          const orden = ambito.map((g) => g.nombre);
+          const [x] = orden.splice(i, 1) as [string];
+          const j = dir === 'subir' ? Math.max(0, i - 1) : dir === 'bajar' ? Math.min(orden.length, i + 1) : dir === 'inicio' ? 0 : orden.length;
+          orden.splice(j, 0, x);
+          if (orden.every((n, k) => n === ambito[k]?.nombre)) return { ok: true };
+          // Se reutilizan los mismos "lugares" (números de orden) del ámbito, estrictamente crecientes, para no pisar las de otros.
+          const lugares: number[] = [];
+          for (const g of ambito) lugares.push(Math.max(g.orden, (lugares[lugares.length - 1] ?? Number.NEGATIVE_INFINITY) + 1));
           await transaccion(async (tx) => {
-            for (const [k, n] of nuevoOrden.entries()) await tx.ejecutar('UPDATE extra_grupos SET orden = ? WHERE negocio_id = ? AND nombre = ?', [k + 1, nid, n]);
+            for (const [k, n] of orden.entries()) await tx.ejecutar('UPDATE extra_grupos SET orden = ? WHERE negocio_id = ? AND nombre = ?', [lugares[k], nid, n]);
           });
           return { ok: true };
         }

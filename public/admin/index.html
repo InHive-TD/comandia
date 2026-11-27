@@ -254,18 +254,17 @@
     <div class="formulario dialogo ex-dialogo">
       <h2>Modificadores</h2>
       <p class="ayuda">Son las opciones que el cliente puede <strong>añadir</strong> a un platillo (con queso, orden doble) o <strong>pedir sin algo</strong> (sin cebolla).
-        Los creas una vez aquí y eliges en qué platillos aparecen.</p>
+        Los creas una vez aquí y eliges en qué platillos aparecen. Lo que crea el administrador vale para toda la empresa; cada sucursal puede deshabilitarlo en la suya y crear los propios.</p>
 
       <div class="ex-botones">
         <button id="ex-nuevo-abrir" class="btn principal ex-abrir" type="button">＋ Nuevo modificador</button>
-        <button id="ex-var-abrir" class="btn" type="button" title="Crea de golpe Sin X, X aparte, Solo X... para uno o varios ingredientes">✨ Crear variantes en bloque</button>
         <button id="ex-sec-abrir" class="btn" type="button" title="Crear, renombrar, ordenar o quitar los títulos con que se agrupan los modificadores (Quitar, Aparte, Solo...)">🗂 Secciones (títulos)</button>
       </div>
 
       <section id="ex-secciones" class="ex-nuevo ex-panel" hidden>
         <button id="ex-sec-x" class="btn chico ex-cerrar-x" type="button" aria-label="Cerrar y volver a los modificadores" title="Cerrar">✕</button>
         <h3 class="ex-subtitulo">Secciones de modificadores</h3>
-        <p class="ayuda">Son los títulos con los que se acomodan los modificadores al editar un platillo (Quitar, Aparte, Solo…). Crea las que necesites, cámbiales el nombre o el orden. Al quitar una sección <strong>sus modificadores no se borran</strong>: pasan a “Otros”.</p>
+        <p class="ayuda">Son los títulos con los que se acomodan los modificadores (Quitar, Aparte, Solo…). Crea las que necesites y cámbiales el nombre o el orden; con ⤒ y ⤓ las mandas hasta arriba o hasta abajo. Al quitar una sección <strong>sus modificadores no se borran</strong>: pasan a “Otros”.</p>
         <div id="ex-sec-lista" class="ex-sec-lista"></div>
         <form id="ex-sec-form" class="ex-sec-nueva" autocomplete="off">
           <input id="ex-sec-nueva" type="text" maxlength="40" placeholder="Nueva sección (ej. Picante, Tamaño)" aria-label="Nueva sección" required>
@@ -274,29 +273,6 @@
         <div class="ex-acciones"><button id="ex-sec-cerrar" class="btn" type="button">Listo</button></div>
       </section>
 
-      <form id="form-variantes" class="ex-nuevo ex-panel" hidden autocomplete="off">
-        <button id="var-x" class="btn chico ex-cerrar-x" type="button" aria-label="Cerrar y volver a los modificadores" title="Cerrar">✕</button>
-        <h3 class="ex-subtitulo">Crear variantes en bloque</h3>
-        <p class="ayuda">Crea de una vez varios modificadores de un ingrediente (por ejemplo «Sin cebolla», «Cebolla aparte», «Solo cebolla»). Son modificadores normales: después los puedes editar uno por uno.</p>
-        <label>¿De qué ingrediente? <small>Puedes escribir varios separados por coma.</small>
-          <input id="var-ingredientes" type="text" maxlength="200" placeholder="Ej. Mayonesa, Tomate, Queso panela" required>
-        </label>
-        <div class="ex-campo">
-          <span class="ex-etq">¿Qué variantes quieres crear? <small>(puedes cambiar el texto, la sección o ponerles costo)</small></span>
-          <div id="var-tipos" class="var-tipos"></div>
-          <button id="var-propia" class="btn chico" type="button" title="Escribe tu propio patrón, por ejemplo “Bien cocido {x}”. Se guarda para reusarlo.">＋ Variante propia</button>
-          <small class="ayuda">Usa <code>{x}</code> donde va el ingrediente. Las propias se guardan para reusarlas.</small>
-        </div>
-        <div class="ex-campo">
-          <span class="ex-etq">¿Ponerlas ya en alguna categoría? <small>(opcional: se agregan a todos sus platillos)</small></span>
-          <div id="var-cats" class="ex-disp"></div>
-        </div>
-        <div id="var-vista" class="var-vista ayuda"></div>
-        <div class="ex-acciones">
-          <button id="var-crear" class="btn principal" type="submit">Crear modificadores</button>
-          <button id="var-cancelar" class="btn" type="button">Cancelar</button>
-        </div>
-      </form>
       <datalist id="lista-grupos"></datalist>
 
       <div id="lista-extras" class="ex-lista"></div>
@@ -352,6 +328,9 @@
         <small>Sirve para ordenarlos en secciones al elegirlos (Quitar, Aparte, Salsas…).</small>
       </label>
       <input id="ef-grupo-nuevo" type="text" maxlength="40" placeholder="Nombre de la nueva sección" aria-label="Nombre de la nueva sección" hidden>
+      <label id="ef-todos-fila" class="casilla ex-campo">
+        <input id="ef-todos" type="checkbox"> <span>Aparece en <strong>todos los platillos</strong> <small>(también en los nuevos; después puedes quitarlo de alguno)</small></span>
+      </label>
       <div id="ef-donde" class="ex-campo">
         <span class="ex-etq">¿En qué platillos aparece?</span>
         <div id="ef-resumen"></div>
@@ -899,7 +878,7 @@
   <script src="../js/shell.js?v=1795557467"></script>
   <script src="../js/login.js?v=202611242250"></script>
   <script src="../js/vendor/qrcode.js"></script>
-  <script src="../js/admin.js?v=202611261330"></script>
+  <script src="../js/admin.js?v=202611270930"></script>
   <script src="../js/inventario.js?v=202611270900"></script>
 </body>
 </html>

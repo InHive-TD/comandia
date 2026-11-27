@@ -14,7 +14,7 @@
 import type { FastifyRequest } from 'fastify';
 import { type Fila, type Tx, ejecutar, filas, transaccion } from './db.js';
 import { ErrorHttp, fallo } from './errores.js';
-import { CARTA_AGOTADO, CARTA_PRECIO, cartaUnir, cartaVisible } from './carta.js';
+import { CARTA_AGOTADO, CARTA_PRECIO, cartaUnir, cartaVisible, extraVisible } from './carta.js';
 import { entero, esDuplicado, largo, noVacio } from './util.js';
 
 // ------------------------------------------------------------------ contexto
@@ -428,7 +428,7 @@ export async function validarLineas(c: Cx, entrada: unknown): Promise<[Linea[], 
         c,
         `SELECT e.id, e.nombre, e.codigo, COALESCE(pe.precio, e.precio) AS precio, e.activo, e.grupo
            FROM extras e JOIN producto_extras pe ON pe.extra_id = e.id
-          WHERE e.id = ? AND pe.producto_id = ? AND e.negocio_id = ${c.nid}
+          WHERE e.id = ? AND pe.producto_id = ? AND e.negocio_id = ${c.nid}${c.sid > 0 ? ` AND ${extraVisible(c.sid)}` : ''}
             AND EXISTS (SELECT 1 FROM productos px WHERE px.id = pe.producto_id AND px.negocio_id = e.negocio_id)`,
         [extraId, productoId],
       );
@@ -443,7 +443,7 @@ export async function validarLineas(c: Cx, entrada: unknown): Promise<[Linea[], 
       const grupo = (p['grupo_obligatorio'] as string | null) ?? null;
       const hay = await una(
         c,
-        `SELECT COUNT(*) AS n FROM extras e JOIN producto_extras pe ON pe.extra_id = e.id WHERE pe.producto_id = ? AND e.negocio_id = ${c.nid} AND e.activo = 1${grupo === null ? '' : ' AND e.grupo = ?'}`,
+        `SELECT COUNT(*) AS n FROM extras e JOIN producto_extras pe ON pe.extra_id = e.id WHERE pe.producto_id = ? AND e.negocio_id = ${c.nid} AND e.activo = 1${c.sid > 0 ? ` AND ${extraVisible(c.sid)}` : ''}${grupo === null ? '' : ' AND e.grupo = ?'}`,
         grupo === null ? [productoId] : [productoId, grupo],
       );
       if (n(hay?.['n']) > 0 && !extrasElegidos.some((x) => grupo === null || x.grupo === grupo)) {

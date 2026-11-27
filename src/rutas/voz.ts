@@ -13,7 +13,7 @@
  */
 import type { FastifyInstance } from 'fastify';
 import { cuerpoJson, exigirMetodo, requerirRol } from '../auth.js';
-import { CARTA_AGOTADO, cartaUnir, cartaVisible } from '../carta.js';
+import { CARTA_AGOTADO, cartaUnir, cartaVisible, extraVisible } from '../carta.js';
 import { ejecutar, fila, filas } from '../db.js';
 import { ErrorHttp, fallo } from '../errores.js';
 import { contexto } from '../ordenes.js';
@@ -59,7 +59,7 @@ async function menuParaVoz(nid: number, suc: number): Promise<Map<number, Produc
   for (const f of prods) mapa.set(Number(f['id']), { id: Number(f['id']), nombre: String(f['nombre']), categoria: String(f['categoria']), obligatorias: Boolean(Number(f['opciones_obligatorias'])), extras: new Map(), grupos: new Map() });
   const ex = await filas(
     `SELECT pe.producto_id, e.id, e.nombre, e.grupo FROM producto_extras pe JOIN extras e ON e.id = pe.extra_id
-      WHERE e.activo = 1 AND e.negocio_id = ? ORDER BY e.orden, e.id`,
+      WHERE e.activo = 1 AND e.negocio_id = ?${suc > 0 ? ` AND ${extraVisible(suc)}` : ''} ORDER BY e.orden, e.id`,
     [nid],
   );
   for (const x of ex) {

@@ -11,7 +11,7 @@
 import { mesasParaElegir } from '../plano.js';
 import type { FastifyInstance } from 'fastify';
 import { exigirMetodo, fijarSucursalAuto, requerirRol } from '../auth.js';
-import { CARTA_AGOTADO, CARTA_PRECIO, cartaUnir, cartaVisible } from '../carta.js';
+import { CARTA_AGOTADO, CARTA_PRECIO, cartaUnir, cartaVisible, extraVisible } from '../carta.js';
 import { filas } from '../db.js';
 import { codigoRapidoEn, pedirPorMesaEn } from './admin/prioridades.js';
 
@@ -39,7 +39,7 @@ export async function rutasMenu(app: FastifyInstance): Promise<void> {
          FROM producto_extras pe
          JOIN extras e ON e.id = pe.extra_id
          JOIN productos pr ON pr.id = pe.producto_id
-        WHERE e.activo = 1 AND e.negocio_id = ? AND pr.negocio_id = e.negocio_id
+        WHERE e.activo = 1 AND e.negocio_id = ? AND pr.negocio_id = e.negocio_id${suc > 0 ? ` AND ${extraVisible(suc)}` : ''}
         ORDER BY e.orden, e.id`,
       [nid],
     );

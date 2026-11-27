@@ -22,7 +22,7 @@ import { type Formulario, leerFormulario } from '../../formulario.js';
 import { borrarFoto, procesarFoto } from '../../fotos.js';
 import { cartaOrigen } from '../../carta.js';
 import { sucursalesActivas } from '../../negocio.js';
-import { listarGruposExtras, listarVariantesPropias } from './extras.js';
+import { listarGruposExtras } from './extras.js';
 import { entero, esDuplicado, largo, mayusculas } from '../../util.js';
 
 /** Campos de un producto ya validados, listos para guardar. */
@@ -224,13 +224,29 @@ async function listar(nid: number, alcance: number | null): Promise<Record<strin
   ).map((c) => ({ id: Number(c['id']), nombre: c['nombre'], orden: Number(c['orden']), productos: Number(c['productos']) }));
 
   const estaciones = (await filas('SELECT id, nombre FROM estaciones WHERE negocio_id = ? ORDER BY orden, id', [nid])).map((e) => ({ id: Number(e['id']), nombre: e['nombre'] }));
-  const extras = (await filas('SELECT id, nombre, precio, activo, codigo, grupo FROM extras WHERE negocio_id = ? ORDER BY orden, id', [nid])).map((x) => ({
+  // Modificadores: el administrador ve todos (marcando de qué sucursal es cada uno); el gerente, los generales y los suyos.
+  const quien = alcance === null ? '' : ` AND (x.sucursal_id IS NULL OR x.sucursal_id = ${Number(alcance)})`;
+  const apagados = alcance === null ? new Set<number>() : new Set((await filas('SELECT extra_id FROM extra_sucursal_off WHERE sucursal_id = ?', [alcance])).map((o) => Number(o['extra_id'])));
+  const extras = (await filas(
+    `SELECT x.id, x.nombre, x.precio, x.activo, x.codigo, x.grupo, x.sucursal_id, x.todos, sx.nombre AS sucursal
+       FROM extras x LEFT JOIN sucursales sx ON sx.id = x.sucursal_id
+      WHERE x.negocio_id = ?${quien} ORDER BY x.orden, x.id`,
+    [nid],
+  )).map((x) => ({
     id: Number(x['id']), nombre: x['nombre'], precio: Number(x['precio']), activo: Boolean(Number(x['activo'])), codigo: x['codigo'], grupo: x['grupo'],
+    sucursal_id: x['sucursal_id'] === null ? null : Number(x['sucursal_id']), sucursal: x['sucursal'] ?? null,
+    todos: Boolean(Number(x['todos'])),
+    propio: alcance === null || (x['sucursal_id'] !== null && Number(x['sucursal_id']) === alcance),   // quien pide puede editarlo
+    deshabilitado: apagados.has(Number(x['id'])),   // (gerente) apagado en su sucursal
   }));
 
   // Secciones de extras en el orden que eligió el dueño (incluye las que aún no tienen extras)
-  const gruposExtras = await listarGruposExtras(nid);
-  return { ok: true, productos, categorias, estaciones, extras, grupos_extras: gruposExtras.map((g) => g.nombre), variantes_propias: await listarVariantesPropias(nid) };
+  const gruposExtras = await listarGruposExtras(nid, alcance);
+  return {
+    ok: true, productos, categorias, estaciones, extras,
+    grupos_extras: gruposExtras.map((g) => g.nombre),
+    grupos_extras_info: gruposExtras.map((g) => ({ nombre: g.nombre, sucursal_id: g.sucursal_id, propio: alcance === null || g.sucursal_id === alcance })),
+  };
 }
 
 export async function rutasAdminProductos(app: FastifyInstance): Promise<void> {

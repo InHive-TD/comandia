@@ -509,6 +509,7 @@ export async function aplicarCarga(ctx: Contexto, analisis: AnalisisCarga): Prom
             [nid, alcance, categoriaId, c.nombre, c.descripcion, c.precio, fotoNueva, c.disponible, c.codigo, c.porcion, c.estacionId, c.pedirOpciones, c.obligatorias, c.grupoObligatorio, Number(sig?.['n'])],
           );
           await guardarExtras(tx, r.insertId, c.extras, c.preciosExtra);
+          await tx.ejecutar('INSERT IGNORE INTO producto_extras (producto_id, extra_id) SELECT ?, id FROM extras WHERE negocio_id = ? AND todos = 1 AND sucursal_id IS NULL', [r.insertId, nid]);
         });
         nuevos++;
       }

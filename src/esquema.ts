@@ -200,6 +200,19 @@ async function actualizarV2(): Promise<void> {
     orden      INT NOT NULL DEFAULT 0,
     UNIQUE KEY uq_extra_grupo (negocio_id, nombre)
   ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci`);
+  // Modificadores: sucursal_id NULL = general (lo creó el administrador de la empresa); con valor = lo creó el gerente de esa
+  // sucursal y solo existe ahí. "todos" = se pone solo en cada platillo (incluidos los nuevos). Las sucursales pueden
+  // deshabilitar los generales (extra_sucursal_off) pero no editarlos ni borrarlos.
+  await asegurarColumna('extras', 'sucursal_id', 'INT UNSIGNED NULL');
+  await asegurarColumna('extras', 'todos', 'TINYINT(1) NOT NULL DEFAULT 0');
+  await asegurarColumna('extra_grupos', 'sucursal_id', 'INT UNSIGNED NULL');
+  await ejecutar(`CREATE TABLE IF NOT EXISTS extra_sucursal_off (
+    extra_id    INT UNSIGNED NOT NULL,
+    sucursal_id INT UNSIGNED NOT NULL,
+    PRIMARY KEY (extra_id, sucursal_id),
+    CONSTRAINT fk_eso_extra FOREIGN KEY (extra_id) REFERENCES extras(id) ON DELETE CASCADE,
+    CONSTRAINT fk_eso_suc FOREIGN KEY (sucursal_id) REFERENCES sucursales(id) ON DELETE CASCADE
+  ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci`);
   // Sucursales ADICIONALES de un usuario (además de usuarios.sucursal_id, que es la principal). Sin filas = una sola sucursal.
   await ejecutar(`CREATE TABLE IF NOT EXISTS usuario_sucursales (
     usuario_id  INT UNSIGNED NOT NULL,
