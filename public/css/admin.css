@@ -866,8 +866,13 @@ body.menu-compacto .menu-desp-items { display: block; padding-left: 0; }
 /* Formulario de modificador compacto */
 #dlg-extra-form .formulario { max-width: 760px; width: min(760px, 96vw); }
 #dlg-extra-form label, #dlg-extra-form .ex-campo { margin-bottom: .55rem; }
-.ef-fila-3 { display: grid; grid-template-columns: minmax(130px, 1fr) minmax(160px, 1.6fr) minmax(110px, .8fr); gap: .6rem; align-items: end; }
-@media (max-width: 560px) { .ef-fila-3 { grid-template-columns: 1fr 1fr; } .ef-fila-3 .ef-crece { grid-column: 1 / -1; order: 3; } }
+.ef-fila-3 { display: grid; grid-template-columns: minmax(0, 2fr) minmax(0, 1fr); gap: .6rem; align-items: end; }
+.ef-fila-3 .ef-sec { grid-column: 1 / -1; }
+.ef-fila-3 label, .ef-fila-3 select, .ef-fila-3 input { min-width: 0; max-width: 100%; box-sizing: border-box; }
+@media (max-width: 480px) { .ef-fila-3 { grid-template-columns: 1fr; } }
+#dlg-extra-form .ef-modo { display: inline-flex !important; flex-direction: row !important; align-items: center; gap: .4rem; font-weight: 600; margin: 0; }
+#dlg-extra-form .ef-modo input[type=radio] { width: auto; margin: 0; flex: 0 0 auto; }
+#dlg-extra-form .formulario { overflow-x: hidden; box-sizing: border-box; }
 .ef-en-linea { display: inline-flex; gap: .5rem; align-items: center; }
 .ef-precio { width: 7rem; }
 .ef-modos { gap: .4rem 1.1rem; }

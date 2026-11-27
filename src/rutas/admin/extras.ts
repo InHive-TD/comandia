@@ -89,7 +89,7 @@ export async function listarGruposExtras(nid: number, alcance: number | null = n
 
 function leerNombreGrupo(v: unknown): string {
   const n = String(v ?? '').trim();
-  if (n === '' || largo(n) > 40) throw fallo('El nombre de la sección es obligatorio (máximo 40 caracteres).');
+  if (n === '' || largo(n) > 40) throw fallo('El nombre del tipo es obligatorio (máximo 40 caracteres).');
   return n;
 }
 
@@ -114,16 +114,16 @@ const soloSuyos = (alcance: number | null): string => (alcance === null ? '' : `
 async function grupoUsable(nid: number, alcance: number | null, nombre: string | null): Promise<void> {
   if (nombre === null || alcance === null) return;
   const g = await fila('SELECT sucursal_id FROM extra_grupos WHERE negocio_id = ? AND nombre = ?', [nid, nombre]);
-  if (g && g['sucursal_id'] !== null && Number(g['sucursal_id']) !== alcance) throw fallo('Esa sección no existe en tu sucursal. Elige otra o crea una nueva.');
+  if (g && g['sucursal_id'] !== null && Number(g['sucursal_id']) !== alcance) throw fallo('Ese tipo no existe en tu sucursal. Elige otro o crea uno nuevo.');
 }
 
 /** Secciones que quien pide puede mover/renombrar/quitar: todas para el administrador; solo las suyas para el gerente. */
 async function grupoPropio(nid: number, alcance: number | null, nombre: string): Promise<void> {
   const g = await fila('SELECT sucursal_id FROM extra_grupos WHERE negocio_id = ? AND nombre = ?', [nid, nombre]);
-  if (!g) throw new ErrorHttp(404, 'validacion', 'Esa sección ya no existe.');
+  if (!g) throw new ErrorHttp(404, 'validacion', 'Ese tipo ya no existe.');
   if (alcance === null) return;
-  if (g['sucursal_id'] === null) throw new ErrorHttp(403, 'sin_permiso', 'No puedes cambiar ni quitar esta sección porque no fue creada por ti.');
-  if (Number(g['sucursal_id']) !== alcance) throw new ErrorHttp(404, 'validacion', 'Esa sección ya no existe.');
+  if (g['sucursal_id'] === null) throw new ErrorHttp(403, 'sin_permiso', 'No puedes cambiar ni quitar este tipo porque no fue creado por ti.');
+  if (Number(g['sucursal_id']) !== alcance) throw new ErrorHttp(404, 'validacion', 'Ese tipo ya no existe.');
 }
 
 export async function rutasExtras(app: FastifyInstance): Promise<void> {
@@ -286,7 +286,7 @@ export async function rutasExtras(app: FastifyInstance): Promise<void> {
           await listarGruposExtras(nid);
           const sig = await fila('SELECT COALESCE(MAX(orden), 0) + 1 AS n FROM extra_grupos WHERE negocio_id = ?', [nid]);
           const r = await ejecutar('INSERT IGNORE INTO extra_grupos (negocio_id, nombre, orden, sucursal_id) VALUES (?, ?, ?, ?)', [nid, nombre, Number(sig?.['n']), alcance]);
-          if (r.affectedRows === 0) throw new ErrorHttp(409, 'validacion', `Ya existe una sección llamada “${nombre}”. Usa otro nombre.`);
+          if (r.affectedRows === 0) throw new ErrorHttp(409, 'validacion', `Ya existe un tipo llamado “${nombre}”. Usa otro nombre.`);
           reply.code(201);
           return { ok: true };
         }
@@ -299,7 +299,7 @@ export async function rutasExtras(app: FastifyInstance): Promise<void> {
           await grupoPropio(nid, alcance, actual);
           if (nuevo.toLowerCase() !== actual.toLowerCase()) {
             const otra = await fila('SELECT COUNT(*) AS n FROM extra_grupos WHERE negocio_id = ? AND nombre = ?', [nid, nuevo]);
-            if (Number(otra?.['n']) > 0) throw new ErrorHttp(409, 'validacion', `Ya existe una sección llamada “${nuevo}”. Usa otro nombre.`);
+            if (Number(otra?.['n']) > 0) throw new ErrorHttp(409, 'validacion', `Ya existe un tipo llamado “${nuevo}”. Usa otro nombre.`);
           }
           const editando = String(d['accion']) === 'grupo_editar';
           const codigo = editando ? await leerCodigo(nid, d, 0, alcance, actual) : undefined;

@@ -420,7 +420,7 @@ function interruptor(p) {
 /*  Formulario de producto                                             */
 /* ------------------------------------------------------------------ */
 
-/** Opción obligatoria: el interruptor muestra la lista de secciones (Carne, Quitar…) de la que hay que elegir; vacío = cualquier opción. */
+/** Opción obligatoria: el interruptor muestra la lista de tipos (Carne, Quitar…) de la que hay que elegir; vacío = cualquier opción. */
 function pintarGrupoObligatorio(actual) {
   const secciones = [...new Set([...gruposExtras, ...extras.map((x) => x.grupo).filter(Boolean)])];
   const sel = $('f-grupo-oblig');
@@ -2173,7 +2173,7 @@ function pintarExtras() {
   }
   if (categorias.length) caja.append(el('p', 'ayuda ex-leyenda', 'Cada tarjeta muestra en qué categorías aparece el modificador (verde = en todos sus platillos, amarillo = en algunos, ej. 1/11). Para cambiarlo, toca «Editar» y elige los platillos.'));
 
-  // Secciones en el orden elegido (las vacías también se muestran); los extras sin sección van al final, en "Otros"
+  // Tipos en el orden elegido (las vacías también se muestran); los extras sin tipo van al final, en "Otros"
   const grupos = new Map(gruposExtras.map((g) => [g, []]));
   for (const x of extras) {
     const g = x.grupo && grupos.has(x.grupo) ? x.grupo : 'Otros';
@@ -2183,7 +2183,7 @@ function pintarExtras() {
   if (grupos.has('Otros') && grupos.get('Otros').length === 0) grupos.delete('Otros');
   for (const [g, lista] of grupos) {
     if (grupos.size > 1 || lista.length === 0) caja.append(el('h3', 'ex-grupo', lista.length ? `${g} (${lista.length})` : `${g} (vacía)`));
-    if (lista.length === 0) { caja.append(el('p', 'ayuda', 'Sin modificadores todavía. Crea uno con “＋ Agregar nuevo modificador” y elige esta sección en “Más opciones”.')); continue; }
+    if (lista.length === 0) { caja.append(el('p', 'ayuda', 'Sin modificadores todavía. Crea uno con “＋ Agregar nuevo modificador” y elige este tipo en “Más opciones”.')); continue; }
     const rejilla = el('div', 'ex-rejilla');
     for (const x of lista) rejilla.append(tarjetaExtra(x));
     caja.append(rejilla);
@@ -2316,7 +2316,7 @@ $('ep-cancelar').addEventListener('click', () => dlgEP.close());
 $('ep-x').addEventListener('click', () => dlgEP.close());
 $('ep-guardar').addEventListener('click', async () => {
   $('ep-error').textContent = '';
-  if (epModo === 'cobro') { efCobroSel = new Set(epMarcados); epModo = 'aparece'; epSoloIds = null; dlgEP.close(); pintarCobro(); return; }
+  if (epModo === 'cobro') { efCobroSel = new Set(epMarcados); epModo = 'aparece'; epSoloIds = null; if (!efExtra && !$('ef-modo-todos').checked) for (const id of efCobroSel) efSel.add(id); dlgEP.close(); pintarCobro(); efDonde(); return; }
   if (!epExtra) { efSel = new Set(epMarcados); dlgEP.close(); efDonde(); return; }
   const agregar = [...epMarcados].filter((id) => !epOriginal.has(id));
   const quitar = [...epOriginal].filter((id) => !epMarcados.has(id));
@@ -2331,15 +2331,15 @@ $('ep-guardar').addEventListener('click', async () => {
 });
 
 /* ------------------------------------------------------------------ */
-/*  Secciones de extras (Quitar, Aparte, Solo...) y variantes          */
+/*  Tipos de extras (Quitar, Aparte, Solo...) y variantes          */
 /* ------------------------------------------------------------------ */
 
-/** Panel "Secciones": subir/bajar, renombrar y quitar. Quitar una sección NO borra sus extras (pasan a "Otros"). */
+/** Panel "Tipos": subir/bajar, renombrar y quitar. Quitar un tipo NO borra sus extras (pasan a "Otros"). */
 function pintarSeccionesExtras() {
   const caja = $('ex-sec-lista');
   caja.replaceChildren();
-  if (gruposExtras.length === 0) { caja.append(el('p', 'ayuda', 'Todavía no hay secciones. Agrega la primera abajo.')); return; }
-  if (esGerente) caja.append(el('p', 'ayuda', 'Las secciones con candado las creó el administrador de la empresa: no se pueden cambiar ni quitar, pero sus modificadores sí puedes deshabilitarlos en tu sucursal.'));
+  if (gruposExtras.length === 0) { caja.append(el('p', 'ayuda', 'Todavía no hay tipos. Agrega la primera abajo.')); return; }
+  if (esGerente) caja.append(el('p', 'ayuda', 'Los tipos con candado los creó el administrador de la empresa: no se pueden cambiar ni quitar, pero sus modificadores sí puedes deshabilitarlos en tu sucursal.'));
   const propias = gruposExtras.filter((g) => (gruposExtrasInfo.find((i) => i.nombre === g) || { propio: true }).propio);   // las que se pueden mover (en orden)
   gruposExtras.forEach((g) => {
     const info = gruposExtrasInfo.find((i) => i.nombre === g) || { propio: true, sucursal_id: null };
@@ -2364,17 +2364,17 @@ function pintarSeccionesExtras() {
     });
     const renombrar = el('button', 'btn chico', '✎ Editar'); renombrar.type = 'button';
     renombrar.addEventListener('click', () => abrirEditarSeccion(g, info));
-    const quitar = el('button', 'btn chico peligro', '🗑'); quitar.type = 'button'; quitar.title = 'Quitar sección'; quitar.setAttribute('aria-label', 'Quitar sección');
+    const quitar = el('button', 'btn chico peligro', '🗑'); quitar.type = 'button'; quitar.title = 'Quitar tipo'; quitar.setAttribute('aria-label', 'Quitar tipo');
     quitar.addEventListener('click', async () => {
       const aviso = n ? ` Sus ${n} modificador${n === 1 ? '' : 'es'} NO se borran: pasan a “Otros”.` : '';
-      if (await confirmar(`¿Quitar la sección “${g}”?${aviso}`, { si: 'Quitar sección', peligro: true })) accionExtra({ accion: 'grupo_eliminar', nombre: g }, 'Sección quitada');
+      if (await confirmar(`¿Quitar el tipo “${g}”?${aviso}`, { si: 'Quitar tipo', peligro: true })) accionExtra({ accion: 'grupo_eliminar', nombre: g }, 'Tipo quitado');
     });
     fila.append(...botones, nombre, renombrar, quitar);
     caja.append(fila);
   });
 }
 
-/** Ventana para editar una sección: nombre, código y "se lee junto al nombre". */
+/** Ventana para editar un tipo: nombre, código y "se lee junto al nombre". */
 let seccionEditando = null;
 function abrirEditarSeccion(nombre, info) {
   seccionEditando = nombre;
@@ -2392,15 +2392,15 @@ $('form-seccion').addEventListener('submit', async (ev) => {
     $('dlg-seccion-editar').close();
     await cargarCatalogo();
     pintarExtras();
-    avisar('Sección actualizada');
+    avisar('Tipo actualizado');
   } catch (err) { $('se-error').textContent = err.message; }
 });
 
-/** Dos páginas dentro de Modificadores: la lista de modificadores y la de sus secciones. */
+/** Dos páginas dentro de Modificadores: la lista de modificadores y la de sus tipos. */
 function mostrarVistaExtras(secciones) {
-  $('ex-vista-mods').hidden = secciones;
+  $('ex-vista-mods').hidden = tipos;
   $('ex-secciones').hidden = !secciones;
-  for (const [id, activo] of [['ex-tab-mods', !secciones], ['ex-tab-secs', secciones]]) {
+  for (const [id, activo] of [['ex-tab-mods', !tipos], ['ex-tab-secs', tipos]]) {
     $(id).classList.toggle('principal', activo);
     $(id).setAttribute('aria-selected', String(activo));
   }
@@ -2410,11 +2410,11 @@ $('ex-tab-mods').addEventListener('click', () => mostrarVistaExtras(false));
 $('ex-tab-secs').addEventListener('click', () => mostrarVistaExtras(true));
 $('ex-sec-form').addEventListener('submit', async (ev) => {
   ev.preventDefault();
-  await accionExtra({ accion: 'grupo_crear', nombre: $('ex-sec-nueva').value.trim() }, 'Sección creada');
+  await accionExtra({ accion: 'grupo_crear', nombre: $('ex-sec-nueva').value.trim() }, 'Tipo creado');
   if (!$('x-error').textContent) $('ex-sec-nueva').value = '';
 });
 
-/** Cierra los paneles de arriba (nuevo extra, variantes, secciones) para que solo haya uno abierto a la vez. */
+/** Cierra los paneles de arriba (nuevo extra, variantes, tipos) para que solo haya uno abierto a la vez. */
 
 async function accionExtra(cuerpo, mensajeOk) {
   $('x-error').textContent = '';
@@ -2443,11 +2443,11 @@ let efCobroInicial = 'no';    // cómo estaba el cobro al abrir (para limpiar pr
 
 function pintarOpcionesGrupo(actual) {
   const sel = $('ef-grupo');
-  sel.replaceChildren(new Option('Sin sección (Otros)', ''));
+  sel.replaceChildren(new Option('Sin tipo (Otros)', ''));
   const nombres = [...gruposExtras];
   if (actual && !nombres.includes(actual)) nombres.push(actual);
   for (const g of nombres) sel.append(new Option(g, g));
-  sel.append(new Option('＋ Nueva sección…', '__nueva'));
+  sel.append(new Option('＋ Nuevo tipo…', '__nueva'));
   sel.value = actual || '';
   $('ef-grupo-nuevo').hidden = true; $('ef-grupo-nuevo').value = '';
 }
@@ -2457,7 +2457,7 @@ $('ef-grupo').addEventListener('change', () => {
   if (nueva) $('ef-grupo-nuevo').focus();
 });
 
-/** Sección «Disponible en» del formulario de edición: resumen + elegir platillos + igualar precio. */
+/** Bloque «Disponible en» del formulario de edición: resumen + elegir platillos + igualar precio. */
 let efSel = new Set();   // platillos elegidos para un extra NUEVO (todavía no existe en el servidor)
 function efDonde() {
   $('ef-elegir').hidden = $('ef-modo-todos').checked;
@@ -2469,7 +2469,7 @@ function efDonde() {
 $('ef-elegir').addEventListener('click', () => abrirExtraPlatillos(efExtra));
 for (const id of ['ef-modo-todos', 'ef-modo-elegir']) $(id).addEventListener('change', efDonde);
 
-/** Vista previa: cómo lo ve el cliente al armar el platillo (título de la sección y el modificador debajo). */
+/** Vista previa: cómo lo ve el cliente al armar el platillo (título de el tipo y el modificador debajo). */
 const efCobroModo = () => ($('ef-cobro-todos').checked ? 'todos' : $('ef-cobro-algunos').checked ? 'algunos' : 'no');
 const efPrecio = () => $('ef-precio').value.trim().replace(',', '.') || '0';
 function pintarCobro() {
@@ -2484,10 +2484,9 @@ for (const id of ['ef-cobro-no', 'ef-cobro-todos', 'ef-cobro-algunos']) $(id).ad
 $('ef-precio').addEventListener('input', pintarPreviaExtra);
 $('ef-cobro-elegir').addEventListener('click', () => {
   epModo = 'cobro'; epExtra = efExtra;
-  const aparece = $('ef-modo-todos').checked ? null : (efExtra ? new Set(productos.filter((p) => p.extras.includes(efExtra.id)).map((p) => p.id)) : new Set(efSel));
-  epSoloIds = aparece;
+  epSoloIds = null;
   epOriginal = new Set(); epMarcados = new Set(efCobroSel);
-  $('ep-titulo').textContent = `¿En qué platillos se cobra${efExtra ? ' «' + efExtra.nombre + '»' : ' el modificador'}? En los demás será gratis.`;
+  $('ep-titulo').textContent = `¿En qué platillos se cobra${efExtra ? ' «' + efExtra.nombre + '»' : ' el modificador'}? Ahí también aparecerá; en los demás será gratis.`;
   $('ep-buscar').value = ''; $('ep-error').textContent = '';
   epPintar();
   dlgEP.showModal();
@@ -2552,8 +2551,8 @@ async function guardarFormExtra() {
   const nombre = $('ef-nombre').value.trim();
   if (!nombre) { $('ef-error').textContent = 'Escribe cómo se llama el modificador.'; $('ef-nombre').focus(); return false; }
   const g = $('ef-grupo').value === '__nueva' ? $('ef-grupo-nuevo').value.trim() : $('ef-grupo').value;
-  if ($('ef-grupo').value === '__nueva' && !g) { $('ef-error').textContent = 'Escribe el nombre de la nueva sección.'; $('ef-grupo-nuevo').focus(); return false; }
-  if (!efExtra && efSel.size === 0 && !$('ef-modo-todos').checked) { $('ef-error').textContent = 'Elige en qué platillos va a aparecer (todos, o con «Elegir categorías o platillos…»).'; return false; }
+  if ($('ef-grupo').value === '__nueva' && !g) { $('ef-error').textContent = 'Escribe el nombre del nuevo tipo.'; $('ef-grupo-nuevo').focus(); return false; }
+  if (!efExtra && efSel.size === 0 && efCobroModo() !== 'algunos' && !$('ef-modo-todos').checked) { $('ef-error').textContent = 'Elige en qué platillos va a aparecer (todos, o con «Elegir categorías o platillos…»).'; return false; }
   const modoCobro = efCobroModo();
   if (modoCobro !== 'no' && !(Number(efPrecio()) > 0)) { $('ef-error').textContent = 'Escribe el precio con el que se cobra (por ejemplo 10).'; $('ef-precio').focus(); return false; }
   if (modoCobro === 'algunos' && efCobroSel.size === 0) { $('ef-error').textContent = 'Elige en qué platillos se cobra (botón «Elegir dónde se cobra…»).'; return false; }
@@ -2563,6 +2562,10 @@ async function guardarFormExtra() {
     const r = await enviarJson(API + 'admin/extras.php', cuerpo);
     const idExtra = efExtra ? efExtra.id : r.id;
     if (!efExtra && efSel.size) await enviarJson(API + 'admin/extras.php', { accion: 'asignar_platillos', id: idExtra, agregar: [...efSel], quitar: [] });
+    if (efExtra && modoCobro === 'algunos' && !$('ef-modo-todos').checked) {   // donde se cobra, también aparece
+      const faltan = [...efCobroSel].filter((id) => { const p = productos.find((x) => x.id === id); return p && !p.extras.includes(efExtra.id); });
+      if (faltan.length) await enviarJson(API + 'admin/extras.php', { accion: 'asignar_platillos', id: idExtra, agregar: faltan, quitar: [] });
+    }
     if (!$('ef-todos-fila').hidden && $('ef-modo-todos').checked !== !!(efExtra && efExtra.todos)) await enviarJson(API + 'admin/extras.php', { accion: 'predeterminado', id: idExtra, valor: $('ef-modo-todos').checked });
     if (modoCobro === 'algunos') await enviarJson(API + 'admin/extras.php', { accion: 'cobro_platillos', id: idExtra, precio: efPrecio(), platillos: [...efCobroSel] });
     else if (efCobroInicial === 'algunos') await enviarJson(API + 'admin/extras.php', { accion: 'precio_general', id: idExtra });   // deja de cobrar con precios propios
@@ -2584,7 +2587,7 @@ $('form-extra').addEventListener('submit', async (ev) => {
 $('ef-otro').addEventListener('click', async () => {
   const grupo = $('ef-grupo').value === '__nueva' ? $('ef-grupo-nuevo').value.trim() : $('ef-grupo').value;
   const sel = new Set(efSel);
-  if (await guardarFormExtra()) { abrirFormExtra(null); pintarOpcionesGrupo(grupo); efSel = sel; efDonde(); }   // la misma sección se conserva para el siguiente
+  if (await guardarFormExtra()) { abrirFormExtra(null); pintarOpcionesGrupo(grupo); efSel = sel; efDonde(); }   // la misma tipo se conserva para el siguiente
 });
 
 iniciar();

@@ -17,7 +17,7 @@
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Outfit:wght@600;700;800&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="../css/estilos.css?v=1795557467">
   <link rel="stylesheet" href="../css/plano.css?v=1795557467">
-  <link rel="stylesheet" href="../css/admin.css?v=202611271400">
+  <link rel="stylesheet" href="../css/admin.css?v=202611271230">
   <link rel="stylesheet" href="../css/tablero.css?v=1795557101">
   <link rel="stylesheet" href="../css/shell.css?v=1795557467">
   <link rel="stylesheet" href="../css/acceso.css?v=202611261215">
@@ -258,7 +258,7 @@
 
       <div class="ex-botones" role="tablist">
         <button id="ex-tab-mods" class="btn principal" type="button" role="tab" aria-selected="true">Modificadores</button>
-        <button id="ex-tab-secs" class="btn" type="button" role="tab" aria-selected="false" title="Los títulos con que se agrupan los modificadores (Quitar, Aparte, Solo...)">Secciones de modificador</button>
+        <button id="ex-tab-secs" class="btn" type="button" role="tab" aria-selected="false" title="Los títulos con que se agrupan los modificadores (Quitar, Aparte, Solo...)">Tipos de modificador</button>
       </div>
 
       <!-- Página 1: modificadores -->
@@ -267,14 +267,14 @@
         <div class="ex-acciones"><button id="ex-nuevo-abrir" class="btn principal ex-abrir" type="button">＋ Agregar nuevo modificador</button></div>
       </section>
 
-      <!-- Página 2: secciones de modificador -->
-      <section id="ex-secciones" class="ex-panel" hidden>
-        <h3 class="ex-subtitulo">Secciones de modificador</h3>
-        <p class="ayuda">Son los títulos con los que se acomodan los modificadores (Quitar, Aparte, Solo…). Crea las que necesites y cámbiales el nombre o el orden; con ⤒ y ⤓ las mandas hasta arriba o hasta abajo. Al quitar una sección <strong>sus modificadores no se borran</strong>: pasan a “Otros”.</p>
+      <!-- Página 2: tipos de modificador -->
+      <section id="ex-tipos" class="ex-panel" hidden>
+        <h3 class="ex-subtitulo">Tipos de modificador</h3>
+        <p class="ayuda">Son los títulos con los que se acomodan los modificadores (Quitar, Aparte, Solo…). Crea las que necesites y cámbiales el nombre o el orden; con ⤒ y ⤓ las mandas hasta arriba o hasta abajo. Al quitar un tipo <strong>sus modificadores no se borran</strong>: pasan a “Otros”.</p>
         <div id="ex-sec-lista" class="ex-sec-lista"></div>
         <form id="ex-sec-form" class="ex-sec-nueva" autocomplete="off">
-          <input id="ex-sec-nueva" type="text" maxlength="40" placeholder="Nombre de la nueva sección (ej. Picante, Tamaño)" aria-label="Nueva sección" required>
-          <button class="btn principal" type="submit">＋ Agregar nueva sección</button>
+          <input id="ex-sec-nueva" type="text" maxlength="40" placeholder="Nombre del nuevo tipo (ej. Picante, Tamaño)" aria-label="Nuevo tipo" required>
+          <button class="btn principal" type="submit">＋ Agregar nuevo tipo</button>
         </form>
       </section>
       <datalist id="lista-grupos"></datalist>
@@ -310,18 +310,18 @@
     </div>
   </dialog>
 
-  <!-- Editar una sección de modificadores: nombre, código y si se lee junto al nombre -->
+  <!-- Editar un tipo de modificadores: nombre, código y si se lee junto al nombre -->
   <dialog id="dlg-seccion-editar">
     <form id="form-seccion" class="formulario dialogo" autocomplete="off">
-      <h2>Editar sección</h2>
-      <label>Nombre de la sección
+      <h2>Editar tipo</h2>
+      <label>Nombre del tipo
         <input id="se-nombre" type="text" maxlength="40" placeholder="Ej. Con, Sin, Extra" required>
       </label>
       <label>Código para la cocina <small>(opcional)</small>
         <input id="se-codigo" type="text" maxlength="20" autocapitalize="characters" placeholder="Ej. S">
-        <small>La cocina lo ve junto al del modificador: sección S + modificador CEB = «S CEB». No puede repetirse con ningún otro código de la empresa.</small>
+        <small>La cocina lo ve junto al del modificador: tipo S + modificador CEB = «S CEB». No puede repetirse con ningún otro código de la empresa.</small>
       </label>
-      <p class="ayuda">Los modificadores de esta sección se leen junto a su nombre: sección «Sin» + modificador «cebolla» = «Sin cebolla» en el ticket y en el pedido.</p>
+      <p class="ayuda">Los modificadores de este tipo se leen junto a su nombre: tipo «Sin» + modificador «cebolla» = «Sin cebolla» en el ticket y en el pedido.</p>
       <p id="se-error" class="msg-error" role="alert"></p>
       <div class="acciones-dialogo">
         <button class="btn principal" type="submit">Guardar</button>
@@ -335,17 +335,17 @@
     <form id="form-extra" class="formulario dialogo" autocomplete="off">
       <h2 id="ef-titulo">Nuevo modificador</h2>
       <div class="ef-fila ef-fila-3">
-        <label class="ef-sec"><span class="etq">Sección <span class="tip" tabindex="0" data-tip="La sección es el título bajo el que se agrupa (Con, Sin, Extra, Salsas…). El modificador se lee junto a ella: sección «Con» + modificador «queso» = «Con queso». Por eso basta escribir «queso».">i</span></span>
+        <label class="ef-sec"><span class="etq">Tipo de modificador <span class="tip" tabindex="0" data-tip="El tipo es el título bajo el que se agrupa (Con, Sin, Extra, Salsas…). El modificador se lee junto a ella: tipo «Con» + modificador «queso» = «Con queso». Por eso basta escribir «queso».">i</span></span>
           <select id="ef-grupo"></select>
         </label>
         <label class="ef-crece"><span class="etq">Nombre del modificador</span>
           <input id="ef-nombre" type="text" maxlength="60" placeholder="Ej. queso, cebolla, doble" required>
         </label>
-        <label class="ef-codigo"><span class="etq">Código cocina <span class="tip" tabindex="0" data-tip="Opcional. Abreviatura que verá la cocina en la comanda, junto al código de la sección (S + CEB = «S CEB»). No puede repetirse con ningún otro código de la empresa.">i</span></span>
+        <label class="ef-codigo"><span class="etq">Código cocina <span class="tip" tabindex="0" data-tip="Opcional. Abreviatura que verá la cocina en la comanda, junto al código del tipo (S + CEB = «S CEB»). No puede repetirse con ningún otro código de la empresa.">i</span></span>
           <input id="ef-codigo" type="text" maxlength="20" autocapitalize="characters" placeholder="Opcional">
         </label>
       </div>
-      <input id="ef-grupo-nuevo" type="text" maxlength="40" placeholder="Nombre de la nueva sección (ej. Con, Sin, Extra)" aria-label="Nombre de la nueva sección" hidden>
+      <input id="ef-grupo-nuevo" type="text" maxlength="40" placeholder="Nombre del nuevo tipo (ej. Con, Sin, Extra)" aria-label="Nombre del nuevo tipo" hidden>
       <div id="ef-cobro-caja" class="ex-campo">
         <span class="ex-etq">¿Se cobra aparte?</span>
         <div class="ef-modos">
@@ -906,13 +906,13 @@
 
   <div id="toast" class="toast" role="status" hidden></div>
 
-  <script src="../js/comun.js?v=202611271400"></script>
+  <script src="../js/comun.js?v=202611271230"></script>
   <script src="../js/selectorMesa.js?v=1795557467"></script>
   <script src="../js/tablero.js?v=1795557101"></script>
   <script src="../js/shell.js?v=1795557467"></script>
   <script src="../js/login.js?v=202611242250"></script>
   <script src="../js/vendor/qrcode.js"></script>
-  <script src="../js/admin.js?v=202611271400"></script>
+  <script src="../js/admin.js?v=202611271230"></script>
   <script src="../js/inventario.js?v=202611270900"></script>
 </body>
 </html>
