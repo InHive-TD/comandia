@@ -15,7 +15,7 @@
  *     asignar_platillos { id, agregar: [producto_id], quitar: [producto_id] }   pone o quita el extra en platillos concretos
  *     predeterminado { id, valor }          (solo el administrador) valor=1: va en TODOS los platillos, también los nuevos
  *     sucursal_deshabilitar { id, deshabilitar }   el gerente apaga o enciende un modificador GENERAL solo en su sucursal
- *     grupo_crear / grupo_renombrar / grupo_eliminar   secciones de extras (Quitar, Aparte, Solo...)
+ *     grupo_crear / grupo_editar { nombre, nuevo, codigo, prefijo } / grupo_eliminar   secciones (Quitar, Con, Sin...)
  *     grupo_mover { nombre, direccion: subir | bajar | inicio | fin }
  *
  * La lista de extras viene dentro de GET /admin/productos.
@@ -25,6 +25,7 @@ import { cuerpoJson, exigirMetodo, requerirGestion } from '../../auth.js';
 import { cartaOrigen } from '../../carta.js';
 import { ejecutar, fila, filas, transaccion } from '../../db.js';
 import { ErrorHttp, fallo } from '../../errores.js';
+import { codigoEnUso, mensajeCodigo } from '../../codigos.js';
 import { entero, largo, mayusculas, noVacio } from '../../util.js';
 
 function leerNombre(d: Record<string, unknown>): string {
@@ -52,12 +53,13 @@ function leerGrupo(d: Record<string, unknown>): string | null {
  * Código corto opcional (ej. XQ = extra queso). No puede repetirse entre extras; sí puede coincidir con el
  * código de un producto ("VOL P" = volcán de pastor).
  */
-async function leerCodigo(nid: number, d: Record<string, unknown>, idActual = 0): Promise<string | null> {
-  const codigo = mayusculas(String(d['codigo'] ?? '').trim());
+async function leerCodigo(nid: number, d: Record<string, unknown>, idActual = 0, alcance: number | null = null, grupoActual = '', campo = 'codigo'): Promise<string | null> {
+  const codigo = mayusculas(String(d[campo] ?? '').trim());
   if (codigo === '') return null;
-  if (!/^[A-Z0-9-]{1,20}$/.test(codigo)) throw fallo('El código solo puede llevar letras, números y guion (máximo 10 caracteres).');
-  const otro = await fila('SELECT nombre FROM extras WHERE negocio_id = ? AND codigo = ? AND id <> ?', [nid, codigo, idActual]);
-  if (otro) throw fallo(`El código ${codigo} ya lo usa el modificador “${String(otro['nombre'])}”.`);
+  if (!/^[A-Z0-9-]{1,20}$/.test(codigo)) throw fallo('El código solo puede llevar letras, números y guion (máximo 20 caracteres).');
+  // No se repite en toda la empresa: ni con otro modificador, ni con un platillo, ni con una sección.
+  const otro = await codigoEnUso(nid, codigo, { extra: idActual, grupo: grupoActual });
+  if (otro) throw fallo(mensajeCodigo(codigo, otro, alcance));
   return codigo;
 }
 
@@ -65,7 +67,7 @@ async function leerCodigo(nid: number, d: Record<string, unknown>, idActual = 0)
  * Secciones de extras. Las que ya existen escritas en algún extra (extras.grupo) se "adoptan" solas en la tabla
  * extra_grupos, para que la lista siempre esté completa y ordenable. Devuelve las secciones en su orden.
  */
-export interface GrupoExtra { nombre: string; orden: number; sucursal_id: number | null }
+export interface GrupoExtra { nombre: string; orden: number; sucursal_id: number | null; codigo: string | null; prefijo: boolean }
 
 export async function listarGruposExtras(nid: number, alcance: number | null = null): Promise<GrupoExtra[]> {
   await ejecutar(
@@ -78,8 +80,9 @@ export async function listarGruposExtras(nid: number, alcance: number | null = n
   // El gerente ve primero las secciones generales y después las suyas; las de otras sucursales no existen para él.
   const donde = alcance === null ? '' : ` AND (sucursal_id IS NULL OR sucursal_id = ${Number(alcance)})`;
   const orden = alcance === null ? 'orden, id' : '(sucursal_id IS NOT NULL), orden, id';
-  return (await filas(`SELECT nombre, orden, sucursal_id FROM extra_grupos WHERE negocio_id = ?${donde} ORDER BY ${orden}`, [nid])).map((g) => ({
+  return (await filas(`SELECT nombre, orden, sucursal_id, codigo, prefijo FROM extra_grupos WHERE negocio_id = ?${donde} ORDER BY ${orden}`, [nid])).map((g) => ({
     nombre: String(g['nombre']), orden: Number(g['orden']), sucursal_id: g['sucursal_id'] === null ? null : Number(g['sucursal_id']),
+    codigo: (g['codigo'] as string | null) ?? null, prefijo: Boolean(Number(g['prefijo'])),
   }));
 }
 
@@ -142,7 +145,7 @@ export async function rutasExtras(app: FastifyInstance): Promise<void> {
           const grupo = leerGrupo(d);
           await grupoUsable(nid, alcance, grupo);
           const r = await ejecutar('INSERT INTO extras (negocio_id, sucursal_id, nombre, precio, orden, codigo, grupo) VALUES (?, ?, ?, ?, ?, ?, ?)', [
-            nid, alcance, nombre, precio, Number(sig?.['n']), await leerCodigo(nid, d), grupo,
+            nid, alcance, nombre, precio, Number(sig?.['n']), await leerCodigo(nid, d, 0, alcance), grupo,
           ]);
           reply.code(201);
           return { ok: true, id: r.insertId };
@@ -152,7 +155,7 @@ export async function rutasExtras(app: FastifyInstance): Promise<void> {
           const grupo = leerGrupo(d);
           await grupoUsable(nid, alcance, grupo);
           await ejecutar('UPDATE extras SET nombre = ?, precio = ?, activo = ?, codigo = ?, grupo = ? WHERE id = ? AND negocio_id = ?', [
-            leerNombre(d), leerPrecio(d), noVacio(d['activo']) ? 1 : 0, await leerCodigo(nid, d, id), grupo, id, nid,
+            leerNombre(d), leerPrecio(d), noVacio(d['activo']) ? 1 : 0, await leerCodigo(nid, d, id, alcance), grupo, id, nid,
           ]);
           return { ok: true };
         }
@@ -268,18 +271,23 @@ export async function rutasExtras(app: FastifyInstance): Promise<void> {
           reply.code(201);
           return { ok: true };
         }
+        case 'grupo_editar':
         case 'grupo_renombrar': {
+          // Nombre, código (opcional, único en la empresa) y si la sección se lee junto al nombre ("Sin" + "cebolla").
           const actual = leerNombreGrupo(d['nombre']);
-          const nuevo = leerNombreGrupo(d['nuevo']);
+          const nuevo = leerNombreGrupo(d['nuevo'] ?? d['nombre']);
           await listarGruposExtras(nid);
           await grupoPropio(nid, alcance, actual);
           if (nuevo.toLowerCase() !== actual.toLowerCase()) {
             const otra = await fila('SELECT COUNT(*) AS n FROM extra_grupos WHERE negocio_id = ? AND nombre = ?', [nid, nuevo]);
             if (Number(otra?.['n']) > 0) throw new ErrorHttp(409, 'validacion', `Ya existe una sección llamada “${nuevo}”. Usa otro nombre.`);
           }
+          const editando = String(d['accion']) === 'grupo_editar';
+          const codigo = editando ? await leerCodigo(nid, d, 0, alcance, actual) : undefined;
           await transaccion(async (tx) => {
             await tx.ejecutar('UPDATE extra_grupos SET nombre = ? WHERE negocio_id = ? AND nombre = ?', [nuevo, nid, actual]);
             await tx.ejecutar('UPDATE extras SET grupo = ? WHERE negocio_id = ? AND grupo = ?', [nuevo, nid, actual]);
+            if (editando) await tx.ejecutar('UPDATE extra_grupos SET codigo = ?, prefijo = ? WHERE negocio_id = ? AND nombre = ?', [codigo ?? null, noVacio(d['prefijo']) ? 1 : 0, nid, nuevo]);
           });
           return { ok: true };
         }

@@ -2344,6 +2344,8 @@ function pintarSeccionesExtras() {
     const fila = el('div', 'ex-sec-fila');
     const n = extras.filter((x) => x.grupo === g).length;
     const nombre = el('span', 'ex-sec-nombre'); nombre.append(el('strong', '', (info.propio ? '' : '🔒 ') + g), el('small', '', ` · ${n} modificador${n === 1 ? '' : 'es'}`));
+    if (info.codigo) nombre.append(el('span', 'chip', info.codigo));
+    if (info.prefijo) nombre.append(el('span', 'chip', 'se lee junto'));
     if (!esGerente && info.sucursal_id !== null) {
       const suc = sucursalesCarta.find((x) => x.id === info.sucursal_id);
       nombre.append(el('span', 'chip', 'Solo ' + (suc ? suc.nombre : 'una sucursal')));
@@ -2359,11 +2361,8 @@ function pintarSeccionesExtras() {
       b.addEventListener('click', () => accionExtra({ accion: 'grupo_mover', nombre: g, direccion: dir }));
       return b;
     });
-    const renombrar = el('button', 'btn chico', '✎ Renombrar'); renombrar.type = 'button';
-    renombrar.addEventListener('click', async () => {
-      const nuevo = await pedirTexto(`Nuevo nombre para la sección “${g}”:`, { si: 'Guardar', valor: g });
-      if (nuevo && nuevo.trim() && nuevo.trim() !== g) accionExtra({ accion: 'grupo_renombrar', nombre: g, nuevo: nuevo.trim() }, 'Sección renombrada');
-    });
+    const renombrar = el('button', 'btn chico', '✎ Editar'); renombrar.type = 'button';
+    renombrar.addEventListener('click', () => abrirEditarSeccion(g, info));
     const quitar = el('button', 'btn chico peligro', '🗑'); quitar.type = 'button'; quitar.title = 'Quitar sección'; quitar.setAttribute('aria-label', 'Quitar sección');
     quitar.addEventListener('click', async () => {
       const aviso = n ? ` Sus ${n} modificador${n === 1 ? '' : 'es'} NO se borran: pasan a “Otros”.` : '';
@@ -2373,6 +2372,29 @@ function pintarSeccionesExtras() {
     caja.append(fila);
   });
 }
+
+/** Ventana para editar una sección: nombre, código y "se lee junto al nombre". */
+let seccionEditando = null;
+function abrirEditarSeccion(nombre, info) {
+  seccionEditando = nombre;
+  $('se-nombre').value = nombre;
+  $('se-codigo').value = info.codigo || '';
+  $('se-prefijo').checked = !!info.prefijo;
+  $('se-error').textContent = '';
+  $('dlg-seccion-editar').showModal();
+  $('se-nombre').focus();
+}
+$('se-cancelar').addEventListener('click', () => $('dlg-seccion-editar').close());
+$('form-seccion').addEventListener('submit', async (ev) => {
+  ev.preventDefault();
+  try {
+    await enviarJson(API + 'admin/extras.php', { accion: 'grupo_editar', nombre: seccionEditando, nuevo: $('se-nombre').value.trim(), codigo: $('se-codigo').value.trim(), prefijo: $('se-prefijo').checked });
+    $('dlg-seccion-editar').close();
+    await cargarCatalogo();
+    pintarExtras();
+    avisar('Sección actualizada');
+  } catch (err) { $('se-error').textContent = err.message; }
+});
 
 /** Dos páginas dentro de Modificadores: la lista de modificadores y la de sus secciones. */
 function mostrarVistaExtras(secciones) {
@@ -2456,9 +2478,11 @@ function pintarPreviaExtra() {
   if (!nombre) { caja.append(el('span', 'ayuda', 'Escribe el nombre para ver cómo se verá.')); return; }
   const costo = efCosto ? Number(String(efCosto.valor()).replace(',', '.')) || 0 : 0;
   caja.append(el('span', 'ef-prev-sec', seccion || 'Otros'));
-  const chip = el('span', 'ef-prev-chip', nombre);
+  const info = gruposExtrasInfo.find((g) => g.nombre === seccion);
+  const chip = el('span', 'ef-prev-chip', info && info.prefijo ? `${seccion} ${nombre}` : nombre);
   if (costo > 0) chip.append(el('b', '', ` +${dinero.format(costo)}`));
   caja.append(chip);
+  if (info && info.codigo) caja.append(el('small', 'ayuda', `Cocina verá: ${info.codigo} ${($('ef-codigo').value.trim() || nombre).toUpperCase()}`));
 }
 for (const id of ['ef-nombre', 'ef-grupo', 'ef-grupo-nuevo']) { $(id).addEventListener('input', pintarPreviaExtra); $(id).addEventListener('change', pintarPreviaExtra); }
 $('ef-igualar').addEventListener('click', async () => {

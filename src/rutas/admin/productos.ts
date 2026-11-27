@@ -21,6 +21,7 @@ import { ErrorHttp, fallo } from '../../errores.js';
 import { type Formulario, leerFormulario } from '../../formulario.js';
 import { borrarFoto, procesarFoto } from '../../fotos.js';
 import { cartaOrigen } from '../../carta.js';
+import { codigoEnUso, mensajeCodigo } from '../../codigos.js';
 import { sucursalesActivas } from '../../negocio.js';
 import { listarGruposExtras } from './extras.js';
 import { entero, esDuplicado, largo, mayusculas } from '../../util.js';
@@ -70,6 +71,9 @@ export async function leerCampos(nid: number, alcance: number | null, f: Formula
       const ajeno = alcance !== null && otro['sucursal_id'] !== null && Number(otro['sucursal_id']) !== alcance;
       throw fallo(ajeno ? `El código ${codigo} ya está en uso. Elige otro.` : `El código ${codigo} ya lo usa “${String(otro['nombre'])}”.`);
     }
+    // Tampoco puede coincidir con el de un modificador ni con el de una sección (los códigos no se repiten en la empresa).
+    const choque = await codigoEnUso(nid, codigo, {}, ['modificador', 'sección']);
+    if (choque) throw fallo(mensajeCodigo(codigo, choque, alcance));
   }
 
   const porcion = f.texto('porcion').trim();
@@ -245,7 +249,7 @@ async function listar(nid: number, alcance: number | null): Promise<Record<strin
   return {
     ok: true, productos, categorias, estaciones, extras,
     grupos_extras: gruposExtras.map((g) => g.nombre),
-    grupos_extras_info: gruposExtras.map((g) => ({ nombre: g.nombre, sucursal_id: g.sucursal_id, propio: alcance === null || g.sucursal_id === alcance })),
+    grupos_extras_info: gruposExtras.map((g) => ({ nombre: g.nombre, sucursal_id: g.sucursal_id, codigo: g.codigo, prefijo: g.prefijo, propio: alcance === null || g.sucursal_id === alcance })),
   };
 }
 

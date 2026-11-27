@@ -206,6 +206,9 @@ async function actualizarV2(): Promise<void> {
   await asegurarColumna('extras', 'sucursal_id', 'INT UNSIGNED NULL');
   await asegurarColumna('extras', 'todos', 'TINYINT(1) NOT NULL DEFAULT 0');
   await asegurarColumna('extra_grupos', 'sucursal_id', 'INT UNSIGNED NULL');
+  // Código de la sección (S = Sin, X = Extra...) y si se lee junto al nombre del modificador ("Sin" + "cebolla" = "Sin cebolla").
+  await asegurarColumna('extra_grupos', 'codigo', 'VARCHAR(20) NULL');
+  await asegurarColumna('extra_grupos', 'prefijo', 'TINYINT(1) NOT NULL DEFAULT 0');
   await ejecutar(`CREATE TABLE IF NOT EXISTS extra_sucursal_off (
     extra_id    INT UNSIGNED NOT NULL,
     sucursal_id INT UNSIGNED NOT NULL,

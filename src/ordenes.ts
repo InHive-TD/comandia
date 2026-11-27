@@ -426,15 +426,21 @@ export async function validarLineas(c: Cx, entrada: unknown): Promise<[Linea[], 
       vistos.add(extraId);
       const x = await una(
         c,
-        `SELECT e.id, e.nombre, e.codigo, COALESCE(pe.precio, e.precio) AS precio, e.activo, e.grupo
+        `SELECT e.id, e.nombre, e.codigo, COALESCE(pe.precio, e.precio) AS precio, e.activo, e.grupo, g.codigo AS grupo_codigo, g.prefijo AS grupo_prefijo
            FROM extras e JOIN producto_extras pe ON pe.extra_id = e.id
+           LEFT JOIN extra_grupos g ON g.negocio_id = e.negocio_id AND g.nombre = e.grupo
           WHERE e.id = ? AND pe.producto_id = ? AND e.negocio_id = ${c.nid}${c.sid > 0 ? ` AND ${extraVisible(c.sid)}` : ''}
             AND EXISTS (SELECT 1 FROM productos px WHERE px.id = pe.producto_id AND px.negocio_id = e.negocio_id)`,
         [extraId, productoId],
       );
       if (!x) throw fallo(`Ese extra no está disponible para “${p['nombre']}”.`);
       if (!n(x['activo'])) throw fallo(`El extra “${x['nombre']}” ya no está activo.`);
-      extrasElegidos.push({ id: n(x['id']), nombre: String(x['nombre']), codigo: (x['codigo'] as string | null) ?? null, precio: String(x['precio']), grupo: (x['grupo'] as string | null) ?? null });
+      // Lectura completa: "Sin" + "cebolla" = "Sin cebolla" (si la sección se lee junto al nombre); la cocina ve la combinación de códigos ("S CEB").
+      const leeJunto = n(x['grupo_prefijo']) === 1 && x['grupo'];
+      const nombreCompleto = (leeJunto ? `${x['grupo']} ${x['nombre']}` : String(x['nombre'])).slice(0, 60);   // la columna admite 60
+      const gcod = (x['grupo_codigo'] as string | null) ?? null;
+      const codigoCompleto = gcod ? `${gcod} ${(x['codigo'] as string | null) || String(x['nombre']).toUpperCase()}`.slice(0, 20) : ((x['codigo'] as string | null) ?? null);   // la columna admite 20
+      extrasElegidos.push({ id: n(x['id']), nombre: nombreCompleto, codigo: codigoCompleto, precio: String(x['precio']), grupo: (x['grupo'] as string | null) ?? null });
       sumaExtras += Number(x['precio']);
     }
 
