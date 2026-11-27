@@ -35,9 +35,10 @@ export async function rutasMenu(app: FastifyInstance): Promise<void> {
     // Extras activos de cada producto: producto_id → [{id, nombre, precio, codigo, grupo}]
     const extras = new Map<number, unknown[]>();
     const filasExtras = await filas(
-      `SELECT pe.producto_id, e.id, e.nombre, COALESCE(pe.precio, e.precio) AS precio, e.codigo, e.grupo
+      `SELECT pe.producto_id, e.id, e.nombre, COALESCE(pe.precio, e.precio) AS precio, e.codigo, e.grupo, g.codigo AS grupo_codigo
          FROM producto_extras pe
          JOIN extras e ON e.id = pe.extra_id
+         LEFT JOIN extra_grupos g ON g.negocio_id = e.negocio_id AND g.nombre = e.grupo
          JOIN productos pr ON pr.id = pe.producto_id
         WHERE e.activo = 1 AND e.negocio_id = ? AND pr.negocio_id = e.negocio_id${suc > 0 ? ` AND ${extraVisible(suc)}` : ''}
         ORDER BY e.orden, e.id`,
@@ -45,7 +46,7 @@ export async function rutasMenu(app: FastifyInstance): Promise<void> {
     );
     for (const x of filasExtras) {
       const k = Number(x['producto_id']);
-      extras.set(k, [...(extras.get(k) ?? []), { id: Number(x['id']), nombre: x['nombre'], precio: Number(x['precio']), codigo: x['codigo'], grupo: x['grupo'] }]);
+      extras.set(k, [...(extras.get(k) ?? []), { id: Number(x['id']), nombre: x['nombre'], precio: Number(x['precio']), codigo: x['codigo'], grupo: x['grupo'], grupo_codigo: x['grupo_codigo'] ?? null }]);
     }
 
     // Agrupar por categoría conservando el orden: [{ categoria, productos: [...] }, ...]

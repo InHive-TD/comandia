@@ -491,3 +491,10 @@ document.addEventListener('DOMContentLoaded', () => {
   convertirParentesis(document);
   new MutationObserver((ms) => { for (const m of ms) for (const n of m.addedNodes) if (n.nodeType === 1) convertirParentesis(n); }).observe(document.body, { childList: true, subtree: true });
 });
+
+/** Nombre con que se lee un modificador junto a su tipo: «Con» + «queso» = «Con queso». */
+function nombreExtra(x) {
+  const n = String((x && x.nombre) || '');
+  const g = x && x.grupo ? String(x.grupo) : '';
+  return g && !n.toLowerCase().startsWith(g.toLowerCase()) ? `${g} ${n}` : n;
+}

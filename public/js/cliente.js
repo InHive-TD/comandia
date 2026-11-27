@@ -448,7 +448,7 @@ $('form-opciones').addEventListener('submit', (ev) => {
   // La ventana NO se cierra: se anota lo agregado arriba y se limpia todo para pedir otra variante (se sale con la ✕).
   const lista = $('op-agregados');
   lista.hidden = false;
-  lista.append(el('li', '', `✔ ${opCantidad} × ${opProducto.nombre}` + (elegidos.length ? ' · ' + elegidos.map((x) => x.nombre).join(', ') : '') + (notas ? ` · “${notas}”` : '') + ' agregado'));
+  lista.append(el('li', '', `✔ ${opCantidad} × ${opProducto.nombre}` + (elegidos.length ? ' · ' + elegidos.map(nombreExtra).join(', ') : '') + (notas ? ` · “${notas}”` : '') + ' agregado'));
   opCantidad = 1; $('op-cantidad').textContent = '1';
   $('op-notas').value = '';
   $('op-error').textContent = '';
@@ -519,7 +519,7 @@ function pintarCarrito() {
     ultimo = l.plato;
     const fila = el('div', 'linea');
     fila.append(el('span', 'linea-nombre', l.producto.nombre), el('span', 'linea-precio', dinero.format(precioLinea(l))));
-    const detalle = [...l.extras.map((x) => x.nombre), ...(l.notas ? [`“${l.notas}”`] : [])].join(' · ');
+    const detalle = [...l.extras.map(nombreExtra), ...(l.notas ? [`“${l.notas}”`] : [])].join(' · ');
     if (detalle) fila.append(el('span', 'linea-detalle', detalle));
     const ctl = el('div', 'linea-ctl');
     const menos = el('button', 'btn', '−'); menos.type = 'button'; menos.setAttribute('aria-label', 'Menos');

@@ -70,6 +70,7 @@
         if (!x.codigo || vistos.has(x.id)) continue;
         vistos.add(x.id);
         v.push({ code: x.codigo.toUpperCase(), extra: x, key: 'e' + x.id });
+        if (x.grupo_codigo) v.push({ code: String(x.grupo_codigo).toUpperCase() + x.codigo.toUpperCase(), extra: x, key: 'e' + x.id });   // tipo + modificador: SCEB
       }
       if (K === 'TOR' || K === 'HAR') v.push({ code: 'Q', pseudo: 'Q', key: 'q' });
       if (lista.some((x) => (x.codigo || '').toUpperCase() === 'QASA')) v.push({ code: 'QAMA', pseudo: 'QAMA', key: 'qama' });
@@ -163,7 +164,16 @@
       return { producto: prod, extras, cantidad: l.cantidad, plato: l.plato };
     }
 
-    const piezas = normalizar(op.texto !== undefined ? op.texto : texto);
+    // Código del tipo ("S") suelto + modificador ("CEB") se leen juntos: "S CEB" = "SCEB"
+    const codsTipo = new Set();
+    for (const p of productos) for (const x of p.extras) if (x.grupo_codigo) codsTipo.add(String(x.grupo_codigo).toUpperCase());
+    const piezas0 = normalizar(op.texto !== undefined ? op.texto : texto);
+    const piezas = [];
+    for (let i = 0; i < piezas0.length; i++) {
+      const sig = piezas0[i + 1];
+      if (codsTipo.has(piezas0[i]) && !porCodigo.has(piezas0[i]) && sig && sig !== '/' && !/^\d/.test(sig)) piezas.push(piezas0[i] + piezas0[++i]);
+      else piezas.push(piezas0[i]);
+    }
     const lineas = [];
     let cur = null;
     let cantidad = 1;

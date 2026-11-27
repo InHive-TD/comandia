@@ -500,7 +500,7 @@ function vozPintarPlatos() {
       cant.append(menos, el('output', '', String(l.cantidad)), mas);
       const nombre = el('div', 'voz-nombre');
       nombre.append(el('strong', '', l.nombre));
-      if (l.extras.length) nombre.append(el('div', 'voz-extras', l.extras.map((x) => (x.grupo ? x.grupo + ': ' : '') + x.nombre).join(' · ')));
+      if (l.extras.length) nombre.append(el('div', 'voz-extras', l.extras.map(nombreExtra).join(' · ')));
       if (l.falta_opcion) nombre.append(el('div', 'voz-aviso', 'Falta elegir la opción obligatoria'));
       const precio = el('span', 'voz-precio', dinero.format(vozPrecioLinea(l)));
       const quitar = el('button', 'btn chico', '✕'); quitar.type = 'button'; quitar.setAttribute('aria-label', 'Quitar');
@@ -886,7 +886,7 @@ $('form-opciones').addEventListener('submit', (ev) => {
   agregarLinea(opProducto, extras, opCantidad, notas);
   const lista = $('op-agregados');
   lista.hidden = false;
-  lista.append(el('li', '', `✔ ${opCantidad} × ${opProducto.nombre}` + (extras.length ? ' · ' + extras.map((x) => x.nombre).join(', ') : '') + (notas ? ` · “${notas}”` : '')));
+  lista.append(el('li', '', `✔ ${opCantidad} × ${opProducto.nombre}` + (extras.length ? ' · ' + extras.map(nombreExtra).join(', ') : '') + (notas ? ` · “${notas}”` : '')));
   opCantidad = 1; $('op-cantidad').textContent = '1';
   $('op-notas').value = '';
   for (const c of $('op-extras').querySelectorAll('input[type=checkbox]')) { c.checked = false; c.disabled = false; }   // rehabilita las bloqueadas por el máximo de carnes
@@ -1003,7 +1003,7 @@ function pintarCarrito() {
     ultimo = l.plato;
     const fila = el('div', 'linea');
     fila.append(el('span', 'linea-nombre', l.producto.nombre), el('span', 'linea-precio', dinero.format(precioLinea(l))));
-    const detalle = [...l.extras.map((x) => x.nombre), ...(l.notas ? [`“${l.notas}”`] : [])].join(' · ');
+    const detalle = [...l.extras.map(nombreExtra), ...(l.notas ? [`“${l.notas}”`] : [])].join(' · ');
     if (detalle) fila.append(el('span', 'linea-detalle', detalle));
 
     const ctl = el('div', 'linea-ctl');
