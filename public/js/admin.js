@@ -2168,7 +2168,7 @@ function pintarExtras() {
   const caja = $('lista-extras');
   caja.replaceChildren();
   if (extras.length === 0) {
-    caja.append(el('p', 'ayuda ex-vacio', 'Todavía no hay modificadores. Toca “＋ Agregar nuevo modificador” (arriba a la derecha) para crear el primero (por ejemplo, Sin cebolla).'));
+    caja.append(el('p', 'ayuda ex-vacio', 'Todavía no hay modificadores. Toca “＋ Modificador” (arriba a la derecha) para crear el primero (por ejemplo, Sin cebolla).'));
     return;
   }
   $('ex-leyenda').textContent = categorias.length ? 'Cada tarjeta muestra en qué categorías aparece el modificador (verde = en todos sus platillos, amarillo = en algunos, ej. 1/11). Para cambiarlo, toca «Editar» y elige los platillos.' : '';
@@ -2183,7 +2183,7 @@ function pintarExtras() {
   if (grupos.has('Otros') && grupos.get('Otros').length === 0) grupos.delete('Otros');
   for (const [g, lista] of grupos) {
     if (grupos.size > 1 || lista.length === 0) caja.append(el('h3', 'ex-grupo', lista.length ? `${g} (${lista.length})` : `${g} (vacía)`));
-    if (lista.length === 0) { caja.append(el('p', 'ayuda', 'Sin modificadores todavía. Crea uno con “＋ Agregar nuevo modificador” y elige este tipo en “Más opciones”.')); continue; }
+    if (lista.length === 0) { caja.append(el('p', 'ayuda', 'Sin modificadores todavía. Crea uno con “＋ Modificador” y elige este tipo en “Más opciones”.')); continue; }
     const rejilla = el('div', 'ex-rejilla');
     for (const x of lista) rejilla.append(tarjetaExtra(x));
     caja.append(rejilla);

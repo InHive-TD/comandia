@@ -864,7 +864,9 @@ body.menu-compacto .menu-desp-items { display: block; padding-left: 0; }
 .tip:hover::after, .tip:focus::after { display: block; }
 
 /* Formulario de modificador compacto */
-#dlg-extra-form .formulario { max-width: 760px; width: min(760px, 96vw); }
+#dlg-extra-form { width: min(720px, calc(100vw - 24px)); overflow-x: hidden; }
+#dlg-extra-form .formulario { width: 100%; max-width: 100%; }
+#dlg-extra-form .btn { white-space: normal; }
 #dlg-extra-form label, #dlg-extra-form .ex-campo { margin-bottom: .55rem; }
 .ef-fila-3 { display: grid; grid-template-columns: minmax(0, 2fr) minmax(0, 1fr); gap: .6rem; align-items: end; }
 .ef-fila-3 .ef-sec { grid-column: 1 / -1; }
