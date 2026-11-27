@@ -2437,10 +2437,30 @@ $('ef-grupo').addEventListener('change', () => {
 /** Sección «Disponible en» del formulario de edición: resumen + elegir platillos + igualar precio. */
 let efSel = new Set();   // platillos elegidos para un extra NUEVO (todavía no existe en el servidor)
 function efDonde() {
+  $('ef-elegir').hidden = $('ef-modo-todos').checked;
+  if ($('ef-modo-todos').checked) { $('ef-resumen').replaceChildren(el('span', 'chip ex-res todos', 'Todos los platillos')); $('ef-igualar').hidden = true; pintarPreviaExtra(); return; }
+  pintarPreviaExtra();
   $('ef-resumen').replaceChildren(resumenDisponibilidad(efExtra ? (p) => p.extras.includes(efExtra.id) : (p) => efSel.has(p.id)));
   $('ef-igualar').hidden = !efExtra || !productos.some((p) => p.extras_precios && p.extras_precios[efExtra.id] !== undefined);
 }
 $('ef-elegir').addEventListener('click', () => abrirExtraPlatillos(efExtra));
+for (const id of ['ef-modo-todos', 'ef-modo-elegir']) $(id).addEventListener('change', efDonde);
+
+/** Vista previa: cómo lo ve el cliente al armar el platillo (título de la sección y el modificador debajo). */
+function pintarPreviaExtra() {
+  const sel = $('ef-grupo').value;
+  const seccion = sel === '__nueva' ? $('ef-grupo-nuevo').value.trim() : sel;
+  const nombre = $('ef-nombre').value.trim();
+  const caja = $('ef-previa');
+  caja.replaceChildren();
+  if (!nombre) { caja.append(el('span', 'ayuda', 'Escribe el nombre para ver cómo se verá.')); return; }
+  const costo = efCosto ? Number(String(efCosto.valor()).replace(',', '.')) || 0 : 0;
+  caja.append(el('span', 'ef-prev-sec', seccion || 'Otros'));
+  const chip = el('span', 'ef-prev-chip', nombre);
+  if (costo > 0) chip.append(el('b', '', ` +${dinero.format(costo)}`));
+  caja.append(chip);
+}
+for (const id of ['ef-nombre', 'ef-grupo', 'ef-grupo-nuevo']) { $(id).addEventListener('input', pintarPreviaExtra); $(id).addEventListener('change', pintarPreviaExtra); }
 $('ef-igualar').addEventListener('click', async () => {
   if (!efExtra) return;
   $('ef-error').textContent = '';
@@ -2458,12 +2478,14 @@ function abrirFormExtra(x) {
   $('ef-codigo').value = x ? (x.codigo || '') : '';
   efCosto = campoCosto(x ? x.precio : 0);
   $('ef-costo-caja').replaceChildren(...efCosto.caja.children);
+  $('ef-costo-caja').oninput = $('ef-costo-caja').onchange = pintarPreviaExtra;
   pintarOpcionesGrupo(x ? (x.grupo || '') : '');
   $('ef-activo-fila').hidden = !x;
   $('ef-activo').checked = x ? x.activo : true;
   $('ef-otro').hidden = !!x;
   $('ef-todos-fila').hidden = esGerente || (!!x && x.sucursal_id !== null);
-  $('ef-todos').checked = !!(x && x.todos);
+  $('ef-modo-todos').checked = !!(x && x.todos) && !$('ef-todos-fila').hidden;
+  $('ef-modo-elegir').checked = !$('ef-modo-todos').checked;
   $('ef-error').textContent = '';
   efSel = new Set();
   efDonde();
@@ -2477,17 +2499,17 @@ async function guardarFormExtra() {
   if (!nombre) { $('ef-error').textContent = 'Escribe cómo se llama el modificador.'; $('ef-nombre').focus(); return false; }
   const g = $('ef-grupo').value === '__nueva' ? $('ef-grupo-nuevo').value.trim() : $('ef-grupo').value;
   if ($('ef-grupo').value === '__nueva' && !g) { $('ef-error').textContent = 'Escribe el nombre de la nueva sección.'; $('ef-grupo-nuevo').focus(); return false; }
-  if (!efExtra && efSel.size === 0 && !$('ef-todos').checked) { $('ef-error').textContent = 'Elige en qué platillos va a aparecer este modificador (botón «Elegir platillos…»).'; return false; }
+  if (!efExtra && efSel.size === 0 && !$('ef-modo-todos').checked) { $('ef-error').textContent = 'Elige en qué platillos va a aparecer (todos, o con «Elegir categorías o platillos…»).'; return false; }
   const cuerpo = { accion: efExtra ? 'actualizar' : 'crear', nombre, codigo: $('ef-codigo').value.trim(), grupo: g, precio: efCosto.valor() };
   if (efExtra) { cuerpo.id = efExtra.id; cuerpo.activo = $('ef-activo').checked; }
   try {
     const r = await enviarJson(API + 'admin/extras.php', cuerpo);
     const idExtra = efExtra ? efExtra.id : r.id;
     if (!efExtra && efSel.size) await enviarJson(API + 'admin/extras.php', { accion: 'asignar_platillos', id: idExtra, agregar: [...efSel], quitar: [] });
-    if (!$('ef-todos-fila').hidden && $('ef-todos').checked !== !!(efExtra && efExtra.todos)) await enviarJson(API + 'admin/extras.php', { accion: 'predeterminado', id: idExtra, valor: $('ef-todos').checked });
+    if (!$('ef-todos-fila').hidden && $('ef-modo-todos').checked !== !!(efExtra && efExtra.todos)) await enviarJson(API + 'admin/extras.php', { accion: 'predeterminado', id: idExtra, valor: $('ef-modo-todos').checked });
     await cargarCatalogo();
     pintarExtras();
-    avisar(efExtra ? 'Modificador actualizado' : $('ef-todos').checked ? 'Modificador creado en todos los platillos' : `Modificador creado en ${efSel.size} platillo${efSel.size === 1 ? '' : 's'}`);
+    avisar(efExtra ? 'Modificador actualizado' : $('ef-modo-todos').checked ? 'Modificador creado en todos los platillos' : `Modificador creado en ${efSel.size} platillo${efSel.size === 1 ? '' : 's'}`);
     return true;
   } catch (err) {
     $('ef-error').textContent = err.message;

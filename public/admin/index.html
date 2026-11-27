@@ -17,7 +17,7 @@
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Outfit:wght@600;700;800&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="../css/estilos.css?v=1795557467">
   <link rel="stylesheet" href="../css/plano.css?v=1795557467">
-  <link rel="stylesheet" href="../css/admin.css?v=202611261330">
+  <link rel="stylesheet" href="../css/admin.css?v=202611271230">
   <link rel="stylesheet" href="../css/tablero.css?v=1795557101">
   <link rel="stylesheet" href="../css/shell.css?v=1795557467">
   <link rel="stylesheet" href="../css/acceso.css?v=202611261215">
@@ -314,32 +314,35 @@
   <dialog id="dlg-extra-form">
     <form id="form-extra" class="formulario dialogo" autocomplete="off">
       <h2 id="ef-titulo">Nuevo modificador</h2>
-      <label>¿Cómo se llama?
-        <input id="ef-nombre" type="text" maxlength="60" placeholder="Ej. Con queso, Sin cebolla, Orden doble" required>
+      <label>1 · Sección <span class="ef-tip" tabindex="0" title="La sección es el título bajo el que se agrupa (Con, Sin, Extra, Salsas…). El modificador aparece debajo de su sección: bajo «Con» el cliente ve «queso». Por eso basta escribir «queso», no «con queso».">?</span>
+        <select id="ef-grupo"></select>
       </label>
+      <input id="ef-grupo-nuevo" type="text" maxlength="40" placeholder="Nombre de la nueva sección (ej. Con, Sin, Extra)" aria-label="Nombre de la nueva sección" hidden>
+      <div class="ef-fila">
+        <label class="ef-crece">2 · Nombre del modificador
+          <input id="ef-nombre" type="text" maxlength="60" placeholder="Ej. queso, cebolla, doble" required>
+        </label>
+        <label class="ef-codigo">Código cocina <small>(opcional)</small>
+          <input id="ef-codigo" type="text" maxlength="20" autocapitalize="characters" placeholder="XQ" title="Abreviatura que verá la cocina en la comanda (XQ = queso extra). Puedes dejarlo vacío.">
+        </label>
+      </div>
       <div class="ex-campo">
-        <span class="ex-etq">¿Se cobra aparte?</span>
+        <span class="ex-etq">3 · ¿Se cobra aparte?</span>
         <div id="ef-costo-caja" class="costo"></div>
       </div>
-      <label>Código para la cocina
-        <input id="ef-codigo" type="text" maxlength="20" autocapitalize="characters" placeholder="Ej. XQ">
-        <small>Abreviatura que verá la cocina en la comanda (XQ = queso extra).</small>
-      </label>
-      <label>Sección
-        <select id="ef-grupo"></select>
-        <small>Sirve para ordenarlos en secciones al elegirlos (Quitar, Aparte, Salsas…).</small>
-      </label>
-      <input id="ef-grupo-nuevo" type="text" maxlength="40" placeholder="Nombre de la nueva sección" aria-label="Nombre de la nueva sección" hidden>
-      <label id="ef-todos-fila" class="casilla ex-campo">
-        <input id="ef-todos" type="checkbox"> <span>Aparece en <strong>todos los platillos</strong> <small>(también en los nuevos; después puedes quitarlo de alguno)</small></span>
-      </label>
       <div id="ef-donde" class="ex-campo">
-        <span class="ex-etq">¿En qué platillos aparece?</span>
-        <div id="ef-resumen"></div>
-        <div class="ex-botones">
-          <button id="ef-elegir" class="btn" type="button">☑ Elegir platillos…</button>
-          <button id="ef-igualar" class="btn" type="button" hidden title="Algunos platillos cobran este modificador con precio propio. Toca para que todos cobren el precio general.">↺ Igualar precio en todos</button>
+        <span class="ex-etq">4 · ¿En qué platillos aparece?</span>
+        <div class="ef-modos">
+          <label id="ef-todos-fila" class="ef-modo"><input id="ef-modo-todos" name="ef-modo" type="radio"> <span>En <strong>todos</strong> los platillos <small>(también los nuevos)</small></span></label>
+          <label class="ef-modo"><input id="ef-modo-elegir" name="ef-modo" type="radio" checked> <span>Solo en algunos</span></label>
+          <button id="ef-elegir" class="btn chico" type="button">☑ Elegir categorías o platillos…</button>
         </div>
+        <div id="ef-resumen"></div>
+        <button id="ef-igualar" class="btn chico" type="button" hidden title="Algunos platillos cobran este modificador con precio propio. Toca para que todos cobren el precio general.">↺ Igualar precio en todos</button>
+      </div>
+      <div class="ex-campo">
+        <span class="ex-etq">Así lo verá el cliente</span>
+        <div id="ef-previa" class="ef-previa" aria-live="polite"></div>
       </div>
       <label id="ef-activo-fila" class="switch" hidden>
         <input id="ef-activo" type="checkbox" checked><span class="slider"></span><span>Disponible para pedir</span>
@@ -880,7 +883,7 @@
   <script src="../js/shell.js?v=1795557467"></script>
   <script src="../js/login.js?v=202611242250"></script>
   <script src="../js/vendor/qrcode.js"></script>
-  <script src="../js/admin.js?v=202611271200"></script>
+  <script src="../js/admin.js?v=202611271230"></script>
   <script src="../js/inventario.js?v=202611270900"></script>
 </body>
 </html>

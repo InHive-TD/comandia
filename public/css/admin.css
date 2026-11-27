@@ -845,3 +845,14 @@ body.menu-compacto .menu-desp-items { display: block; padding-left: 0; }
 .inv-form { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: .6rem; margin-top: .6rem; align-items: end; }
 .inv-linea { display: grid; grid-template-columns: 2fr 1fr 1fr auto; gap: .4rem; margin: .4rem 0; }
 .inv-editor { border: 1px solid #601020; border-radius: 8px; padding: .6rem .8rem; margin: .8rem 0; }
+
+/* Formulario de modificador */
+.ef-tip { display: inline-flex; align-items: center; justify-content: center; width: 1.3em; height: 1.3em; margin-left: .3em; border-radius: 50%; background: #601020; color: #fff; font-size: .8em; font-weight: 700; cursor: help; }
+.ef-fila { display: flex; gap: .6rem; align-items: flex-end; }
+.ef-fila .ef-crece { flex: 1 1 60%; }
+.ef-fila .ef-codigo { flex: 1 1 30%; min-width: 7rem; }
+.ef-modos { display: flex; flex-wrap: wrap; gap: .5rem .9rem; align-items: center; margin: .3rem 0; }
+.ef-modo { display: inline-flex; gap: .4rem; align-items: center; }
+.ef-previa { border: 1px dashed #bbb; border-radius: 8px; padding: .6rem .8rem; display: flex; flex-direction: column; gap: .35rem; background: #fafafa; }
+.ef-prev-sec { font-size: .75rem; text-transform: uppercase; letter-spacing: .04em; color: #666; font-weight: 700; }
+.ef-prev-chip { align-self: flex-start; border: 1px solid #601020; color: #601020; border-radius: 999px; padding: .25rem .8rem; font-weight: 600; }
