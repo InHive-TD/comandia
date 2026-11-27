@@ -112,6 +112,7 @@
             <button id="btn-plano" data-titulo="Plano de mesas" class="btn nav-ico i-plano" type="button">Plano de mesas</button>
           </div>
         </div>
+        <button id="btn-inventario" data-titulo="Inventario y proveedores" class="btn nav-ico i-inventario" type="button" hidden>Inventario</button>
         <button id="btn-usuarios" class="btn nav-ico i-usuarios" type="button">Usuarios</button>
         <button id="btn-apariencia" class="btn nav-ico i-apariencia" type="button">Apariencia</button>
       </div>
@@ -452,6 +453,24 @@
       <h2>Ajustes de caja</h2>
       <p class="ayuda">Desde aquí abres la pantalla de caja (cobros y propinas). Por ahora no tiene ajustes propios; cuando los tenga, aparecerán en esta página.</p>
       <div class="acciones-dialogo"><button id="caja-cerrar" class="btn" type="button">Cerrar</button></div>
+    </div>
+  </dialog>
+
+  <dialog id="dlg-inventario" class="pagina">
+    <div class="formulario dialogo">
+      <h2>Inventario y proveedores</h2>
+      <label id="inv-suc-fila" hidden>Sucursal <select id="inv-sucursal"></select></label>
+      <p id="inv-catalogo-aviso" class="ayuda" hidden>Como gerente puedes registrar compras, mermas y conteos de tu sucursal. El catálogo de insumos y proveedores lo edita el administrador de la empresa.</p>
+      <div id="inv-tabs" class="inv-tabs">
+        <button class="btn chico" data-tab="existencias" type="button">Existencias</button>
+        <button class="btn chico" data-tab="compras" type="button">Compras</button>
+        <button class="btn chico" data-tab="mermas" type="button">Mermas</button>
+        <button class="btn chico" data-tab="proveedores" type="button">Proveedores</button>
+        <button class="btn chico" data-tab="movimientos" type="button">Movimientos</button>
+      </div>
+      <div id="inv-contenido"></div>
+      <p id="inv-error" class="msg-error" role="alert"></p>
+      <div class="acciones-dialogo"><button id="inv-cerrar" class="btn" type="button">Cerrar</button></div>
     </div>
   </dialog>
 
@@ -881,5 +900,6 @@
   <script src="../js/login.js?v=202611242250"></script>
   <script src="../js/vendor/qrcode.js"></script>
   <script src="../js/admin.js?v=202611261330"></script>
+  <script src="../js/inventario.js?v=202611270900"></script>
 </body>
 </html>

@@ -86,6 +86,7 @@ async function entrar(usuario) {
   document.querySelector('.menu-desp[data-grupo="sucursales"] .nav-sum').textContent = esGerente ? 'Mi sucursal y mesas' : 'Sucursales y mesas';
   $('btn-sucursales').dataset.titulo = esGerente ? 'Mi sucursal y mesas' : 'Sucursales y mesas';
   mostrar('vista-panel');
+  if (typeof iniciarInventario === 'function') await iniciarInventario();
   await cargarCatalogo();
   // Entra a la sección de la dirección (#usuarios…) si es válida y permitida; si no, al Inicio (reportes)
   const pedida = RUTAS[seccionDeLaDireccion()] && $(RUTAS[seccionDeLaDireccion()]);
@@ -532,7 +533,7 @@ function marcarMenu(idBoton) {
 /** Muestra una sección como página: cierra la que estuviera abierta y oculta la lista de productos. */
 /* Cada sección tiene su propia dirección: /<empresa>/admin/usuarios, /extras… (Inicio es solo /<empresa>/admin/).
    Se puede recargar, guardar en favoritos y usar "atrás". Las direcciones no llevan "#". */
-const RUTAS = { inicio: 'btn-reportes', platillos: 'btn-productos', categorias: 'btn-categorias', extras: 'btn-extras', 'carga-masiva': 'btn-carga', sucursales: 'btn-sucursales', usuarios: 'btn-usuarios', 'ajustes-cocina': 'btn-prioridades', 'ajustes-pedidos': 'btn-pedidos-qr', 'ajustes-pago': 'btn-pago', 'ajustes-caja': 'btn-caja-cfg', 'ajustes-plano': 'btn-plano', 'ajustes-toma': 'btn-toma-pedidos', 'ajustes-carriles': 'btn-carriles', apariencia: 'btn-apariencia' };
+const RUTAS = { inicio: 'btn-reportes', platillos: 'btn-productos', categorias: 'btn-categorias', extras: 'btn-extras', 'carga-masiva': 'btn-carga', sucursales: 'btn-sucursales', usuarios: 'btn-usuarios', 'ajustes-cocina': 'btn-prioridades', 'ajustes-pedidos': 'btn-pedidos-qr', 'ajustes-pago': 'btn-pago', 'ajustes-caja': 'btn-caja-cfg', 'ajustes-plano': 'btn-plano', 'ajustes-toma': 'btn-toma-pedidos', 'ajustes-carriles': 'btn-carriles', apariencia: 'btn-apariencia', inventario: 'btn-inventario' };
 const BASE_ADMIN = location.pathname.replace(/\/admin(\/.*)?$/, '/admin/');   // "/lavale/admin/"
 const seccionDeLaDireccion = () => {
   const n = (location.pathname.startsWith(BASE_ADMIN) ? location.pathname.slice(BASE_ADMIN.length).replace(/\/+$/, '') : '') || 'inicio';

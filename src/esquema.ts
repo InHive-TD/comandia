@@ -238,4 +238,78 @@ async function actualizarV2(): Promise<void> {
     CONSTRAINT fk_pi_pago FOREIGN KEY (pago_id) REFERENCES pagos(id) ON DELETE CASCADE,
     CONSTRAINT fk_pi_item FOREIGN KEY (item_id) REFERENCES orden_items(id) ON DELETE CASCADE
   ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4`);
+
+  // ---- Inventario (módulo opcional, nivel básico): insumos, proveedores, compras, existencias por sucursal y movimientos ----
+  await ejecutar(`CREATE TABLE IF NOT EXISTS inv_proveedores (
+    id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+    negocio_id INT UNSIGNED NOT NULL,
+    nombre VARCHAR(80) NOT NULL,
+    contacto VARCHAR(80) NULL,
+    telefono VARCHAR(30) NULL,
+    correo VARCHAR(150) NULL,
+    dias_entrega TINYINT UNSIGNED NOT NULL DEFAULT 1,
+    minimo_compra DECIMAL(12,2) NOT NULL DEFAULT 0,
+    notas VARCHAR(255) NULL,
+    activo TINYINT(1) NOT NULL DEFAULT 1,
+    UNIQUE KEY uq_invprov (negocio_id, nombre)
+  ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4`);
+  await ejecutar(`CREATE TABLE IF NOT EXISTS inv_insumos (
+    id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+    negocio_id INT UNSIGNED NOT NULL,
+    nombre VARCHAR(80) NOT NULL,
+    categoria VARCHAR(40) NULL,
+    unidad VARCHAR(8) NOT NULL DEFAULT 'pza',
+    costo DECIMAL(12,4) NOT NULL DEFAULT 0,
+    minimo DECIMAL(14,3) NOT NULL DEFAULT 0,
+    proveedor_id INT UNSIGNED NULL,
+    activo TINYINT(1) NOT NULL DEFAULT 1,
+    UNIQUE KEY uq_invins (negocio_id, nombre),
+    INDEX idx_invins_prov (proveedor_id)
+  ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4`);
+  await ejecutar(`CREATE TABLE IF NOT EXISTS inv_existencias (
+    insumo_id INT UNSIGNED NOT NULL,
+    sucursal_id INT UNSIGNED NOT NULL,
+    negocio_id INT UNSIGNED NOT NULL,
+    cantidad DECIMAL(14,3) NOT NULL DEFAULT 0,
+    PRIMARY KEY (insumo_id, sucursal_id),
+    INDEX idx_invex_suc (negocio_id, sucursal_id)
+  ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4`);
+  await ejecutar(`CREATE TABLE IF NOT EXISTS inv_compras (
+    id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+    negocio_id INT UNSIGNED NOT NULL,
+    sucursal_id INT UNSIGNED NOT NULL,
+    proveedor_id INT UNSIGNED NULL,
+    estado ENUM('pedida','recibida','cancelada') NOT NULL DEFAULT 'recibida',
+    referencia VARCHAR(60) NULL,
+    nota VARCHAR(255) NULL,
+    total DECIMAL(12,2) NOT NULL DEFAULT 0,
+    usuario_id INT UNSIGNED NULL,
+    creado_en DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    recibida_en DATETIME NULL,
+    INDEX idx_invc_suc (negocio_id, sucursal_id, creado_en)
+  ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4`);
+  await ejecutar(`CREATE TABLE IF NOT EXISTS inv_compra_items (
+    id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+    compra_id INT UNSIGNED NOT NULL,
+    insumo_id INT UNSIGNED NOT NULL,
+    cantidad DECIMAL(14,3) NOT NULL,
+    costo DECIMAL(12,4) NOT NULL DEFAULT 0,
+    INDEX idx_invci_compra (compra_id)
+  ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4`);
+  await ejecutar(`CREATE TABLE IF NOT EXISTS inv_movimientos (
+    id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+    negocio_id INT UNSIGNED NOT NULL,
+    sucursal_id INT UNSIGNED NOT NULL,
+    insumo_id INT UNSIGNED NOT NULL,
+    tipo ENUM('compra','merma','conteo','ajuste','traspaso_entra','traspaso_sale','consumo') NOT NULL,
+    cantidad DECIMAL(14,3) NOT NULL,
+    costo DECIMAL(12,4) NOT NULL DEFAULT 0,
+    motivo VARCHAR(30) NULL,
+    nota VARCHAR(255) NULL,
+    ref_id INT UNSIGNED NULL,
+    usuario_id INT UNSIGNED NULL,
+    creado_en DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    INDEX idx_invm_insumo (negocio_id, sucursal_id, insumo_id, creado_en),
+    INDEX idx_invm_tipo (negocio_id, sucursal_id, tipo, creado_en)
+  ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4`);
 }

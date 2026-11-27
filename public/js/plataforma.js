@@ -270,6 +270,7 @@ function abrirEmpresa(n = null) {
   $('e-titulo').textContent = n ? 'Editar empresa' : 'Nueva empresa';
   $('e-slug-caja').hidden = !!n;
   $('e-voz-caja').hidden = !n;
+  $('e-inv-caja').hidden = !n;
   $('e-admin-caja').hidden = !!n;
   $('e-slug').required = !n;
   if (n) {
@@ -280,6 +281,8 @@ function abrirEmpresa(n = null) {
     $('e-notas').value = n.notas || '';
     $('e-voz-activa').checked = !!n.voz_activa;
     $('e-voz-limite').value = n.voz_limite_tokens ?? '';
+    $('e-inv-activo').checked = !!n.inventario_activo;
+    $('e-inv-recetas').checked = !!n.inventario_recetas;
   } else {
     $('e-plan').value = 'basico';
     pintarVistaSlug();
@@ -312,7 +315,7 @@ $('form-empresa').addEventListener('submit', async (ev) => {
     contacto: $('e-contacto').value.trim(), notas: $('e-notas').value.trim(),
   };
   const cuerpo = id
-    ? { accion: 'editar', id: Number(id), ...base, voz_activa: $('e-voz-activa').checked, voz_limite_tokens: $('e-voz-limite').value.trim() }
+    ? { accion: 'editar', id: Number(id), ...base, inventario_activo: $('e-inv-activo').checked, inventario_recetas: $('e-inv-recetas').checked, voz_activa: $('e-voz-activa').checked, voz_limite_tokens: $('e-voz-limite').value.trim() }
     : { accion: 'crear', slug: $('e-slug').value.trim().toLowerCase(), admin_nombre: $('e-admin-nombre').value.trim(),
         admin_usuario: $('e-admin-usuario').value.trim().toLowerCase(), admin_password: $('e-admin-password').value, ...base };
   const boton = $('e-guardar');
