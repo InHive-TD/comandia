@@ -977,6 +977,1241 @@ function renglonUsuario(u, r) {
       catch (err) { avisar(err.message, true); }
     });
   }
+  const editar = el('button', 'btn chico', '✎ Editar');
+  editar.type = 'button';
+  editar.addEventListener('click', () => abrirEditarUsuario(u));
+  fila.append(quien, chips, ...(desbloquear ? [desbloquear] : []), editar);
+  return fila;
+}
+
+/** Ventana (modal) para editar a una persona: datos, sucursales, contraseña y el interruptor "Activo". */
+function abrirEditarUsuario(u) {
+  const { r, ROLES_PERSONAL, hayVarias } = usuariosCtx;
+  const dlg = $('dlg-usuario-editar');
+  $('ue-error').textContent = '';
+  $('ue-titulo').textContent = u.nombre;
+  $('ue-usuario').textContent = '@' + u.usuario;
+  $('ue-correo').textContent = u.correo ? `Correo: ${u.correo}${u.pendiente ? ' · aún no crea su contraseña' : ''}` : 'Sin correo registrado: entra con usuario y contraseña.';
+  $('ue-reenviar').textContent = u.correo ? (u.pendiente ? '✉ Reenviar invitación' : '✉ Restablecer contraseña por correo') : '✉ Agregar correo e invitar';
+  $('ue-nombre').value = u.nombre;
+  const esAdmin = u.rol === 'admin';
+  $('ue-fila-rol').hidden = esAdmin;
+  $('ue-fila-suc').hidden = esAdmin;
+  $('ue-activo-fila').hidden = esAdmin || u.id === r.yo;   // al dueño (o a uno mismo) no se le desactiva
+  $('ue-activo').checked = !!u.activo;
+  const rol = $('ue-rol'); rol.replaceChildren();
+  for (const [v, t] of ROLES_PERSONAL) { const o = document.createElement('option'); o.value = v; o.textContent = t; rol.append(o); }
+  rol.value = u.rol;
+  const suc = $('ue-sucursal'); suc.replaceChildren();
+  for (const x of r.sucursales) { const o = document.createElement('option'); o.value = String(x.id); o.textContent = x.nombre; suc.append(o); }
+  suc.value = String(u.sucursal_id || (r.sucursales[0] && r.sucursales[0].id) || '');
+  const cajaExtra = $('ue-extra'); cajaExtra.replaceChildren();
+  let extraFila = null;
+  cajaExtra.hidden = esAdmin || !hayVarias;
+  if (!esAdmin && hayVarias) { extraFila = casillasSucursalesExtra(r.sucursales, suc, u.sucursales_extra || []); cajaExtra.append(...extraFila.caja.childNodes); }
+
+  $('ue-guardar').onclick = async () => {
+    const activo = esAdmin ? u.activo : $('ue-activo').checked;
+    if (u.activo && !activo && !(await confirmar(`¿Desactivar a ${u.nombre}? Perderá el acceso de inmediato.`, { si: 'Desactivar', peligro: true }))) return;
+    $('ue-error').textContent = '';
+    try {
+      await enviarJson(API + 'admin/usuarios.php', {
+        accion: 'editar', id: u.id, nombre: $('ue-nombre').value.trim(), rol: esAdmin ? u.rol : rol.value,
+        sucursal_id: esAdmin ? null : Number(suc.value), ...(extraFila ? { sucursales_extra: extraFila.valor() } : {}), activo,
+      });
+      dlg.close();
+      await cargarUsuarios();
+      avisar('Usuario actualizado');
+    } catch (err) { $('ue-error').textContent = err.message; }
+  };
+  $('ue-reenviar').onclick = async () => {
+    $('ue-error').textContent = '';
+    try {
+      if (!u.correo) {
+        const c = await pedirTexto(`Correo de ${u.nombre}:`, { si: 'Enviar invitación' });
+        if (!c) return;
+        await enviarJson(API + 'admin/usuarios.php', { accion: 'correo', id: u.id, correo: c.trim() });
+        avisar('Invitación enviada');
+      } else {
+        const aviso = u.pendiente ? `¿Reenviar la invitación a ${u.correo}?` : `¿Restablecer la contraseña de ${u.nombre}? Su contraseña actual dejará de servir y se le enviará un enlace a ${u.correo}.`;
+        if (!(await confirmar(aviso, { si: u.pendiente ? 'Reenviar' : 'Restablecer', peligro: !u.pendiente }))) return;
+        await enviarJson(API + 'admin/usuarios.php', { accion: 'reenviar', id: u.id });
+        avisar('Enlace enviado a ' + u.correo);
+      }
+      $('dlg-usuario-editar').close();
+      await cargarUsuarios();
+    } catch (err) { $('ue-error').textContent = err.message; }
+  };
+  $('ue-clave').onclick = async () => {
+    const p = await pedirTexto(`Nueva contraseña para ${u.nombre} (mínimo 10 caracteres):`, { si: 'Cambiar', tipo: 'password', minimo: 10 });
+    if (!p) return;
+    try { await enviarJson(API + 'admin/usuarios.php', { accion: 'clave', id: u.id, password: p }); avisar('Contraseña cambiada'); }
+    catch (err) { $('ue-error').textContent = err.message; }
+  };
+  dlg.showModal();
+}
+$('ue-cerrar').addEventListener('click', () => $('dlg-usuario-editar').close());
+
+async function accionUsuario(cuerpo, mensajeOk) {
+  $('us-error').textContent = '';
+  try {
+    await enviarJson(API + 'admin/usuarios.php', cuerpo);
+    await cargarUsuarios();
+    avisar(mensajeOk);
+    return true;
+  } catch (err) {
+    $('us-error').textContent = err.message;
+    return false;
+  }
+}
+
+$('btn-usuarios').addEventListener('click', async () => {
+  $('us-error').textContent = '';
+  try { await cargarUsuarios(); } catch (err) { $('us-error').textContent = err.message; }
+  abrirPagina(dlgUsuarios, 'btn-usuarios');
+});
+$('us-cerrar').addEventListener('click', () => dlgUsuarios.close());
+$('form-nuevo-usuario').addEventListener('submit', async (ev) => {
+  ev.preventDefault();
+  const correo = $('us-correo').value.trim();
+  const comun = { nombre: $('us-nombre').value.trim(), rol: $('us-rol').value, sucursal_id: Number($('us-sucursal').value), ...(extraNuevo ? { sucursales_extra: extraNuevo.valor() } : {}) };
+  const boton = $('us-enviar'); boton.disabled = true;
+  const ok = correo
+    ? await accionUsuario({ accion: 'invitar', correo, ...comun }, 'Invitación enviada a ' + correo)
+    : await accionUsuario({ accion: 'crear', usuario: $('us-usuario').value.trim(), password: $('us-password').value, ...comun }, 'Usuario creado');
+  boton.disabled = false;
+  if (ok) { for (const id of ['us-nombre', 'us-correo', 'us-usuario', 'us-password']) $(id).value = ''; sincronizarCorreoUsuario(); }
+});
+function sincronizarCorreoUsuario() {
+  const conCorreo = $('us-correo').value.trim() !== '';
+  $('us-fila-usuario').hidden = conCorreo; $('us-fila-password').hidden = conCorreo;
+  $('us-usuario').required = !conCorreo; $('us-password').required = !conCorreo;
+  $('us-enviar').textContent = conCorreo ? '✉ Enviar invitación' : 'Crear usuario';
+}
+$('us-correo').addEventListener('input', sincronizarCorreoUsuario);
+sincronizarCorreoUsuario();
+
+/* ------------------------------------------------------------------ */
+/*  Sucursales y mesas                                                 */
+/* ------------------------------------------------------------------ */
+
+const dlgSucursales = $('dlg-sucursales');
+const sucAbierta = new Set();   // sucursales expandidas en la lista (por defecto todas colapsadas)
+let sucMesas = null;            // sucursal cuya ventana de mesas está abierta
+
+async function accionSucursal(url, cuerpo, mensaje) {
+  $('su-error').textContent = '';
+  $('mesas-error').textContent = '';
+  try {
+    await enviarJson(API + url, cuerpo);
+    if (mensaje) avisar(mensaje);
+    await cargarSucursales();
+    if (sucMesas && $('dlg-mesas').open) await pintarMesas($('mesas-contenido'), sucMesas);   // refresca la ventana de mesas
+    return true;
+  } catch (err) {
+    (sucMesas && $('dlg-mesas').open ? $('mesas-error') : $('su-error')).textContent = err.message;
+    return false;
+  }
+}
+
+/** Ventana (modal) con las mesas de una sucursal. */
+function abrirMesas(s) {
+  sucMesas = s;
+  $('mesas-titulo').textContent = `Mesas · ${s.nombre}`;
+  $('mesas-error').textContent = '';
+  $('dlg-mesas').showModal();
+  pintarMesas($('mesas-contenido'), s).catch((err) => { $('mesas-error').textContent = err.message; });
+}
+$('mesas-cerrar').addEventListener('click', () => $('dlg-mesas').close());
+
+async function pintarMesas(caja, s) {
+  caja.replaceChildren();
+  const r = await pedir(API + 'admin/mesas.php?sucursal=' + s.id);
+  const rejilla = el('div', 'mesas-rejilla');
+  for (const m of r.mesas) {
+    const chip = el('span', 'mesa-chip' + (m.activa ? '' : ' inactiva'));
+    const nombre = document.createElement('input');
+    nombre.type = 'text'; nombre.value = m.nombre; nombre.maxLength = 30; nombre.setAttribute('aria-label', 'Nombre de la mesa');
+    nombre.addEventListener('change', () => accionSucursal('admin/mesas.php', { accion: 'renombrar', id: m.id, nombre: nombre.value.trim() }));
+    chip.title = m.zona ? 'Zona: ' + m.zona : 'Sin ubicar en el plano';
+    const act = el('button', 'btn chico', m.activa ? 'Ocultar' : 'Mostrar');
+    act.type = 'button';
+    act.addEventListener('click', () => accionSucursal('admin/mesas.php', { accion: 'activar', id: m.id, activa: !m.activa }));
+    const del = el('button', 'btn chico peligro', '✕');
+    del.type = 'button'; del.title = 'Eliminar mesa';
+    del.addEventListener('click', async () => {
+      if (await confirmar(`¿Eliminar la ${m.nombre}? Los pedidos anteriores conservan el nombre.`, { si: 'Eliminar', no: 'Volver', peligro: true })) {
+        accionSucursal('admin/mesas.php', { accion: 'eliminar', id: m.id });
+      }
+    });
+    chip.append(nombre, act, del);
+    rejilla.append(chip);
+  }
+  if (!r.mesas.length) rejilla.append(el('p', 'ayuda', 'Esta sucursal aún no tiene mesas.'));
+  caja.append(rejilla);
+
+  const uno = el('form', 'fila-mesas');
+  const nuevo = document.createElement('input');
+  nuevo.type = 'text'; nuevo.maxLength = 30; nuevo.placeholder = 'Nombre de la mesa (ej. Mesa 7, Terraza)'; nuevo.required = true;
+  const b1 = el('button', 'btn', 'Agregar mesa'); b1.type = 'submit';
+  uno.append(nuevo, b1);
+  uno.addEventListener('submit', (ev) => { ev.preventDefault(); accionSucursal('admin/mesas.php', { accion: 'crear', sucursal_id: s.id, nombre: nuevo.value.trim() }, 'Mesa agregada'); });
+
+  const lote = el('form', 'fila-mesas');
+  const pref = document.createElement('input'); pref.type = 'text'; pref.maxLength = 20; pref.value = 'Mesa '; pref.setAttribute('aria-label', 'Prefijo');
+  const d = document.createElement('input'); d.type = 'number'; d.min = '1'; d.max = '500'; d.value = '1'; d.setAttribute('aria-label', 'Desde');
+  const h = document.createElement('input'); h.type = 'number'; h.min = '1'; h.max = '500'; h.placeholder = 'hasta'; h.required = true; h.setAttribute('aria-label', 'Hasta');
+  const b2 = el('button', 'btn', 'Crear varias'); b2.type = 'submit';
+  lote.append(el('span', 'ayuda', 'Varias de golpe:'), pref, d, el('span', '', 'a'), h, b2);
+  lote.addEventListener('submit', (ev) => { ev.preventDefault(); accionSucursal('admin/mesas.php', { accion: 'lote', sucursal_id: s.id, prefijo: pref.value, desde: Number(d.value), hasta: Number(h.value) }, 'Mesas creadas'); });
+  caja.append(uno, lote);
+}
+
+/** Dibuja el QR en un canvas grande (con margen blanco) y lo baja como PNG. */
+function descargarQr(qr, nombreArchivo) {
+  const n = qr.getModuleCount(), celda = 24, margen = 4 * celda, lado = n * celda + margen * 2;
+  const lienzo = document.createElement('canvas');
+  lienzo.width = lado; lienzo.height = lado;
+  const c = lienzo.getContext('2d');
+  c.fillStyle = '#ffffff'; c.fillRect(0, 0, lado, lado);
+  c.fillStyle = '#000000';
+  for (let f = 0; f < n; f++) for (let col = 0; col < n; col++) if (qr.isDark(f, col)) c.fillRect(margen + col * celda, margen + f * celda, celda, celda);
+  const a = document.createElement('a');
+  a.href = lienzo.toDataURL('image/png'); a.download = nombreArchivo;
+  document.body.append(a); a.click(); a.remove();
+}
+
+async function cargarSucursales() {
+  const [r, pq] = await Promise.all([pedir(API + 'admin/sucursales.php'), pedir(API + 'admin/cliente-pedidos.php')]);
+  const pedidosQr = new Map(pq.sucursales.map((x) => [x.id, x.activo]));   // ¿el cliente puede levantar pedidos desde el QR de cada sucursal?
+  const lista = $('lista-sucursales');
+  lista.replaceChildren();
+  $('su-nueva-det').hidden = esGerente;
+  for (const s of r.sucursales) {
+    // Cada sucursal es un bloque colapsado; al expandirlo aparecen sus datos y acciones
+    const det = el('details', 'su-grupo' + (s.activa ? '' : ' inactivo'));
+    det.open = esGerente || sucAbierta.has(s.id);
+    det.addEventListener('toggle', () => { if (det.open) sucAbierta.add(s.id); else sucAbierta.delete(s.id); });
+    const resumen = el('summary', 'su-resumen');
+    resumen.append(el('span', 'cat-nombre', s.nombre), el('span', 'chip', `${s.mesas} mesas`), el('span', 'chip', `${s.usuarios} personas`), el('span', 'chip', s.carta_propia ? 'Carta propia' : 'Carta general'), el('span', 'chip ' + (s.activa ? 'activo' : 'sin'), s.activa ? '● Activa' : 'Desactivada'));
+    det.append(resumen);
+
+    const cuerpo = el('div', 'su-cuerpo');
+    const nombre = document.createElement('input'); nombre.type = 'text'; nombre.value = s.nombre; nombre.maxLength = 80; nombre.setAttribute('aria-label', 'Nombre');
+    const dir = document.createElement('input'); dir.type = 'text'; dir.value = s.direccion || ''; dir.maxLength = 160; dir.placeholder = 'Calle y colonia'; dir.setAttribute('aria-label', 'Dirección');
+
+    // Botones arriba a la derecha del bloque: Guardar cambios y Desactivar/Reactivar sucursal
+    if (!esGerente) {
+      const barra = el('div', 'su-barra');
+      const pausa = el('button', 'btn chico' + (s.activa ? ' peligro' : ''), s.activa ? 'Desactivar sucursal' : 'Reactivar sucursal'); pausa.type = 'button';
+      pausa.addEventListener('click', async () => {
+        if (s.activa && !(await confirmar(`¿Desactivar la sucursal “${s.nombre}”? Dejará de recibir pedidos hasta que la reactives.`, { si: 'Desactivar', peligro: true }))) return;
+        accionSucursal('admin/sucursales.php', { accion: 'editar', id: s.id, nombre: nombre.value.trim(), direccion: dir.value.trim(), activa: !s.activa }, s.activa ? 'Sucursal desactivada' : 'Sucursal reactivada');
+      });
+      const guardar = el('button', 'btn chico principal', 'Guardar cambios'); guardar.type = 'button';
+      guardar.addEventListener('click', () => accionSucursal('admin/sucursales.php', { accion: 'editar', id: s.id, nombre: nombre.value.trim(), direccion: dir.value.trim(), activa: s.activa }, 'Sucursal actualizada'));
+      barra.append(pausa, guardar);
+      cuerpo.append(barra);
+      const l1 = el('label', '', 'Nombre'); l1.append(nombre);
+      const l2 = el('label', '', 'Dirección (opcional)'); l2.append(dir);
+      cuerpo.append(l1, l2);
+    } else if (s.direccion) {
+      cuerpo.append(el('p', 'ayuda', s.direccion));
+    }
+
+    // Enlace para el QR de esta sucursal (el cliente abre el menú y sus pedidos van a esta sucursal)
+    const enlace = location.origin + location.pathname.replace(/admin(\/.*)?$/, '') + (s.slug || '') + '/';
+    const campoEnlace = document.createElement('input');
+    campoEnlace.type = 'text'; campoEnlace.readOnly = true; campoEnlace.value = enlace; campoEnlace.setAttribute('aria-label', 'Enlace QR para menú de sucursal');
+    campoEnlace.addEventListener('focus', () => campoEnlace.select());
+    const copiar = el('button', 'btn chico', 'Copiar enlace'); copiar.type = 'button';
+    copiar.addEventListener('click', async () => { try { await navigator.clipboard.writeText(enlace); avisar('Enlace copiado'); } catch { campoEnlace.select(); } });
+    const filaQr = el('div', 'su-qr');
+    filaQr.append(campoEnlace, copiar);
+    const lq = el('div', 'su-campo'); lq.append(el('span', 'su-etq', 'Enlace QR para menú de sucursal'), el('span', 'ayuda', 'Este enlace es para que el cliente lo escanee con su celular y vea el menú y/o levante pedidos en esta sucursal.'), filaQr);
+    // Código QR del enlace, debajo, con botón para descargarlo como imagen (para imprimirlo)
+    const qr = qrcode(0, 'M');
+    qr.addData(enlace);
+    qr.make();
+    const cajaQr = el('div', 'su-qr-img');
+    cajaQr.innerHTML = qr.createSvgTag({ cellSize: 4, margin: 4, scalable: true });   // SVG que genera la librería (solo cuadros, sin texto del usuario)
+    cajaQr.setAttribute('role', 'img'); cajaQr.setAttribute('aria-label', 'Código QR de ' + s.nombre);
+    const bajar = el('button', 'btn chico', 'Descargar QR (PNG)'); bajar.type = 'button';
+    bajar.addEventListener('click', () => descargarQr(qr, `qr-${s.slug || 'sucursal'}.png`));
+    lq.append(cajaQr, bajar);
+    cuerpo.append(lq);
+
+    // Interruptor: ¿el cliente puede levantar pedidos desde el QR o solo ver el menú? (mismo ajuste que Ajustes → pedidos de clientes por QR)
+    if (pedidosQr.has(s.id)) {
+      const bloqueado = !pq.general && !pq.puede_general;   // el dueño lo apagó para toda la empresa y el gerente no puede encenderlo
+      const sw = el('label', 'switch');
+      const caja = document.createElement('input');
+      caja.type = 'checkbox'; caja.checked = pedidosQr.get(s.id); caja.disabled = bloqueado;
+      const texto = el('span', '', caja.checked ? 'El cliente puede levantar pedidos' : 'Solo ver el menú');
+      sw.append(caja, el('span', 'slider'), texto);
+      caja.addEventListener('change', async () => {
+        caja.disabled = true;
+        $('su-error').textContent = '';
+        try {
+          await enviarJson(API + 'admin/cliente-pedidos.php', { accion: 'sucursal', sucursal_id: s.id, activo: caja.checked });
+          texto.textContent = caja.checked ? 'El cliente puede levantar pedidos' : 'Solo ver el menú';
+          avisar(caja.checked ? 'Ahora el cliente puede levantar pedidos desde el QR' : 'Ahora el cliente solo verá el menú');
+        } catch (err) { caja.checked = !caja.checked; $('su-error').textContent = err.message; }
+        caja.disabled = false;
+      });
+      const lp = el('div', 'su-campo');
+      lp.append(el('span', 'su-etq', 'Pedidos desde el QR'), sw,
+        el('span', 'ayuda', bloqueado
+          ? 'El dueño desactivó los pedidos de clientes en toda la empresa; aquí no se pueden activar.'
+          : 'Activado: el cliente que escanea el QR puede levantar su pedido. Desactivado: solo ve el menú.'));
+      cuerpo.append(lp);
+    }
+
+    // Las mesas se administran en su propia ventana
+    const mesasBtn = el('button', 'btn', `Mesas (${s.mesas})`); mesasBtn.type = 'button';
+    mesasBtn.addEventListener('click', () => abrirMesas(s));
+    const lm = el('div', 'su-campo'); lm.append(el('span', 'su-etq', 'Mesas para comer aquí'), mesasBtn);
+    cuerpo.append(lm);
+
+    det.append(cuerpo);
+    lista.append(det);
+  }
+}
+
+$('btn-sucursales').addEventListener('click', async () => {
+  $('su-error').textContent = '';
+  try { await cargarSucursales(); } catch (err) { $('su-error').textContent = err.message; }
+  abrirPagina(dlgSucursales, 'btn-sucursales');
+});
+$('su-cerrar').addEventListener('click', () => dlgSucursales.close());
+$('form-nueva-sucursal').addEventListener('submit', async (ev) => {
+  ev.preventDefault();
+  const carta = (document.querySelector('input[name="su-carta"]:checked') || {}).value || 'general';
+  const ok = await accionSucursal('admin/sucursales.php', { accion: 'crear', nombre: $('su-nombre').value.trim(), direccion: $('su-direccion').value.trim(), carta }, 'Sucursal creada');
+  if (ok) { $('su-nombre').value = ''; $('su-direccion').value = ''; document.querySelector('input[name="su-carta"][value="general"]').checked = true; }
+});
+
+/* ------------------------------------------------------------------ */
+/*  Reportes                                                           */
+/* ------------------------------------------------------------------ */
+
+const dlgReportes = $('dlg-reportes');
+const NOMBRE_METODO = { efectivo: 'Efectivo', tarjeta: 'Tarjeta', transferencia: 'Transferencia' };
+const NOMBRE_MODALIDAD = { aqui: 'Comer aquí', llevar: 'Para llevar', recoger: 'Recoger' };
+const isoLocal = (d) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+
+function fijarRango(r) {
+  const hoy = new Date();
+  let a = new Date(hoy), b = new Date(hoy);
+  if (r === 'ayer') { a.setDate(a.getDate() - 1); b = new Date(a); }
+  else if (r === '7') { a.setDate(a.getDate() - 6); }
+  else if (r === '30') { a.setDate(a.getDate() - 29); }
+  else if (r === 'mes') { a = new Date(hoy.getFullYear(), hoy.getMonth(), 1); }
+  else if (r === 'mesant') { a = new Date(hoy.getFullYear(), hoy.getMonth() - 1, 1); b = new Date(hoy.getFullYear(), hoy.getMonth(), 0); }
+  $('rp-desde').value = isoLocal(a);
+  $('rp-hasta').value = isoLocal(b);
+}
+
+let tablero = null;
+let rangoBase = null;          // rango elegido antes de entrar a un solo día
+let cargaRep = 0;
+async function cargarReporte(dia) {
+  if (!tablero) tablero = Tablero.montar($('rp-contenido'), { alCargar: (d) => {
+    if (d) { rangoBase = { desde: $('rp-desde').value, hasta: $('rp-hasta').value }; $('rp-desde').value = d; $('rp-hasta').value = d; }
+    else if (rangoBase) { $('rp-desde').value = rangoBase.desde; $('rp-hasta').value = rangoBase.hasta; rangoBase = null; }
+    cargarReporte(d || null);
+  } });
+  $('rp-error').textContent = '';
+  tablero.cargando();
+  const mia = ++cargaRep;
+  const q = new URLSearchParams({ desde: $('rp-desde').value, hasta: $('rp-hasta').value });
+  if ($('rp-sucursal').value) q.set('sucursal', $('rp-sucursal').value);
+  let r;
+  try { r = await pedir(API + 'admin/reportes.php?' + q); } catch (err) { if (mia === cargaRep) $('rp-error').textContent = err.message; return; }
+  if (mia !== cargaRep) return;
+  const sel = $('rp-sucursal');
+  if (sel.options.length !== r.sucursales.length + 1) {
+    const actual = sel.value;
+    sel.replaceChildren();
+    const todas = document.createElement('option'); todas.value = ''; todas.textContent = 'Todas (en conjunto)'; sel.append(todas);
+    for (const s of r.sucursales) { const o = document.createElement('option'); o.value = String(s.id); o.textContent = s.nombre; sel.append(o); }
+    sel.value = actual;
+  }
+  tablero.marcarDia(dia && typeof dia === 'string' ? dia : null);
+  tablero.poner(r);
+}
+
+$('btn-reportes').addEventListener('click', () => {
+  if (!$('rp-desde').value) fijarRango('7');
+  abrirPagina(dlgReportes, 'btn-reportes');
+  if (document.activeElement && document.activeElement.blur) document.activeElement.blur();
+  cargarReporte();
+});
+$('rp-cerrar').addEventListener('click', () => dlgReportes.close());
+document.querySelectorAll('.rep-rapidos [data-rango]').forEach((b) => b.addEventListener('click', () => { rangoBase = null; fijarRango(b.dataset.rango); cargarReporte(); }));
+['rp-desde', 'rp-hasta', 'rp-sucursal'].forEach((id) => $(id).addEventListener('change', () => { rangoBase = null; cargarReporte(); }));
+$('rp-actualizar').addEventListener('click', () => cargarReporte(rangoBase ? $('rp-desde').value : null));
+
+/* ------------------------------------------------------------------ */
+/*  Apariencia: logo y colores                                         */
+/* ------------------------------------------------------------------ */
+
+const dlgApariencia = $('dlg-apariencia');
+let apDatos = null;           // { colores, defecto, nombres }
+let apColores = {};
+const AP_PRESETS = [
+  { nombre: 'Comandia', colores: { encabezado: '#0a6b4e', acento: '#ff7a30', boton: '#0a6b4e', fondo: '#f3f7f4', texto: '#10241c' } },
+  { nombre: 'Clásico', colores: { encabezado: '#601020', acento: '#f8c000', boton: '#2f7d3a', fondo: '#fff7e0', texto: '#2a1015' } },
+  { nombre: 'Verde fresco', colores: { encabezado: '#1f5e3b', acento: '#f2c94c', boton: '#2f7d3a', fondo: '#f4faf1', texto: '#14231a' } },
+  { nombre: 'Azul moderno', colores: { encabezado: '#12355b', acento: '#ffb703', boton: '#1d6fd1', fondo: '#f3f7fc', texto: '#101c2b' } },
+  { nombre: 'Morado y rosa', colores: { encabezado: '#4a1d6b', acento: '#ff8fb1', boton: '#8e44ad', fondo: '#faf5fd', texto: '#24102f' } },
+  { nombre: 'Carbón y naranja', colores: { encabezado: '#222222', acento: '#ff7a00', boton: '#d9480f', fondo: '#f6f4f1', texto: '#1c1c1c' } },
+];
+
+/* Mismas cuentas que el servidor (api/lib_marca.php) para ver la vista previa al instante */
+const apRgb = (h) => [1, 3, 5].map((i) => parseInt(h.slice(i, i + 2), 16));
+const apLum = (h) => { const [r, g, b] = apRgb(h).map((v) => { const s = v / 255; return s <= 0.03928 ? s / 12.92 : ((s + 0.055) / 1.055) ** 2.4; }); return 0.2126 * r + 0.7152 * g + 0.0722 * b; };
+const apContraste = (a, b) => { const x = apLum(a), y = apLum(b); return (Math.max(x, y) + 0.05) / (Math.min(x, y) + 0.05); };
+const apTextoSobre = (h) => (apContraste(h, '#ffffff') >= apContraste(h, '#1a1a1a') ? '#ffffff' : '#1a1a1a');
+const apMezcla = (a, b, t) => { const x = apRgb(a), y = apRgb(b); return '#' + [0, 1, 2].map((i) => Math.round(x[i] + (y[i] - x[i]) * t).toString(16).padStart(2, '0')).join(''); };
+
+function apAplicar(c) {
+  const s = document.documentElement.style;
+  s.setProperty('--color-vino', c.encabezado);
+  s.setProperty('--color-amarillo', c.acento);
+  s.setProperty('--color-principal', c.boton);
+  s.setProperty('--color-fondo', c.fondo);
+  s.setProperty('--color-oscuro', c.texto);
+  s.setProperty('--color-tarjeta', apLum(c.fondo) < 0.2 ? apMezcla(c.fondo, '#ffffff', 0.08) : '#ffffff');
+  s.setProperty('--color-suave', apMezcla(c.fondo, c.acento, 0.22));
+  s.setProperty('--color-borde', apMezcla(c.fondo, c.texto, 0.12));
+  s.setProperty('--texto-encabezado', apTextoSobre(c.encabezado));
+  s.setProperty('--texto-boton', apTextoSobre(c.boton));
+  s.setProperty('--color-llevar', c.llevar);
+  s.setProperty('--texto-llevar', apContraste(c.llevar, '#ffffff') >= 3.2 ? '#ffffff' : '#1a1a1a');   // letras en negritas grandes: basta contraste 3.2 (así el azul de siempre conserva letras blancas)
+  const malo = apContraste(c.texto, c.fondo) < 4.5;
+  $('ap-aviso').textContent = malo ? '⚠ El texto casi no se lee sobre ese fondo; elige colores con más contraste.' : '';
+  $('ap-guardar').disabled = malo;
+}
+
+function apQuitarVistaPrevia() {
+  const s = document.documentElement.style;
+  ['--color-vino', '--color-amarillo', '--color-principal', '--color-fondo', '--color-oscuro', '--color-tarjeta', '--color-suave', '--color-borde', '--texto-encabezado', '--texto-boton', '--color-llevar', '--texto-llevar'].forEach((p) => s.removeProperty(p));
+}
+
+function apRecargarTema() {
+  apQuitarVistaPrevia();
+  const link = document.querySelector('link[href*="api/tema.php"]');
+  if (link) link.href = '../api/tema.php?t=' + Date.now();
+}
+
+function apRecargarLogo() {
+  const url = '../api/logo.php?t=' + Date.now();
+  document.querySelectorAll('img.logo, #ap-logo-img').forEach((i) => { i.src = url; });
+}
+
+function apPintar() {
+  const caja = $('ap-colores');
+  caja.replaceChildren();
+  for (const k of Object.keys(apDatos.nombres)) {
+    const fila = el('label', 'ap-color');
+    const sel = document.createElement('input');
+    sel.type = 'color'; sel.value = apColores[k]; sel.id = 'ap-' + k;
+    sel.addEventListener('input', () => { apColores[k] = sel.value; apAplicar(apColores); });
+    fila.append(sel, el('span', '', apDatos.nombres[k]));
+    caja.append(fila);
+  }
+  const pre = $('ap-presets');
+  pre.replaceChildren();
+  for (const p of AP_PRESETS) {
+    const b = el('button', 'ap-preset');
+    b.type = 'button';
+    b.title = p.nombre;
+    for (const k of ['encabezado', 'acento', 'boton', 'fondo']) { const m = el('i', ''); m.style.background = p.colores[k]; b.append(m); }
+    b.append(el('span', '', p.nombre));
+    b.addEventListener('click', () => { apColores = { ...apColores, ...p.colores };   // los temas no cambian el color de "Para llevar"
+    apPintar(); apAplicar(apColores); });
+    pre.append(b);
+  }
+}
+
+async function apCargar() {
+  apDatos = await pedir(API + 'admin/marca.php');
+  apColores = { ...apDatos.colores };
+  apPintar();
+  apAplicar(apColores);
+  $('ap-logo-quitar').hidden = !apDatos.logo;
+}
+
+$('btn-apariencia').addEventListener('click', async () => {
+  $('ap-error').textContent = '';
+  try { await apCargar(); } catch (err) { $('ap-error').textContent = err.message; }
+  abrirPagina(dlgApariencia, 'btn-apariencia');
+});
+dlgApariencia.addEventListener('close', apQuitarVistaPrevia);
+$('ap-cerrar').addEventListener('click', () => dlgApariencia.close());
+$('ap-guardar').addEventListener('click', async () => {
+  $('ap-error').textContent = '';
+  try {
+    const r = await enviarJson(API + 'admin/marca.php', { accion: 'colores', colores: apColores });
+    apRecargarTema();
+    avisar(r.avisos && r.avisos.length ? r.avisos[0] : 'Apariencia guardada', !!(r.avisos && r.avisos.length));
+    dlgApariencia.close();
+  } catch (err) { $('ap-error').textContent = err.message; }
+});
+$('ap-restablecer').addEventListener('click', async () => {
+  if (!(await confirmar('¿Volver a los colores originales de Comandia?', { si: 'Restablecer', no: 'Volver' }))) return;
+  try { await enviarJson(API + 'admin/marca.php', { accion: 'restablecer' }); apRecargarTema(); await apCargar(); avisar('Colores restablecidos'); }
+  catch (err) { $('ap-error').textContent = err.message; }
+});
+$('ap-logo-archivo').addEventListener('change', async (ev) => {
+  const archivo = ev.target.files[0];
+  ev.target.value = '';
+  if (!archivo) return;
+  $('ap-error').textContent = '';
+  const datos = new FormData();
+  datos.append('accion', 'logo');
+  datos.append('logo', archivo);
+  try { await pedir(API + 'admin/marca.php', { method: 'POST', body: datos }); apRecargarLogo(); $('ap-logo-quitar').hidden = false; avisar('Logo actualizado'); }
+  catch (err) { $('ap-error').textContent = err.message; }
+});
+$('ap-logo-quitar').addEventListener('click', async () => {
+  if (!(await confirmar('¿Quitar el logo de tu empresa? Se volverá a usar el logo de Comandia.', { si: 'Quitar logo', peligro: true }))) return;
+  try { await enviarJson(API + 'admin/marca.php', { accion: 'quitar_logo' }); apRecargarLogo(); $('ap-logo-quitar').hidden = true; avisar('Logo quitado'); }
+  catch (err) { $('ap-error').textContent = err.message; }
+});
+
+/* ------------------------------------------------------------------ */
+/*  Ajustes de cocina                                                  */
+/* ------------------------------------------------------------------ */
+
+const dlgAjustes = $('dlg-prioridades');
+let datosPrio = null;
+
+/** Distribución de comandas en Cocina (apiladas / una fila con scroll lateral): interruptor general (dueño) y por sucursal. Se guarda al marcar. */
+function pintarCocinaHorizontal(ch) {
+  $('ch-general-fila').hidden = !ch.puede_general;
+  $('ch-general').checked = ch.general;
+  const lista = $('ch-lista');
+  lista.replaceChildren();
+  for (const s of ch.sucursales) {
+    const x = el('input'); x.type = 'checkbox'; x.checked = s.activo;
+    x.addEventListener('change', () => guardarCocinaHorizontal({ ambito: 'sucursal', sucursal_id: s.id, activo: x.checked }));
+    const fila = el('label', 'lote-op'); fila.append(x, el('span', '', s.nombre));
+    lista.append(fila);
+  }
+}
+async function guardarCocinaHorizontal(cambio) {
+  $('pr-error').textContent = '';
+  try {
+    const r = await enviarJson(API + 'admin/prioridades.php', { accion: 'cocina_horizontal', ...cambio });
+    pintarCocinaHorizontal(r.cocina_horizontal);
+    avisar('Guardado');
+  } catch (err) {
+    $('pr-error').textContent = err.message;
+    try { pintarCocinaHorizontal((await pedir(API + 'admin/prioridades.php')).cocina_horizontal); } catch { /* se queda como estaba */ }
+  }
+}
+$('ch-general').addEventListener('change', () => guardarCocinaHorizontal({ ambito: 'general', activo: $('ch-general').checked }));
+
+async function cargarAjustes() {
+  datosPrio = await pedir(API + 'admin/prioridades.php');
+  pintarCocinaHorizontal(datosPrio.cocina_horizontal);
+  $('pm-prep').value = datosPrio.min_preparacion;
+  pintarLote();
+}
+
+/* "Preparar en lote": categorías colapsadas; al expandir una se ven sus platillos. Se puede elegir la categoría completa
+   (incluye también los platillos que agregues después) o solo platillos concretos. Se guarda al marcar. */
+const loteCats = new Set();      // categorías elegidas completas
+const loteProds = new Set();     // platillos sueltos elegidos
+const loteAbiertas = new Set();  // categorías expandidas en pantalla
+
+function pintarLote() {
+  loteCats.clear(); loteProds.clear();
+  for (const c of datosPrio.lote) if (c.activa) loteCats.add(c.id);
+  for (const id of datosPrio.lote_productos || []) loteProds.add(id);
+  const lista = $('lote-lista');
+  lista.replaceChildren();
+  for (const c of datosPrio.lote) {
+    const platillos = datosPrio.productos.filter((p) => p.categoria_id === c.id);
+    const det = el('details', 'lote-cat');
+    det.open = loteAbiertas.has(c.id);
+    det.addEventListener('toggle', () => { if (det.open) loteAbiertas.add(c.id); else loteAbiertas.delete(c.id); });
+    const resumen = el('summary', 'lote-cat-resumen');
+    const marca = document.createElement('input');
+    marca.type = 'checkbox'; marca.className = 'lote-cat-marca';
+    marca.setAttribute('aria-label', `Toda la categoría ${c.nombre}`);
+    marca.addEventListener('click', (ev) => ev.stopPropagation());
+    marca.addEventListener('change', () => { if (marca.checked) loteCats.add(c.id); else loteCats.delete(c.id); refrescarLote(); guardarLote(); });
+    const cuenta = el('span', 'chip');
+    resumen.append(marca, el('span', 'cat-nombre', c.nombre), cuenta);
+    det.append(resumen);
+    const cuerpo = el('div', 'lote-cat-cuerpo');
+    const casillas = [];
+    if (platillos.length === 0) cuerpo.append(el('p', 'ayuda', 'Esta categoría aún no tiene platillos.'));
+    for (const p of platillos) {
+      const f = el('label', 'lote-op');
+      const x = document.createElement('input');
+      x.type = 'checkbox'; x.value = String(p.id);
+      x.addEventListener('change', () => { if (x.checked) loteProds.add(p.id); else loteProds.delete(p.id); refrescarLote(); guardarLote(); });
+      f.append(x, el('span', '', p.nombre));
+      cuerpo.append(f);
+      casillas.push({ p, x });
+    }
+    det.append(cuerpo);
+    lista.append(det);
+    c._ui = { marca, cuenta, casillas };
+  }
+  refrescarLote();
+}
+
+/** Pone al día las casillas y los contadores según lo elegido (categoría completa → sus platillos quedan marcados y fijos). */
+function refrescarLote() {
+  for (const c of datosPrio.lote) {
+    const { marca, cuenta, casillas } = c._ui;
+    const completa = loteCats.has(c.id);
+    const sueltos = casillas.filter(({ p }) => loteProds.has(p.id)).length;
+    marca.checked = completa;
+    marca.indeterminate = !completa && sueltos > 0;
+    for (const { p, x } of casillas) { x.checked = completa || loteProds.has(p.id); x.disabled = completa; }
+    cuenta.textContent = completa ? 'Toda la categoría' : sueltos ? `${sueltos} de ${casillas.length} platillos` : 'Ninguno';
+    cuenta.classList.toggle('activo', completa || sueltos > 0);
+  }
+}
+
+/* Pedidos del cliente por QR: interruptor de toda la empresa (dueño) y de cada sucursal (dueño o gerente).
+   Los cambios NO se guardan al marcar: se acumulan y se aplican al tocar "Guardar configuración". */
+let cpOriginal = null;   // estado guardado en el servidor: { general, puede_general, sucursales: [{id, activo}] }
+
+/** Compara lo marcado en pantalla con lo guardado; habilita el botón solo si hay cambios. */
+function cpActualizarPendiente() {
+  if (!cpOriginal) return;
+  const cambios = cpCambios().length > 0;
+  $('cp-guardar').disabled = !cambios;
+  $('cp-pendiente').hidden = !cambios;
+}
+
+/** Lista de cambios (en el orden en que deben aplicarse): primero el general, luego cada sucursal. */
+function cpCambios() {
+  const cambios = [];
+  if (cpOriginal.puede_general && $('cp-general').checked !== cpOriginal.general) {
+    cambios.push({ accion: 'general', activo: $('cp-general').checked });
+  }
+  document.querySelectorAll('#cp-lista input').forEach((x) => {
+    const id = Number(x.dataset.id);
+    const antes = cpOriginal.sucursales.find((s) => s.id === id);
+    if (antes && x.checked !== antes.activo) cambios.push({ accion: 'sucursal', sucursal_id: id, activo: x.checked });
+  });
+  // Pestañas "Mi pedido" / "Pagar" de cada sucursal (se mandan juntas si cambió cualquiera de las dos)
+  for (const s of cpOriginal.sucursales) {
+    const vm = document.querySelector(`#cp-pestanas input[data-id="${s.id}"][data-campo="menu"]`);
+    const vp = document.querySelector(`#cp-pestanas input[data-id="${s.id}"][data-campo="pedido"]`);
+    const vg = document.querySelector(`#cp-pestanas input[data-id="${s.id}"][data-campo="pagar"]`);
+    if (vm && vp && vg && (vm.checked !== s.ver_menu || vp.checked !== s.ver_pedido || vg.checked !== s.ver_pagar)) cambios.push({ accion: 'pestanas', sucursal_id: s.id, ver_menu: vm.checked, ver_pedido: vp.checked, ver_pagar: vg.checked });
+  }
+  return cambios;
+}
+
+async function cargarClientePedidos() {
+  const r = await pedir(API + 'admin/cliente-pedidos.php');
+  cpOriginal = { general: r.general, puede_general: r.puede_general, sucursales: r.sucursales.map((s) => ({ id: s.id, activo: s.activo, ver_pedido: s.ver_pedido, ver_pagar: s.ver_pagar, ver_menu: s.ver_menu !== false })) };
+  $('cp-general-fila').hidden = !r.puede_general;
+  $('cp-general').checked = r.general;
+  const lista = $('cp-lista');
+  lista.replaceChildren();
+  for (const s of r.sucursales) {
+    const f = el('label', 'lote-op');
+    const x = document.createElement('input');
+    x.type = 'checkbox'; x.checked = s.activo; x.dataset.id = String(s.id);
+    x.disabled = !r.general && !r.puede_general;   // el gerente no puede encenderlo si la empresa lo apagó
+    x.addEventListener('change', cpActualizarPendiente);
+    f.append(x, el('span', '', s.nombre + (s.activo && !s.efectivo ? ' (apagado por la empresa)' : '')));
+    lista.append(f);
+  }
+  // Pestañas visibles para el cliente, por sucursal
+  const pest = $('cp-pestanas');
+  pest.replaceChildren();
+  for (const s of r.sucursales) {
+    const bloque = el('div', 'cp-pest-suc');
+    if (r.sucursales.length > 1) bloque.append(el('strong', '', s.nombre));
+    const fila = el('div', 'lote-lista');
+    for (const [campo, texto, valor] of [['menu', 'Mostrar «Menú»', s.ver_menu !== false], ['pedido', 'Mostrar «Mi pedido»', s.ver_pedido], ['pagar', 'Mostrar «Pagar»', s.ver_pagar]]) {
+      const f = el('label', 'lote-op');
+      const x = document.createElement('input');
+      x.type = 'checkbox'; x.checked = valor; x.dataset.id = String(s.id); x.dataset.campo = campo;
+      x.addEventListener('change', () => {
+        const cajas = [...fila.querySelectorAll('input')];
+        if (!cajas.some((c) => c.checked)) { x.checked = true; avisar('Deja al menos una pestaña visible.', true); }
+        cpActualizarPendiente();
+      });
+      f.append(x, el('span', '', texto));
+      fila.append(f);
+    }
+    bloque.append(fila);
+    pest.append(bloque);
+  }
+  const nota = $('cp-nota');
+  nota.hidden = r.general || r.puede_general;
+  nota.textContent = 'El dueño desactivó los pedidos por QR en toda la empresa. Solo él puede volver a activarlos.';
+  cpActualizarPendiente();
+}
+
+/** Envía al servidor todos los cambios pendientes y vuelve a leer el estado real. */
+async function guardarClientePedidos() {
+  $('cp-error').textContent = '';
+  const boton = $('cp-guardar');
+  boton.disabled = true;
+  try {
+    for (const cambio of cpCambios()) await enviarJson(API + 'admin/cliente-pedidos.php', cambio);
+    avisar('Configuración guardada');
+  } catch (err) { $('cp-error').textContent = err.message; }
+  try { await cargarClientePedidos(); } catch { /* se queda como estaba */ }
+}
+$('cp-general').addEventListener('change', cpActualizarPendiente);
+$('cp-guardar').addEventListener('click', guardarClientePedidos);
+
+async function guardarLote() {
+  $('pr-error').textContent = '';
+  const cats = [...loteCats];
+  // Los platillos de una categoría completa ya van incluidos: solo se guardan los sueltos de las demás
+  const completas = new Set(datosPrio.productos.filter((p) => loteCats.has(p.categoria_id)).map((p) => p.id));
+  const prods = [...loteProds].filter((id) => !completas.has(id));
+  try {
+    await enviarJson(API + 'admin/prioridades.php', { accion: 'lote', categorias: cats, productos: prods });
+    avisar('Guardado: cocina verá esas categorías y platillos en “Preparar en lote”');
+  } catch (err) { $('pr-error').textContent = err.message; }
+}
+
+async function guardarAjustes() {
+  $('pr-error').textContent = '';
+  try {
+    await enviarJson(API + 'admin/prioridades.php', { accion: 'modalidad', aqui: datosPrio.modalidad.aqui, llevar: datosPrio.modalidad.llevar, prep: Number($('pm-prep').value) || 0 });
+    await cargarAjustes();
+    avisar('Ajuste guardado');
+  } catch (err) {
+    $('pr-error').textContent = err.message;
+  }
+}
+
+$('btn-prioridades').addEventListener('click', async () => {
+  $('pr-error').textContent = '';
+  try { await cargarAjustes(); } catch (err) { avisar(err.message, true); return; }
+  abrirPagina(dlgAjustes, 'btn-prioridades');
+});
+$('pm-prep').addEventListener('change', guardarAjustes);
+$('pr-cerrar').addEventListener('click', () => dlgAjustes.close());
+
+/* Ajustes de tomar pedidos: interruptor del código rápido. Lo cambian el dueño (empresa o cualquier sucursal) y el gerente
+   (solo su sucursal). Se guarda al marcar. */
+const dlgTomaPedidos = $('dlg-toma-pedidos');
+
+/** Dibuja el interruptor general y una casilla por sucursal con el estado que manda el servidor. */
+function pintarCodigoRapido(cr) {
+  $('tp-general-fila').hidden = !cr.puede_general;
+  $('tp-general').checked = cr.general;
+  $('tp-nota').hidden = cr.general || cr.puede_general;
+  const lista = $('tp-lista');
+  lista.replaceChildren();
+  for (const s of cr.sucursales) {
+    const x = el('input'); x.type = 'checkbox'; x.checked = cr.general && s.activo; x.disabled = !cr.general;
+    x.addEventListener('change', () => guardarCodigoRapido({ ambito: 'sucursal', sucursal_id: s.id, activo: x.checked }));
+    const fila = el('label', 'lote-op'); fila.append(x, el('span', '', s.nombre));
+    lista.append(fila);
+  }
+}
+
+async function guardarCodigoRapido(cambio) {
+  $('tp-error').textContent = '';
+  try {
+    const r = await enviarJson(API + 'admin/prioridades.php', { accion: 'codigo_rapido', ...cambio });
+    pintarCodigoRapido(r.codigo_rapido);
+    avisar('Guardado');
+  } catch (err) {
+    $('tp-error').textContent = err.message;
+    try { pintarCodigoRapido((await pedir(API + 'admin/prioridades.php')).codigo_rapido); } catch { /* se queda como estaba */ }
+  }
+}
+function pintarPedirPorMesa(pm) {
+  $('tm-general-fila').hidden = !pm.puede_general;
+  $('tm-general').checked = pm.general;
+  const lista = $('tm-lista');
+  lista.replaceChildren();
+  for (const s of pm.sucursales) {
+    const x = el('input'); x.type = 'checkbox'; x.checked = s.activo;
+    x.addEventListener('change', () => guardarPedirPorMesa({ ambito: 'sucursal', sucursal_id: s.id, activo: x.checked }));
+    const fila = el('label', 'lote-op'); fila.append(x, el('span', '', s.nombre + ' · pedir por mesa'));
+    lista.append(fila);
+  }
+}
+async function guardarPedirPorMesa(cambio) {
+  $('tm-error').textContent = '';
+  try {
+    const r = await enviarJson(API + 'admin/prioridades.php', { accion: 'pedir_por_mesa', ...cambio });
+    pintarPedirPorMesa(r.pedir_por_mesa);
+    avisar('Guardado');
+  } catch (err) {
+    $('tm-error').textContent = err.message;
+    try { pintarPedirPorMesa((await pedir(API + 'admin/prioridades.php')).pedir_por_mesa); } catch { /* se queda */ }
+  }
+}
+$('tm-general').addEventListener('change', () => guardarPedirPorMesa({ ambito: 'general', activo: $('tm-general').checked }));
+$('tp-general').addEventListener('change', () => guardarCodigoRapido({ ambito: 'general', activo: $('tp-general').checked }));
+
+$('btn-toma-pedidos').addEventListener('click', async () => {
+  $('tp-error').textContent = '';
+  try { const ap = await pedir(API + 'admin/prioridades.php'); pintarCodigoRapido(ap.codigo_rapido); pintarPedirPorMesa(ap.pedir_por_mesa); } catch (err) { avisar(err.message, true); return; }
+  abrirPagina(dlgTomaPedidos, 'btn-toma-pedidos');
+});
+$('tp-cerrar').addEventListener('click', () => dlgTomaPedidos.close());
+
+
+/* ---- Carriles de cocina (solo el dueño): nombre, color y regla de cada carril, para toda la empresa o por sucursal ---- */
+const dlgCarriles = $('dlg-carriles');
+let crEstado = null;     // lo que manda el servidor (carriles de la empresa y de cada sucursal, estaciones y categorías)
+let crLista = [];        // carriles que se están editando
+const COLORES_CR = [['verde', '🟢 Verde'], ['naranja', '🟠 Naranja'], ['azul', '🔵 Azul'], ['morado', '🟣 Morado'], ['rojo', '🔴 Rojo'], ['gris', '⚪ Gris']];
+const TIPOS_CR = [['aqui', '🍽 Comer aquí'], ['llevar', '🥡 Para llevar'], ['recoger', '🛍 Recoger']];
+const copiaCarriles = (l) => l.map((c) => ({ ...c, tipos: [...c.tipos], estaciones: [...c.estaciones], categorias: [...c.categorias] }));
+
+function crAmbito() { const v = $('cr-ambito').value; return v === 'general' ? { ambito: 'general' } : { ambito: 'sucursal', sucursal_id: Number(v) }; }
+
+function crCargarAmbito() {
+  const v = $('cr-ambito').value;
+  const suc = crEstado.sucursales.find((s) => String(s.id) === v);
+  $('cr-heredar-fila').hidden = v === 'general' && !crEstado.general_propio;
+  if (v === 'general') {
+    $('cr-heredar-fila').hidden = false;
+    $('cr-heredar').checked = !crEstado.general_propio;
+    $('cr-heredar').nextElementSibling.textContent = 'Usar los de siempre (Comer aquí / Para llevar)';
+    crLista = copiaCarriles(crEstado.general);
+  } else {
+    $('cr-heredar-fila').hidden = false;
+    $('cr-heredar').checked = !suc.propio;
+    $('cr-heredar').nextElementSibling.textContent = 'Usar los carriles de toda la empresa';
+    crLista = copiaCarriles(suc.carriles);
+  }
+  crPintar();
+}
+
+function crPintar() {
+  const editar = crEstado.puede_editar;
+  const hereda = !editar || $('cr-heredar').checked;     // se edita cuando el ámbito no usa los carriles heredados
+  const suc = crEstado.sucursales.find((s) => String(s.id) === $('cr-ambito').value);
+  $('cr-heredado').hidden = !editar || !$('cr-heredar').checked || $('cr-ambito').value === 'general';
+  $('cr-acciones').hidden = hereda;
+  $('cr-guardar').hidden = !editar;
+  $('cr-heredar-fila').hidden = !editar;
+  $('cr-ambito').closest('label').hidden = $('cr-ambito').options.length < 2;   // el gerente solo tiene su sucursal
+  const caja = $('cr-lista');
+  caja.replaceChildren();
+  crLista.forEach((c, n) => {
+    const t = el('article', 'cr-carril' + (hereda ? ' solo-lectura' : ''));
+    const cab = el('div', 'cr-cab');
+    const nombre = document.createElement('input');
+    nombre.type = 'text'; nombre.maxLength = 40; nombre.value = c.nombre; nombre.placeholder = 'Ej. 🦐 Mariscos'; nombre.setAttribute('aria-label', 'Nombre del carril'); nombre.disabled = hereda;
+    nombre.addEventListener('input', () => { c.nombre = nombre.value; });
+    const color = document.createElement('select');
+    color.setAttribute('aria-label', 'Color'); color.disabled = hereda;
+    for (const [v, tx] of COLORES_CR) color.append(new Option(tx, v));
+    color.value = c.color;
+    color.addEventListener('change', () => { c.color = color.value; });
+    cab.append(el('span', 'cr-num', String(n + 1)), nombre, color);
+    if (suc) {   // en una sucursal: interruptor para mostrar u ocultar este carril solo ahí (se guarda al momento)
+      const interr = el('label', 'cr-activo');
+      const sw = document.createElement('input'); sw.type = 'checkbox'; sw.checked = !suc.apagados.includes(c.id);
+      sw.addEventListener('change', async () => {
+        $('cr-error').textContent = '';
+        try {
+          const r = await enviarJson(API + 'admin/prioridades.php', { accion: 'carril_activo', sucursal_id: suc.id, carril_id: c.id, activo: sw.checked });
+          const nuevo = r.carriles.sucursales.find((x) => x.id === suc.id);
+          if (nuevo) suc.apagados = nuevo.apagados;
+          avisar(sw.checked ? 'Carril activado en esta sucursal' : 'Carril desactivado en esta sucursal');
+        } catch (err) { sw.checked = !sw.checked; $('cr-error').textContent = err.message; }
+      });
+      interr.append(sw, el('span', '', 'Activo'));
+      cab.append(interr);
+    }
+    if (!hereda) {
+      const mover = (d) => { const j = n + d; if (j < 0 || j >= crLista.length) return; [crLista[n], crLista[j]] = [crLista[j], crLista[n]]; crPintar(); };
+      const sube = el('button', 'btn chico', '↑'); sube.type = 'button'; sube.title = 'Subir'; sube.disabled = n === 0; sube.addEventListener('click', () => mover(-1));
+      const baja = el('button', 'btn chico', '↓'); baja.type = 'button'; baja.title = 'Bajar'; baja.disabled = n === crLista.length - 1; baja.addEventListener('click', () => mover(1));
+      const borra = el('button', 'btn chico peligro', '🗑'); borra.type = 'button'; borra.title = 'Quitar carril'; borra.disabled = crLista.length <= 1;
+      borra.addEventListener('click', () => { crLista.splice(n, 1); crPintar(); });
+      cab.append(sube, baja, borra);
+    }
+    t.append(cab);
+    const grupo = (titulo, opciones, marcados, alCambiar, vacio) => {
+      const g = el('fieldset', 'cr-grupo');
+      g.append(el('legend', '', titulo));
+      if (!opciones.length) { g.append(el('p', 'ayuda', vacio)); t.append(g); return; }
+      const fila = el('div', 'lote-lista');
+      for (const [v, tx] of opciones) {
+        const x = document.createElement('input'); x.type = 'checkbox'; x.checked = marcados.includes(v); x.disabled = hereda;
+        x.addEventListener('change', () => alCambiar(v, x.checked));
+        const l = el('label', 'lote-op'); l.append(x, el('span', '', tx));
+        fila.append(l);
+      }
+      g.append(fila); t.append(g);
+    };
+    const poner = (lista, v, si) => { const i = lista.indexOf(v); if (si && i < 0) lista.push(v); if (!si && i >= 0) lista.splice(i, 1); };
+    grupo('Tipo de pedido', TIPOS_CR, c.tipos, (v, si) => poner(c.tipos, v, si), '');
+    grupo('Estación (parrilla) de los platillos', crEstado.estaciones.map((e) => [e.id, e.nombre]), c.estaciones, (v, si) => poner(c.estaciones, v, si), 'Aún no hay estaciones. Créalas en Ajustes · Cocina.');
+    grupo('Categoría de los platillos', crEstado.categorias.map((k) => [k, k]), c.categorias, (v, si) => poner(c.categorias, v, si), 'Aún no hay categorías.');
+    caja.append(t);
+  });
+}
+
+async function abrirCarriles() {
+  $('cr-error').textContent = '';
+  try { crEstado = (await pedir(API + 'admin/prioridades.php')).carriles; } catch (err) { avisar(err.message, true); return; }
+  if (!crEstado) { avisar('No se pudieron cargar los carriles.', true); return; }
+  const sel = $('cr-ambito');
+  sel.replaceChildren();
+  if (crEstado.puede_general) sel.append(new Option('Toda la empresa', 'general'));
+  for (const s of crEstado.sucursales) sel.append(new Option('Sucursal · ' + s.nombre, String(s.id)));
+  crCargarAmbito();
+  abrirPagina(dlgCarriles, 'btn-carriles');
+}
+$('btn-carriles').addEventListener('click', abrirCarriles);
+$('cr-ambito').addEventListener('change', crCargarAmbito);
+$('cr-heredar').addEventListener('change', () => {
+  if (!$('cr-heredar').checked && $('cr-ambito').value !== 'general') {
+    // Empieza con una copia de lo que usa hoy para editarla
+    const suc = crEstado.sucursales.find((s) => String(s.id) === $('cr-ambito').value);
+    crLista = copiaCarriles(suc.carriles);
+  }
+  crPintar();
+});
+$('cr-agregar').addEventListener('click', () => {
+  if (crLista.length >= 8) { $('cr-error').textContent = 'Máximo 8 carriles.'; return; }
+  crLista.push({ id: 'c' + Date.now().toString(36).slice(-6), nombre: '', color: 'azul', tipos: [], estaciones: [], categorias: [] });
+  crPintar();
+});
+$('cr-defecto').addEventListener('click', () => { crLista = copiaCarriles(crEstado.defecto); crPintar(); });
+$('cr-guardar').addEventListener('click', async () => {
+  $('cr-error').textContent = '';
+  const hereda = $('cr-heredar').checked;
+  const cuerpo = { accion: 'carriles', ...crAmbito() };
+  if (hereda) cuerpo.heredar = true; else cuerpo.carriles = crLista;
+  try {
+    const r = await enviarJson(API + 'admin/prioridades.php', cuerpo);
+    crEstado = r.carriles;
+    crCargarAmbito();
+    avisar('Carriles guardados');
+  } catch (err) { $('cr-error').textContent = err.message; }
+});
+$('cr-cerrar').addEventListener('click', () => dlgCarriles.close());
+
+/* Ajustes de pedidos por QR: su propia página */
+const dlgPedidosQr = $('dlg-pedidos-qr');
+$('btn-pedidos-qr').addEventListener('click', async () => {
+  $('cp-error').textContent = '';
+  try { await cargarClientePedidos(); await cargarCfgCliente(); } catch (err) { avisar(err.message, true); return; }
+  abrirPagina(dlgPedidosQr, 'btn-pedidos-qr');
+});
+
+/* Tipos de pedido, plato por plato y datos de pago: por empresa (dueño) y por sucursal (dueño o gerente) */
+let cfgCliente = null;   // lo que manda el servidor: { puede_general, general, sucursales: [{ id, nombre, propio, efectivo }] }
+const TODOS_TIPOS = ['aqui', 'llevar', 'recoger'];
+
+async function cargarCfgCliente() {
+  const r = await pedir(API + 'admin/cliente-config.php');
+  const antes = { tipos: $('ct-ambito').value, pago: $('pg-ambito').value };
+  cfgCliente = r;
+  for (const sel of [$('ct-ambito'), $('pg-ambito')]) {
+    sel.replaceChildren();
+    if (r.puede_general) sel.append(new Option('Toda la empresa (valor por defecto)', 'general'));
+    for (const s of r.sucursales) sel.append(new Option(s.nombre, String(s.id)));
+  }
+  const elige = (sel, v) => { if ([...sel.options].some((o) => o.value === v)) sel.value = v; };
+  elige($('ct-ambito'), antes.tipos); elige($('pg-ambito'), antes.pago);
+  ctPintar(); pgPintar();
+}
+const cfgAmbito = (sel) => (sel.value === 'general' ? { ambito: 'general' } : { ambito: 'sucursal', sucursal_id: Number(sel.value) });
+
+function ctPintar() {
+  const v = $('ct-ambito').value;
+  const suc = cfgCliente.sucursales.find((s) => String(s.id) === v);
+  const mods = v === 'general' ? (cfgCliente.general.modalidades || TODOS_TIPOS) : suc.efectivo.modalidades;
+  const mixto = v === 'general' ? (cfgCliente.general.mixto ?? true) : (suc.propio.mixto ?? suc.efectivo.mixto);
+  document.querySelectorAll('#ct-mods input').forEach((x) => { x.checked = mods.includes(x.dataset.mod); });
+  $('ct-mixto').checked = mixto && mods.includes('aqui') && mods.includes('llevar');
+  $('ct-mixto').disabled = !(mods.includes('aqui') && mods.includes('llevar'));
+  const heredado = suc && suc.propio.modalidades === null && suc.propio.mixto === null && suc.propio.mesa === null;
+  $('ct-mesa').value = v === 'general' ? (cfgCliente.general.mesa || 'opcional') : (suc.efectivo.mesa || 'opcional');
+  $('ct-nota').hidden = !heredado;
+  $('ct-nota').textContent = heredado ? 'Esta sucursal usa la configuración de la empresa. Al guardar, tendrá la suya.' : '';
+}
+$('ct-ambito').addEventListener('change', ctPintar);
+$('ct-mods').addEventListener('change', (ev) => {
+  const marcados = [...document.querySelectorAll('#ct-mods input')].filter((x) => x.checked);
+  if (marcados.length === 0) { ev.target.checked = true; avisar('Deja al menos un tipo de pedido.', true); }
+  const m = [...document.querySelectorAll('#ct-mods input')].filter((x) => x.checked).map((x) => x.dataset.mod);
+  const dos = m.includes('aqui') && m.includes('llevar');
+  $('ct-mixto').disabled = !dos;
+  if (!dos) $('ct-mixto').checked = false;
+});
+$('ct-guardar').addEventListener('click', async () => {
+  $('ct-error').textContent = '';
+  const modalidades = [...document.querySelectorAll('#ct-mods input')].filter((x) => x.checked).map((x) => x.dataset.mod);
+  try {
+    await enviarJson(API + 'admin/cliente-config.php', { accion: 'tipos', ...cfgAmbito($('ct-ambito')), modalidades, mixto: $('ct-mixto').checked, mesa: $('ct-mesa').value });
+    avisar('Tipos de pedido guardados');
+    await cargarCfgCliente();
+  } catch (err) { $('ct-error').textContent = err.message; }
+});
+
+const dlgPago = $('dlg-pago');
+function pgPintar() {
+  const v = $('pg-ambito').value;
+  const suc = cfgCliente.sucursales.find((s) => String(s.id) === v);
+  const propio = v === 'general' ? cfgCliente.general.pago : suc.propio.pago;
+  const mostrado = propio || (suc && suc.efectivo.pago) || null;
+  $('pg-clabe').value = mostrado ? mostrado.clabe : '';
+  $('pg-benef').value = mostrado ? mostrado.beneficiario : '';
+  $('pg-inst').value = mostrado ? mostrado.institucion : '';
+  // ¿Se acepta transferencia? El gerente no puede encenderla si el dueño la apagó para toda la empresa
+  const generalOk = cfgCliente.general.transferencia === true;
+  $('pg-activo').checked = v === 'general' ? generalOk : (generalOk && suc.propio.transferencia !== false);
+  $('pg-activo').disabled = v !== 'general' && !generalOk && !cfgCliente.puede_general;
+  $('pg-activo-nota').hidden = !($('pg-activo').disabled || (v !== 'general' && !generalOk));
+  $('pg-activo-nota').textContent = !generalOk ? 'El pago por transferencia no está activado en toda la empresa.' + (cfgCliente.puede_general ? ' Actívalo en «Toda la empresa» para poder usarlo en una sucursal.' : ' Solo el dueño puede activarlo.') : '';
+  $('pg-campos').hidden = !$('pg-activo').checked;
+  $('pg-quitar').hidden = !(suc && propio);
+  $('pg-nota').hidden = !(suc && !propio);
+  $('pg-nota').textContent = suc && !propio ? (mostrado ? 'Esta sucursal usa los datos de la empresa. Al guardar, tendrá los suyos.' : 'Esta sucursal todavía no tiene datos de pago: el cliente ve «paga en caja».') : '';
+}
+$('pg-ambito').addEventListener('change', pgPintar);
+$('pg-activo').addEventListener('change', () => { $('pg-campos').hidden = !$('pg-activo').checked; });
+$('pg-guardar').addEventListener('click', async () => {
+  $('pg-error').textContent = '';
+  try {
+    const ambito = cfgAmbito($('pg-ambito'));
+    const v = $('pg-ambito').value;
+    const suc = cfgCliente.sucursales.find((s) => String(s.id) === v);
+    const antes = v === 'general' ? cfgCliente.general.transferencia === true : suc.propio.transferencia !== false && cfgCliente.general.transferencia === true;
+    if (!$('pg-activo').disabled && $('pg-activo').checked !== antes) await enviarJson(API + 'admin/cliente-config.php', { accion: 'transferencia', ...ambito, activo: $('pg-activo').checked });
+    if ($('pg-activo').checked && ($('pg-clabe').value.trim() || !(v === 'general' ? cfgCliente.general.pago : (suc.propio.pago || suc.efectivo.pago)))) await enviarJson(API + 'admin/cliente-config.php', { accion: 'pago', ...ambito, clabe: $('pg-clabe').value, beneficiario: $('pg-benef').value, institucion: $('pg-inst').value });
+    avisar('Pago por transferencia guardado');
+    await cargarCfgCliente();
+  } catch (err) { $('pg-error').textContent = err.message; }
+});
+$('pg-quitar').addEventListener('click', async () => {
+  $('pg-error').textContent = '';
+  try {
+    await enviarJson(API + 'admin/cliente-config.php', { accion: 'pago_quitar', ...cfgAmbito($('pg-ambito')) });
+    avisar('Esta sucursal volvió a usar los datos de la empresa');
+    await cargarCfgCliente();
+  } catch (err) { $('pg-error').textContent = err.message; }
+});
+async function abrirPago() {
+  $('pg-error').textContent = '';
+  try { await cargarCfgCliente(); } catch (err) { avisar(err.message, true); return; }
+  abrirPagina(dlgPago, 'btn-pago');
+}
+$('btn-pago').addEventListener('click', abrirPago);
+$('ct-ir-pago').addEventListener('click', abrirPago);
+$('pg-cerrar').addEventListener('click', () => dlgPago.close());
+$('cp-cerrar').addEventListener('click', () => dlgPedidosQr.close());
+
+
+/* ------------------------------------------------------------------ */
+/*  Carga masiva de platillos (plantilla de Excel + ZIP de fotos)      */
+/* ------------------------------------------------------------------ */
+const dlgCarga = $('dlg-carga');
+const ETIQUETA_CARGA = { crear: '➕ Nuevo', actualizar: '✏️ Actualiza', error: '⛔ Error' };
+const ETIQUETA_FOTO = { nueva: '🖼 Foto nueva', conserva: '🖼 Conserva la actual', ninguna: 'Sin foto', falta: '⚠️ Foto no encontrada' };
+let cargaListaParaImportar = false;   // ya se revisó la planilla actual y se puede confirmar
+
+/** Pinta la vista previa (o el resultado final, cuando ya se importó). */
+function pintarCarga(r) {
+  const caja = $('cm-resultado');
+  caja.hidden = false;
+  $('cm-titulo').textContent = r.confirmado ? '✅ Carga terminada' : 'Vista previa (todavía no se guardó nada)';
+  const chips = [
+    ['cm-ok', `${r.nuevos} ${r.confirmado ? 'creados' : 'nuevos'}`],
+    ['cm-ok', `${r.actualizados} ${r.confirmado ? 'actualizados' : 'se actualizan'}`],
+    [r.con_error ? 'cm-mal' : 'cm-ok', `${r.con_error} con error${r.con_error ? (r.confirmado ? ' (no se guardaron)' : ' (se omiten)') : ''}`],
+  ];
+  $('cm-resumen').replaceChildren(...chips.map(([c, t]) => el('span', 'cm-chip ' + c, t)));
+  const notas = [];
+  if (r.categorias_nuevas.length) notas.push(`${r.confirmado ? 'Categorías creadas' : 'Se crearán las categorías'}: ${r.categorias_nuevas.join(', ')}.`);
+  if (r.fotos_sin_usar.length) notas.push(`Fotos del ZIP que ningún platillo usa: ${r.fotos_sin_usar.slice(0, 12).join(', ')}${r.fotos_sin_usar.length > 12 ? ` y ${r.fotos_sin_usar.length - 12} más` : ''}.`);
+  $('cm-extra').textContent = notas.join(' ');
+  $('cm-extra').hidden = notas.length === 0;
+
+  const lista = $('cm-filas');
+  lista.replaceChildren();
+  for (const f of r.filas) {
+    const fila = el('div', 'cm-fila cm-' + f.accion);
+    const cab = el('div', 'cm-cab');
+    cab.append(el('span', 'cm-est', ETIQUETA_CARGA[f.accion]), el('strong', 'cm-nombre', f.nombre || '(sin nombre)'), el('span', 'cm-fn', `fila ${f.fila}`));
+    const det = el('div', 'cm-det', [f.categoria, f.precio ? dinero.format(Number(f.precio)) : '', f.codigo ? `código ${f.codigo}` : '', ETIQUETA_FOTO[f.foto]].filter(Boolean).join(' · '));
+    fila.append(cab, det);
+    for (const e of f.errores) fila.append(el('div', 'cm-msg cm-msg-error', '⛔ ' + e));
+    for (const a of f.avisos) fila.append(el('div', 'cm-msg cm-msg-aviso', '⚠️ ' + a));
+    lista.append(fila);
+  }
+  const buenos = r.nuevos + r.actualizados;
+  $('cm-importar').hidden = r.confirmado || buenos === 0;
+  $('cm-importar').textContent = `Importar ${buenos} platillo${buenos === 1 ? '' : 's'}`;
+  $('cm-ver').hidden = !r.confirmado;
+  caja.scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+
+/** Envía la planilla (y el ZIP) al servidor. confirmar = false → solo vista previa. */
+async function enviarCarga(confirmar) {
+  const datos = new FormData();
+  datos.append('planilla', $('cm-planilla').files[0]);
+  if ($('cm-zip').files[0]) datos.append('fotos', $('cm-zip').files[0]);
+  datos.append('confirmar', confirmar ? '1' : '0');
+  if (!esGerente && $('cm-destino').value) datos.append('sucursal', $('cm-destino').value);
+  return pedir(API + 'admin/productos-importar.php', { method: 'POST', body: datos });
+}
+
+$('btn-carga').addEventListener('click', async () => {
+  $('cm-error').textContent = '';
+  // El dueño elige dónde cargar: la carta general o directo en una sucursal (quedan como platillos propios de ella)
+  if (!esGerente) {
+    try {
+      const r = await pedir(API + 'admin/sucursales.php');
+      const sel = $('cm-destino');
+      const previo = sel.value;
+      sel.replaceChildren(new Option('Carta general de la empresa', ''));
+      for (const s of r.sucursales.filter((x) => x.activa)) sel.append(new Option('Solo en la sucursal: ' + s.nombre + (s.carta_propia ? ' (carta propia)' : ''), String(s.id)));
+      const quiere = /^\d+$/.test(filtroCarta) ? filtroCarta : previo;   // si estás viendo la carta de una sucursal, la carga va ahí
+      sel.value = [...sel.options].some((o) => o.value === quiere) ? quiere : '';
+      $('cm-destino-caja').hidden = r.sucursales.length < 2;
+    } catch { $('cm-destino-caja').hidden = true; }
+  }
+  abrirPagina(dlgCarga, 'btn-carga');
+});
+$('cm-form').addEventListener('submit', async (ev) => {
+  ev.preventDefault();
+  $('cm-error').textContent = '';
+  const b = $('cm-revisar');
+  b.disabled = true; b.textContent = 'Revisando…';
+  try { pintarCarga(await enviarCarga(false)); }
+  catch (err) { $('cm-error').textContent = err.message; $('cm-resultado').hidden = true; }
+  finally { b.disabled = false; b.textContent = 'Revisar planilla'; }
+});
+// Si cambian los archivos, la vista previa anterior ya no vale
+for (const id of ['cm-planilla', 'cm-zip', 'cm-destino']) $(id).addEventListener('change', () => { $('cm-resultado').hidden = true; });
+$('cm-importar').addEventListener('click', async () => {
+  $('cm-error').textContent = '';
+  const b = $('cm-importar');
+  b.disabled = true; b.textContent = 'Importando… (puede tardar con muchas fotos)';
+  try {
+    const r = await enviarCarga(true);
+    pintarCarga(r);
+    await cargarCatalogo();
+    avisar(`Listo: ${r.nuevos} creados, ${r.actualizados} actualizados`);
+  } catch (err) { $('cm-error').textContent = err.message; }
+  finally { b.disabled = false; }
+});
+$('cm-ver').addEventListener('click', () => { dlgCarga.close(); });
+$('cm-cerrar').addEventListener('click', () => dlgCarga.close());
+
+/* ------------------------------------------------------------------ */
+/*  Extras                                                             */
+/* ------------------------------------------------------------------ */
+
+const dlgExtras = $('dlg-extras');
+
+/**
+ * "Con costo": una casilla que, al marcarla, muestra el campo del precio.
+ * Sin marcar el extra es gratis (precio 0).
+ */
+function campoCosto(precioInicial = 0) {
+  const caja = el('div', 'costo');
+  const etiqueta = el('label', 'casilla');
+  const marca = document.createElement('input');
+  marca.type = 'checkbox';
+  marca.checked = precioInicial > 0;
+  etiqueta.append(marca, el('span', '', 'Con costo'));
+
+  const campo = document.createElement('input');
+  campo.type = 'text';
+  campo.inputMode = 'decimal';
+  campo.placeholder = '$ precio';
+  campo.setAttribute('aria-label', 'Precio del modificador');
+  campo.value = precioInicial > 0 ? precioInicial.toFixed(2) : '';
+  campo.hidden = !marca.checked;
+
+  marca.addEventListener('change', () => {
+    campo.hidden = !marca.checked;
+    if (marca.checked) campo.focus(); else campo.value = '';
+  });
+  caja.append(etiqueta, campo);
+  return {
+    caja,
+    valor: () => (marca.checked ? (campo.value.trim() || '0') : '0'),
+    reiniciar: () => { marca.checked = false; campo.value = ''; campo.hidden = true; },
+  };
+}
+
+
+/**
+ * Tarjetas de extras, agrupadas en secciones (por "grupo"). Cada tarjeta muestra de un vistazo:
+ *   · el nombre, su código para cocina y si es gratis o cuesta (+$10);
+ *   · en qué categorías está disponible (✓ todos · 3/5 algunos · ○ ninguno). Tocar una categoría lo pone (o lo quita)
+ *     en TODOS los platillos de esa categoría; para elegir platillo por platillo se hace desde el producto;
+ *   · "Editar" abre el formulario de esa tarjeta (nombre, código, grupo, costo, activo) con su botón Guardar.
+ */
+
+function pintarExtras() {
+  // Sugerencias de grupo (los que ya existen)
+  $('lista-grupos').replaceChildren(...gruposExtras.map((g) => new Option(g)));
+  pintarSeccionesExtras();
+
+  const caja = $('lista-extras');
+  caja.replaceChildren();
+  if (extras.length === 0) {
+    caja.append(el('p', 'ayuda ex-vacio', 'Todavía no hay modificadores. Toca “＋ Nuevo modificador” para crear el primero (por ejemplo, Sin cebolla).'));
+    return;
+  }
+  if (categorias.length) caja.append(el('p', 'ayuda ex-leyenda', 'Cada tarjeta muestra en qué categorías aparece el modificador (verde = en todos sus platillos, amarillo = en algunos, ej. 1/11). Para cambiarlo, toca «Editar» y elige los platillos.'));
+
+  // Secciones en el orden elegido (las vacías también se muestran); los extras sin sección van al final, en "Otros"
+  const grupos = new Map(gruposExtras.map((g) => [g, []]));
+  for (const x of extras) {
+    const g = x.grupo && grupos.has(x.grupo) ? x.grupo : 'Otros';
+    if (!grupos.has(g)) grupos.set(g, []);
+    grupos.get(g).push(x);
+  }
+  if (grupos.has('Otros') && grupos.get('Otros').length === 0) grupos.delete('Otros');
+  for (const [g, lista] of grupos) {
+    if (grupos.size > 1 || lista.length === 0) caja.append(el('h3', 'ex-grupo', lista.length ? `${g} (${lista.length})` : `${g} (vacía)`));
+    if (lista.length === 0) { caja.append(el('p', 'ayuda', 'Sin modificadores todavía. Crea uno con “＋ Nuevo modificador” y elige esta sección en “Más opciones”.')); continue; }
+    const rejilla = el('div', 'ex-rejilla');
+    for (const x of lista) rejilla.append(tarjetaExtra(x));
+    caja.append(rejilla);
+  }
+}
+
+function tarjetaExtra(x) {
+  const tarjeta = el('article', 'ex-tarjeta' + (x.activo && !x.deshabilitado ? '' : ' inactivo'));
+
+  // Cabecera: nombre, código y precio
+  const cab = el('div', 'ex-cab');
+  const titulo = el('div', 'ex-titulo');
+  titulo.append(el('strong', 'ex-nombre', x.nombre));
+  if (x.codigo) titulo.append(el('span', 'chip', x.codigo));
+  if (!x.activo) titulo.append(el('span', 'chip sin', 'Desactivado'));
+  if (x.deshabilitado) titulo.append(el('span', 'chip sin', 'Deshabilitado en tu sucursal'));
+  if (x.sucursal_id !== null) titulo.append(el('span', 'chip', esGerente ? 'Mío' : 'Solo ' + (sucursalesCarta.find((s) => s.id === x.sucursal_id) || { nombre: x.sucursal || 'una sucursal' }).nombre));
+  else if (!esGerente && x.todos) titulo.append(el('span', 'chip ex-res todos', 'En todos los platillos'));
+  cab.append(titulo, el('span', 'ex-precio' + (x.precio > 0 ? ' paga' : ''), x.precio > 0 ? `+${dinero.format(x.precio)}` : 'Gratis'));
+  tarjeta.append(cab);
+
+  // Dónde aparece (solo informativo; se cambia desde «Editar»)
+  if (categorias.length) tarjeta.append(resumenDisponibilidad((p) => p.extras.includes(x.id)));
+
+  // Pie: cuántos platillos lo llevan + editar / eliminar
+  const usado = productos.filter((p) => p.extras.includes(x.id)).length;
+  const pie = el('div', 'ex-pie');
+  pie.append(el('span', 'ex-cuenta', usado === 0 ? 'Aún no está en ningún platillo' : `En ${usado} platillo${usado === 1 ? '' : 's'}`));
   if (!x.propio) {
     // Modificador general visto por un gerente: solo se puede deshabilitar en su sucursal, no editar ni quitar.
     const alterna = el('button', 'btn chico', x.deshabilitado ? 'Habilitar en mi sucursal' : 'Deshabilitar en mi sucursal');
@@ -1110,7 +2345,7 @@ function pintarSeccionesExtras() {
     const n = extras.filter((x) => x.grupo === g).length;
     const nombre = el('span', 'ex-sec-nombre'); nombre.append(el('strong', '', (info.propio ? '' : '🔒 ') + g), el('small', '', ` · ${n} modificador${n === 1 ? '' : 'es'}`));
     if (!esGerente && info.sucursal_id !== null) {
-      const suc = (typeof sucursalesCarta !== 'undefined' ? sucursalesCarta : []).find((x) => x.id === info.sucursal_id);
+      const suc = sucursalesCarta.find((x) => x.id === info.sucursal_id);
       nombre.append(el('span', 'chip', 'Solo ' + (suc ? suc.nombre : 'una sucursal')));
     }
     if (!info.propio) {
@@ -1148,7 +2383,7 @@ $('ex-sec-form').addEventListener('submit', async (ev) => {
   if (!$('x-error').textContent) $('ex-sec-nueva').value = '';
 });
 
-/** Cierra los paneles de arriba (nuevo extra, secciones) para que solo haya uno abierto a la vez. */
+/** Cierra los paneles de arriba (nuevo extra, variantes, secciones) para que solo haya uno abierto a la vez. */
 function cerrarPanelesExtras() {
   $('ex-secciones').hidden = true;
 }
