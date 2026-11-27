@@ -15,7 +15,7 @@
  *     asignar_platillos { id, agregar: [producto_id], quitar: [producto_id] }   pone o quita el extra en platillos concretos
  *     predeterminado { id, valor }          (solo el administrador) valor=1: va en TODOS los platillos, también los nuevos
  *     sucursal_deshabilitar { id, deshabilitar }   el gerente apaga o enciende un modificador GENERAL solo en su sucursal
- *     grupo_crear / grupo_editar { nombre, nuevo, codigo, prefijo } / grupo_eliminar   secciones (Quitar, Con, Sin...)
+ *     grupo_crear / grupo_editar { nombre, nuevo, codigo } / grupo_eliminar   secciones (Quitar, Con, Sin...)
  *     grupo_mover { nombre, direccion: subir | bajar | inicio | fin }
  *
  * La lista de extras viene dentro de GET /admin/productos.
@@ -273,7 +273,7 @@ export async function rutasExtras(app: FastifyInstance): Promise<void> {
         }
         case 'grupo_editar':
         case 'grupo_renombrar': {
-          // Nombre, código (opcional, único en la empresa) y si la sección se lee junto al nombre ("Sin" + "cebolla").
+          // Nombre y código (opcional, único en la empresa). Los modificadores siempre se leen junto a su sección.
           const actual = leerNombreGrupo(d['nombre']);
           const nuevo = leerNombreGrupo(d['nuevo'] ?? d['nombre']);
           await listarGruposExtras(nid);
@@ -287,7 +287,7 @@ export async function rutasExtras(app: FastifyInstance): Promise<void> {
           await transaccion(async (tx) => {
             await tx.ejecutar('UPDATE extra_grupos SET nombre = ? WHERE negocio_id = ? AND nombre = ?', [nuevo, nid, actual]);
             await tx.ejecutar('UPDATE extras SET grupo = ? WHERE negocio_id = ? AND grupo = ?', [nuevo, nid, actual]);
-            if (editando) await tx.ejecutar('UPDATE extra_grupos SET codigo = ?, prefijo = ? WHERE negocio_id = ? AND nombre = ?', [codigo ?? null, noVacio(d['prefijo']) ? 1 : 0, nid, nuevo]);
+            if (editando) await tx.ejecutar('UPDATE extra_grupos SET codigo = ? WHERE negocio_id = ? AND nombre = ?', [codigo ?? null, nid, nuevo]);
           });
           return { ok: true };
         }

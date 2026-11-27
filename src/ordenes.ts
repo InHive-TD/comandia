@@ -435,8 +435,8 @@ export async function validarLineas(c: Cx, entrada: unknown): Promise<[Linea[], 
       );
       if (!x) throw fallo(`Ese extra no está disponible para “${p['nombre']}”.`);
       if (!n(x['activo'])) throw fallo(`El extra “${x['nombre']}” ya no está activo.`);
-      // Lectura completa: "Sin" + "cebolla" = "Sin cebolla" (si la sección se lee junto al nombre); la cocina ve la combinación de códigos ("S CEB").
-      const leeJunto = n(x['grupo_prefijo']) === 1 && x['grupo'];
+      // Lectura completa: "Sin" + "cebolla" = "Sin cebolla" (siempre se lee junto a su sección); la cocina ve la combinación de códigos ("S CEB").
+      const leeJunto = !!x['grupo'] && !String(x['nombre']).toLowerCase().startsWith(String(x['grupo']).toLowerCase() + ' ');   // siempre junto a su sección (salvo que el nombre ya la incluya)
       const nombreCompleto = (leeJunto ? `${x['grupo']} ${x['nombre']}` : String(x['nombre'])).slice(0, 60);   // la columna admite 60
       const gcod = (x['grupo_codigo'] as string | null) ?? null;
       const codigoCompleto = gcod ? `${gcod} ${(x['codigo'] as string | null) || String(x['nombre']).toUpperCase()}`.slice(0, 20) : ((x['codigo'] as string | null) ?? null);   // la columna admite 20
