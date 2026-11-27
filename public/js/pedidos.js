@@ -787,7 +787,7 @@ async function alternarAgotado(p) {
 function tocarProducto(p, desdeFoto = false) {
   if (p.agotado) { avisar(`${p.nombre} está agotado hoy. Mantén presionado para verlo o habilitarlo.`, true); return; }
   if (p.extras.length && (!desdeFoto || p.pedir_opciones)) abrirOpciones(p);
-  else { agregarLinea(p, [], 1, ''); avisar(`${p.nombre} agregado`); }
+  else { agregarLinea(p, extrasPorDefecto(p), 1, ''); avisar(`${p.nombre} agregado`); }
 }
 
 /* ------------------------------------------------------------------ */
@@ -853,6 +853,7 @@ function abrirOpciones(p, linea = null) {
     }
   }
   limitarCarnes(caja, p, p.extras);
+  prepararDefectos(caja, p, !linea);
   $('op-extras-caja').hidden = p.extras.length === 0;
   dlgOpciones.showModal();
 }
@@ -890,6 +891,7 @@ $('form-opciones').addEventListener('submit', (ev) => {
   opCantidad = 1; $('op-cantidad').textContent = '1';
   $('op-notas').value = '';
   for (const c of $('op-extras').querySelectorAll('input[type=checkbox]')) { c.checked = false; c.disabled = false; }   // rehabilita las bloqueadas por el máximo de carnes
+  marcarDefectos($('op-extras'), opProducto);
 });
 
 /* ------------------------------------------------------------------ */

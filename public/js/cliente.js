@@ -353,7 +353,7 @@ function pintarProductos() {
       if (!pedidosActivos) { abrirDetalle(p); return; }     // solo se puede ver el menú: un toque muestra el detalle del platillo
       const desdeFoto = !!ev.target.closest('.pr-foto');
       if (p.extras.length && (!desdeFoto || p.pedir_opciones)) abrirOpciones(p);
-      else { agregarLinea(p, [], 1, ''); avisar(`${p.nombre} agregado`); }
+      else { agregarLinea(p, extrasPorDefecto(p), 1, ''); avisar(`${p.nombre} agregado`); }
     });
     caja.append(b);
     // ¿La descripción quedó cortada? Entonces se muestra "Ver más ›" (se mide ya con la tarjeta en pantalla)
@@ -431,6 +431,7 @@ function abrirOpciones(p) {
     }
   }
   limitarCarnes(caja, p, p.extras);
+  prepararDefectos(caja, p, true);
   $('op-extras-caja').hidden = p.extras.length === 0;
   dlgOpciones.showModal();
 }
@@ -453,6 +454,7 @@ $('form-opciones').addEventListener('submit', (ev) => {
   $('op-notas').value = '';
   $('op-error').textContent = '';
   for (const c of $('op-extras').querySelectorAll('input[type=checkbox]')) { c.checked = false; c.disabled = false; }   // también rehabilita las bloqueadas por el máximo de carnes
+  marcarDefectos($('op-extras'), opProducto);
   dlgOpciones.scrollTop = 0;
 });
 

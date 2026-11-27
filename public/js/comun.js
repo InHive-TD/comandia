@@ -498,3 +498,25 @@ function nombreExtra(x) {
   const g = x && x.grupo ? String(x.grupo) : '';
   return g && !n.toLowerCase().startsWith(g.toLowerCase()) ? `${g} ${n}` : n;
 }
+
+/* Modificadores que «vienen marcados» (por ejemplo «Con todo»): se quitan solos al elegir otra opción de otro tipo. */
+const extrasPorDefecto = (p) => p.extras.filter((x) => x.defecto);
+function marcarDefectos(caja, p) {
+  const defs = new Set(extrasPorDefecto(p).map((x) => String(x.id)));
+  for (const c of caja.querySelectorAll('input[type=checkbox]')) if (defs.has(c.value)) c.checked = true;
+}
+function prepararDefectos(caja, p, marcar) {
+  const defs = new Set(extrasPorDefecto(p).map((x) => String(x.id)));
+  if (!defs.size) { caja.onchange = null; return; }
+  const cajas = [...caja.querySelectorAll('input[type=checkbox]')];
+  if (marcar) marcarDefectos(caja, p);
+  caja.onchange = (ev) => {
+    const c = ev.target;
+    if (!c || defs.has(c.value)) return;
+    const hayOtras = cajas.some((k) => !defs.has(k.value) && k.checked);
+    for (const k of cajas) if (defs.has(k.value)) k.checked = !hayOtras;
+  };
+  const nota = el('p', 'nota-defecto', 'Lo marcado de fábrica se quita solo si eliges otra opción de cualquier otro tipo.');
+  nota.style.cssText = 'font-size:.72rem;color:#777;margin:.4rem 0 0;line-height:1.25';
+  caja.append(nota);
+}

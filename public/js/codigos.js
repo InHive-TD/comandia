@@ -161,6 +161,9 @@
         return { error: propia ? `${prod.nombre}: además de su carne solo caben ${prod.max_carnes} más.`
           : `${prod.nombre} lleva máximo ${prod.max_carnes} carne${prod.max_carnes === 1 ? '' : 's'}.` };
       }
+      if (!extras.some((x) => !x.defecto)) {   // sin otras opciones: viene lo marcado de fábrica («Con todo»)
+        for (const x of prod.extras) if (x.defecto && !extras.some((e) => e.id === x.id)) extras = extras.concat(x);
+      }
       return { producto: prod, extras, cantidad: l.cantidad, plato: l.plato };
     }
 

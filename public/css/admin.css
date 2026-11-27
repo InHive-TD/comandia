@@ -892,3 +892,5 @@ body.menu-compacto .menu-desp-items { display: block; padding-left: 0; }
 .ex-barra .ex-buscar { margin-left: auto; }
 .ex-barra .ex-buscar + .ex-abrir { margin-left: 0; }
 .ex-tarjeta mark, .ex-grupo mark { background: #ffe38a; color: inherit; border-radius: 3px; padding: 0 1px; }
+
+.ef-nota { display: block; font-size: .72rem; color: #777; line-height: 1.25; margin-top: .2rem; }

@@ -2364,6 +2364,7 @@ $('ep-cancelar').addEventListener('click', () => dlgEP.close());
 $('ep-x').addEventListener('click', () => dlgEP.close());
 $('ep-guardar').addEventListener('click', async () => {
   $('ep-error').textContent = '';
+  if (epModo === 'defecto') { efDefSel = new Set(epMarcados); epModo = 'aparece'; epSoloIds = null; if (!efExtra && !$('ef-modo-todos').checked) for (const id of efDefSel) efSel.add(id); dlgEP.close(); pintarDefecto(); efDonde(); return; }
   if (epModo === 'cobro') { efCobroSel = new Set(epMarcados); epModo = 'aparece'; epSoloIds = null; if (!efExtra && !$('ef-modo-todos').checked) for (const id of efCobroSel) efSel.add(id); dlgEP.close(); pintarCobro(); efDonde(); return; }
   if (!epExtra) { efSel = new Set(epMarcados); dlgEP.close(); efDonde(); return; }
   const agregar = [...epMarcados].filter((id) => !epOriginal.has(id));
@@ -2488,6 +2489,25 @@ $('x-cerrar').addEventListener('click', () => dlgExtras.close());
 /* ---- Ventana para crear o editar un extra ---- */
 const dlgExtraForm = $('dlg-extra-form');
 let efExtra = null;       // el extra que se edita (null = nuevo)
+let efDefSel = new Set();      // platillos donde viene marcado de fábrica (modo «solo en algunos»)
+let efDefInicial = 'no';
+const efDefModo = () => ($('ef-def-todos').checked ? 'todos' : $('ef-def-algunos').checked ? 'algunos' : 'no');
+function pintarDefecto() {
+  const m = efDefModo();
+  $('ef-def-elegir').hidden = m !== 'algunos';
+  $('ef-def-resumen').replaceChildren();
+  if (m === 'algunos') $('ef-def-resumen').append(el('span', 'chip ex-res' + (efDefSel.size ? ' algunos' : ''), efDefSel.size ? `Viene marcado en ${efDefSel.size} platillo${efDefSel.size === 1 ? '' : 's'}` : 'Aún no eliges en qué platillos'));
+}
+for (const id of ['ef-def-no', 'ef-def-todos', 'ef-def-algunos']) $(id).addEventListener('change', pintarDefecto);
+$('ef-def-elegir').addEventListener('click', () => {
+  epModo = 'defecto'; epExtra = efExtra; epSoloIds = null;
+  epOriginal = new Set(); epMarcados = new Set(efDefSel);
+  $('ep-titulo').textContent = `¿En qué platillos viene marcado${efExtra ? ' «' + efExtra.nombre + '»' : ' el modificador'}? Ahí también aparecerá.`;
+  $('ep-buscar').value = ''; $('ep-error').textContent = '';
+  epPintar();
+  dlgEP.showModal();
+});
+
 let efCobroSel = new Set();   // platillos donde se cobra (modo «solo en algunos»)
 let efCobroInicial = 'no';    // cómo estaba el cobro al abrir (para limpiar precios propios si cambia)
 
@@ -2581,6 +2601,11 @@ function abrirFormExtra(x) {
   $('ef-cobro-todos').checked = efCobroInicial === 'todos';
   $('ef-cobro-algunos').checked = efCobroInicial === 'algunos';
   $('ef-precio').value = x && x.precio > 0 ? x.precio.toFixed(2) : conPrecio.length ? Number(conPrecio[0].extras_precios[x.id]).toFixed(2) : '';
+  const conDef = x ? productos.filter((p) => p.extras.includes(x.id) && (p.extras_defecto || []).includes(x.id)) : [];
+  efDefSel = new Set(conDef.map((p) => p.id));
+  efDefInicial = x && x.defecto ? 'todos' : conDef.length ? 'algunos' : 'no';
+  $('ef-def-no').checked = efDefInicial === 'no'; $('ef-def-todos').checked = efDefInicial === 'todos'; $('ef-def-algunos').checked = efDefInicial === 'algunos';
+  pintarDefecto();
   pintarOpcionesGrupo(x ? (x.grupo || '') : '');
   $('ef-activo-fila').hidden = !x;
   $('ef-activo').checked = x ? x.activo : true;
@@ -2602,21 +2627,24 @@ async function guardarFormExtra() {
   if (!nombre) { $('ef-error').textContent = 'Escribe cómo se llama el modificador.'; $('ef-nombre').focus(); return false; }
   const g = $('ef-grupo').value === '__nueva' ? $('ef-grupo-nuevo').value.trim() : $('ef-grupo').value;
   if ($('ef-grupo').value === '__nueva' && !g) { $('ef-error').textContent = 'Escribe el nombre del nuevo tipo.'; $('ef-grupo-nuevo').focus(); return false; }
-  if (!efExtra && efSel.size === 0 && efCobroModo() !== 'algunos' && !$('ef-modo-todos').checked) { $('ef-error').textContent = 'Elige en qué platillos va a aparecer (todos, o con «Elegir categorías o platillos…»).'; return false; }
+  if (!efExtra && efSel.size === 0 && efCobroModo() !== 'algunos' && efDefModo() !== 'algunos' && !$('ef-modo-todos').checked) { $('ef-error').textContent = 'Elige en qué platillos va a aparecer (todos, o con «Elegir categorías o platillos…»).'; return false; }
   const modoCobro = efCobroModo();
   if (modoCobro !== 'no' && !(Number(efPrecio()) > 0)) { $('ef-error').textContent = 'Escribe el precio con el que se cobra (por ejemplo 10).'; $('ef-precio').focus(); return false; }
+  if (efDefModo() === 'algunos' && efDefSel.size === 0) { $('ef-error').textContent = 'Elige en qué platillos viene marcado (botón «Elegir platillos…»).'; return false; }
   if (modoCobro === 'algunos' && efCobroSel.size === 0) { $('ef-error').textContent = 'Elige en qué platillos se cobra (botón «Elegir dónde se cobra…»).'; return false; }
   const cuerpo = { accion: efExtra ? 'actualizar' : 'crear', nombre, codigo: $('ef-codigo').value.trim(), grupo: g, precio: modoCobro === 'todos' ? efPrecio() : '0' };
   if (efExtra) { cuerpo.id = efExtra.id; cuerpo.activo = $('ef-activo').checked; }
   try {
     const r = await enviarJson(API + 'admin/extras.php', cuerpo);
     const idExtra = efExtra ? efExtra.id : r.id;
+    if (!efExtra) efSel = new Set([...efSel, ...(modoCobro === 'algunos' ? efCobroSel : []), ...(efDefModo() === 'algunos' ? efDefSel : [])]);
     if (!efExtra && efSel.size) await enviarJson(API + 'admin/extras.php', { accion: 'asignar_platillos', id: idExtra, agregar: [...efSel], quitar: [] });
-    if (efExtra && modoCobro === 'algunos' && !$('ef-modo-todos').checked) {   // donde se cobra, también aparece
-      const faltan = [...efCobroSel].filter((id) => { const p = productos.find((x) => x.id === id); return p && !p.extras.includes(efExtra.id); });
+    if (efExtra && (modoCobro === 'algunos' || efDefModo() === 'algunos') && !$('ef-modo-todos').checked) {   // donde se cobra o viene marcado, también aparece
+      const faltan = [...new Set([...(modoCobro === 'algunos' ? efCobroSel : []), ...(efDefModo() === 'algunos' ? efDefSel : [])])].filter((id) => { const p = productos.find((x) => x.id === id); return p && !p.extras.includes(efExtra.id); });
       if (faltan.length) await enviarJson(API + 'admin/extras.php', { accion: 'asignar_platillos', id: idExtra, agregar: faltan, quitar: [] });
     }
     if (!$('ef-todos-fila').hidden && $('ef-modo-todos').checked !== !!(efExtra && efExtra.todos)) await enviarJson(API + 'admin/extras.php', { accion: 'predeterminado', id: idExtra, valor: $('ef-modo-todos').checked });
+    if (efDefModo() !== 'no' || efDefInicial !== 'no') await enviarJson(API + 'admin/extras.php', { accion: 'defecto', id: idExtra, modo: efDefModo(), platillos: [...efDefSel] });
     if (modoCobro === 'algunos') await enviarJson(API + 'admin/extras.php', { accion: 'cobro_platillos', id: idExtra, precio: efPrecio(), platillos: [...efCobroSel] });
     else if (efCobroInicial === 'algunos') await enviarJson(API + 'admin/extras.php', { accion: 'precio_general', id: idExtra });   // deja de cobrar con precios propios
     await cargarCatalogo();

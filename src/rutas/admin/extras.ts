@@ -18,6 +18,7 @@
  *     sucursal_deshabilitar { id, deshabilitar }   el gerente apaga o enciende un modificador GENERAL solo en su sucursal
  *     grupo_crear / grupo_editar { nombre, nuevo, codigo } / grupo_eliminar   secciones (Quitar, Con, Sin...)
  *     grupo_mover { nombre, direccion: subir | bajar | inicio | fin }
+ *     defecto { id, modo: no | todos | algunos, platillos }   «viene marcado» por defecto
  *
  * La lista de extras viene dentro de GET /admin/productos.
  */
@@ -179,6 +180,25 @@ export async function rutasExtras(app: FastifyInstance): Promise<void> {
                 `INSERT INTO producto_extras (producto_id, extra_id)
                  SELECT p.id, ? FROM productos p WHERE p.negocio_id = ? AND NOT EXISTS (SELECT 1 FROM producto_extras pe WHERE pe.producto_id = p.id AND pe.extra_id = ?)`,
                 [id, nid, id],
+              );
+            }
+          });
+          return { ok: true };
+        }
+        case 'defecto': {
+          // «Viene marcado»: modo no | todos (en todos los platillos donde aparece) | algunos (solo en `platillos`).
+          await extraDe(nid, id, alcance);
+          const modo = String(d['modo'] ?? 'no');
+          if (!['no', 'todos', 'algunos'].includes(modo)) throw fallo('Modo no válido.');
+          const ids = Array.isArray(d['platillos']) ? [...new Set((d['platillos'] as unknown[]).map((n) => entero(n)).filter((n) => n > 0))].slice(0, 2000) : [];
+          await transaccion(async (tx) => {
+            await tx.ejecutar('UPDATE extras SET defecto = ? WHERE id = ? AND negocio_id = ?', [modo === 'todos' ? 1 : 0, id, nid]);
+            await tx.ejecutar('DELETE FROM extra_defecto_platillo WHERE extra_id = ?', [id]);
+            if (modo === 'algunos' && ids.length > 0) {
+              await tx.ejecutar(
+                `INSERT INTO extra_defecto_platillo (extra_id, producto_id)
+                 SELECT ?, p.id FROM productos p WHERE p.negocio_id = ? AND p.id IN (${ids.map(() => '?').join(',')})${soloSuyos(alcance)}`,
+                [id, nid, ...ids],
               );
             }
           });

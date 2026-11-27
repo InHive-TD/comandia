@@ -194,6 +194,12 @@ async function listar(nid: number, alcance: number | null): Promise<Record<strin
     if (a['precio'] !== null) precios.set(k, { ...(precios.get(k) ?? {}), [Number(a['extra_id'])]: Number(a['precio']) });
   }
 
+  const defectos = new Map<number, number[]>();   // producto_id → extras que vienen marcados solo en ese platillo
+  for (const a of await filas('SELECT d.producto_id, d.extra_id FROM extra_defecto_platillo d JOIN productos pr ON pr.id = d.producto_id WHERE pr.negocio_id = ?', [nid])) {
+    const k = Number(a['producto_id']);
+    defectos.set(k, [...(defectos.get(k) ?? []), Number(a['extra_id'])]);
+  }
+
   const productos = prods.map((f) => ({
     id: Number(f['id']),
     categoria_id: Number(f['categoria_id']),
@@ -211,6 +217,7 @@ async function listar(nid: number, alcance: number | null): Promise<Record<strin
     grupo_obligatorio: f['grupo_obligatorio'] ?? null,
     extras: asignados.get(Number(f['id'])) ?? [],
     extras_precios: precios.get(Number(f['id'])) ?? {},
+    extras_defecto: defectos.get(Number(f['id'])) ?? [],
     sucursal_id: f['sucursal_id'] === null ? null : Number(f['sucursal_id']),
     sucursal: f['sucursal'], // producto propio de una sucursal (null = carta general)
     propio: alcance !== null && f['sucursal_id'] !== null, // el gerente lo puede editar por completo
@@ -232,7 +239,7 @@ async function listar(nid: number, alcance: number | null): Promise<Record<strin
   const quien = alcance === null ? '' : ` AND (x.sucursal_id IS NULL OR x.sucursal_id = ${Number(alcance)})`;
   const apagados = alcance === null ? new Set<number>() : new Set((await filas('SELECT extra_id FROM extra_sucursal_off WHERE sucursal_id = ?', [alcance])).map((o) => Number(o['extra_id'])));
   const extras = (await filas(
-    `SELECT x.id, x.nombre, x.precio, x.activo, x.codigo, x.grupo, x.sucursal_id, x.todos, sx.nombre AS sucursal
+    `SELECT x.id, x.nombre, x.precio, x.activo, x.codigo, x.grupo, x.sucursal_id, x.todos, x.defecto, sx.nombre AS sucursal
        FROM extras x LEFT JOIN sucursales sx ON sx.id = x.sucursal_id
       WHERE x.negocio_id = ?${quien} ORDER BY x.orden, x.id`,
     [nid],
@@ -240,6 +247,7 @@ async function listar(nid: number, alcance: number | null): Promise<Record<strin
     id: Number(x['id']), nombre: x['nombre'], precio: Number(x['precio']), activo: Boolean(Number(x['activo'])), codigo: x['codigo'], grupo: x['grupo'],
     sucursal_id: x['sucursal_id'] === null ? null : Number(x['sucursal_id']), sucursal: x['sucursal'] ?? null,
     todos: Boolean(Number(x['todos'])),
+    defecto: Boolean(Number(x['defecto'])),
     propio: alcance === null || (x['sucursal_id'] !== null && Number(x['sucursal_id']) === alcance),   // quien pide puede editarlo
     deshabilitado: apagados.has(Number(x['id'])),   // (gerente) apagado en su sucursal
   }));

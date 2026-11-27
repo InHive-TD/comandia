@@ -206,6 +206,15 @@ async function actualizarV2(): Promise<void> {
   await asegurarColumna('extras', 'sucursal_id', 'INT UNSIGNED NULL');
   await asegurarColumna('extras', 'todos', 'TINYINT(1) NOT NULL DEFAULT 0');
   await asegurarColumna('extra_grupos', 'sucursal_id', 'INT UNSIGNED NULL');
+  // Modificador «viene marcado»: defecto = 1 en todos los platillos donde aparece; o solo en los de extra_defecto_platillo.
+  await asegurarColumna('extras', 'defecto', 'TINYINT(1) NOT NULL DEFAULT 0');
+  await ejecutar(`CREATE TABLE IF NOT EXISTS extra_defecto_platillo (
+    extra_id    INT UNSIGNED NOT NULL,
+    producto_id INT UNSIGNED NOT NULL,
+    PRIMARY KEY (extra_id, producto_id),
+    CONSTRAINT fk_edp_extra FOREIGN KEY (extra_id) REFERENCES extras(id) ON DELETE CASCADE,
+    CONSTRAINT fk_edp_prod FOREIGN KEY (producto_id) REFERENCES productos(id) ON DELETE CASCADE
+  ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci`);
   // Código de la sección (S = Sin, X = Extra...) y si se lee junto al nombre del modificador ("Sin" + "cebolla" = "Sin cebolla").
   await asegurarColumna('extra_grupos', 'codigo', 'VARCHAR(20) NULL');
   await asegurarColumna('extra_grupos', 'prefijo', 'TINYINT(1) NOT NULL DEFAULT 0');
