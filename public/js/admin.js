@@ -2397,9 +2397,9 @@ $('form-seccion').addEventListener('submit', async (ev) => {
 });
 
 /** Dos páginas dentro de Modificadores: la lista de modificadores y la de sus tipos. */
-function mostrarVistaExtras(secciones) {
+function mostrarVistaExtras(tipos) {
   $('ex-vista-mods').hidden = tipos;
-  $('ex-tipos').hidden = !secciones;
+  $('ex-tipos').hidden = !tipos;
   for (const [id, activo] of [['ex-tab-mods', !tipos], ['ex-tab-secs', tipos]]) {
     $(id).classList.toggle('principal', activo);
     $(id).setAttribute('aria-selected', String(activo));
