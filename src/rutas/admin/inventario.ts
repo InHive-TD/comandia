@@ -23,7 +23,8 @@ import { type Tx, ejecutar, fila, filas, transaccion } from '../../db.js';
 import { ErrorHttp, fallo } from '../../errores.js';
 import { entero, esDuplicado, largo } from '../../util.js';
 
-const UNIDADES = ['kg', 'g', 'l', 'ml', 'pza'];
+/** Unidades estándar (peso, volumen, conteo). Cada empresa puede agregar las suyas (caja, bolsa, manojo…). */
+const UNIDADES = ['mg', 'g', 'kg', 'oz', 'lb', 'ml', 'cl', 'l', 'cdta', 'cda', 'taza', 'pza', 'docena'];
 const MOTIVOS_MERMA: Record<string, string> = {
   caducado: 'Caducó',
   danado: 'Dañado o se cayó',
@@ -160,6 +161,7 @@ export async function rutasAdminInventario(app: FastifyInstance): Promise<void> 
           puede_editar_catalogo: yo.alcance === null,
           motivos_merma: Object.entries(MOTIVOS_MERMA).map(([id, nombre]) => ({ id, nombre })),
           unidades: UNIDADES,
+          unidades_propias: (await filas('SELECT nombre FROM inv_unidades WHERE negocio_id = ? ORDER BY nombre', [nid])).map((u) => String(u['nombre'])),
           insumos: lista,
           proveedores: proveedores.map((p) => ({ id: Number(p['id']), nombre: p['nombre'], contacto: p['contacto'], telefono: p['telefono'], correo: p['correo'], dias_entrega: Number(p['dias_entrega']), minimo_compra: Number(p['minimo_compra']), notas: p['notas'] })),
           compras: compras.map((c) => ({ id: Number(c['id']), estado: c['estado'], referencia: c['referencia'], nota: c['nota'], total: Number(c['total']), fecha: c['creado_en'], recibida: c['recibida_en'], proveedor: c['proveedor'] ?? null })),
@@ -196,8 +198,14 @@ export async function rutasAdminInventario(app: FastifyInstance): Promise<void> 
         case 'insumo_editar': {
           soloDueno();
           const nombre = texto(d['nombre'], 'El nombre', 80, true) as string;
-          const unidad = String(d['unidad'] ?? 'pza');
-          if (!UNIDADES.includes(unidad)) throw fallo('Elige una unidad válida.');
+          const unidad = String(d['unidad'] ?? 'pza').trim();
+          if (!UNIDADES.includes(unidad)) {
+            // Unidad propia: texto corto (letras, números, espacios); se registra para ofrecerla en adelante.
+            const nombreU = unidad.trim();
+            if (!/^[\p{L}\p{N} .\/-]{1,20}$/u.test(nombreU)) throw fallo('La unidad nueva puede llevar letras y números (máximo 20 caracteres).');
+            if (UNIDADES.some((u) => u === nombreU.toLowerCase())) throw fallo('Esa unidad ya existe en la lista.');
+            await ejecutar('INSERT IGNORE INTO inv_unidades (negocio_id, nombre) VALUES (?, ?)', [nid, nombreU]);
+          }
           const costo = redondo(numero(d['costo'] ?? 0, 'El costo'), 4);
           const minimo = redondo(numero(d['minimo'] ?? 0, 'El mínimo'), 3);
           const categoria = texto(d['categoria'], 'La categoría', 40);

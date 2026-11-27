@@ -338,6 +338,13 @@ async function actualizarV2(): Promise<void> {
     INDEX idx_invm_insumo (negocio_id, sucursal_id, insumo_id, creado_en),
     INDEX idx_invm_tipo (negocio_id, sucursal_id, tipo, creado_en)
   ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4`);
+  // Unidades propias de cada empresa (además de las estándar): se registran al guardar un insumo con una unidad nueva.
+  await ejecutar('ALTER TABLE inv_insumos MODIFY unidad VARCHAR(20) NOT NULL DEFAULT \'pza\'');
+  await ejecutar(`CREATE TABLE IF NOT EXISTS inv_unidades (
+    negocio_id INT UNSIGNED NOT NULL,
+    nombre VARCHAR(20) NOT NULL,
+    PRIMARY KEY (negocio_id, nombre)
+  ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci`);
   // Recetas: insumos que gasta un platillo por porción, y lo que suma o resta un modificador (cantidad en la unidad del insumo).
   await ejecutar(`CREATE TABLE IF NOT EXISTS inv_recetas (
     producto_id INT UNSIGNED NOT NULL,

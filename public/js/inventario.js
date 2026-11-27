@@ -8,7 +8,13 @@ const INV_PAGINAS = {
   proveedores: { titulo: 'Proveedores y compras', boton: 'btn-inv-proveedores', tabs: ['compras', 'proveedores'], kpi: false },
   mermas: { titulo: 'Mermas y movimientos', boton: 'btn-inv-mermas', tabs: ['mermas', 'movimientos'], kpi: true },
 };
-const UNIDAD_TXT = { kg: 'kg', g: 'g', l: 'L', ml: 'ml', pza: 'pza' };
+/* Unidades estándar con su grupo: se pueden convertir entre sí dentro del mismo grupo (g↔kg, ml↔L…). Las propias de la empresa van aparte. */
+const UNIDAD_GRUPOS = [
+  ['Peso', [['mg', 'mg · miligramo'], ['g', 'g · gramo'], ['kg', 'kg · kilogramo'], ['oz', 'oz · onza'], ['lb', 'lb · libra']]],
+  ['Volumen', [['ml', 'ml · mililitro'], ['cl', 'cl · centilitro'], ['l', 'L · litro'], ['cdta', 'cdta · cucharadita'], ['cda', 'cda · cucharada'], ['taza', 'taza']]],
+  ['Conteo', [['pza', 'pza · pieza'], ['docena', 'docena']]],
+];
+const UNIDAD_TXT = new Proxy({ l: 'L' }, { get: (o, k) => (k in o ? o[k] : String(k)) });   // lo que no esté en la lista se muestra tal cual (unidades propias)
 const num = (n) => Number(n).toLocaleString('es-MX', { maximumFractionDigits: 3 });
 
 async function iniciarInventario() {
@@ -70,7 +76,18 @@ function formInsumo(i) {
   const d = inv.datos;
   const nombre = entrada('text', i?.nombre, { maxLength: 80, placeholder: 'Ej. Tortilla de maíz' });
   const cat = entrada('text', i?.categoria, { maxLength: 40, placeholder: 'Ej. Abarrotes, Carnes…' });
-  const uni = selector(d.unidades.map((u) => [u, UNIDAD_TXT[u]]), i?.unidad || 'pza');
+  // Unidad: estándar por grupos + las propias de la empresa + «Otra unidad…» (se escribe y queda guardada para los demás insumos)
+  const uniSel = el('select');
+  for (const [g, lista] of UNIDAD_GRUPOS) { const og = document.createElement('optgroup'); og.label = g; for (const [v, t] of lista) og.append(new Option(t, v)); uniSel.append(og); }
+  const propias = [...(d.unidades_propias || [])];
+  if (i && !d.unidades.includes(i.unidad) && !propias.includes(i.unidad)) propias.push(i.unidad);
+  if (propias.length) { const og = document.createElement('optgroup'); og.label = 'Mis unidades'; for (const u of propias) og.append(new Option(u, u)); uniSel.append(og); }
+  uniSel.append(new Option('＋ Otra unidad…', '__otra'));
+  uniSel.value = i?.unidad || 'pza';
+  const uniNueva = entrada('text', '', { maxLength: 20, placeholder: 'Ej. caja, bolsa, manojo, lata' }); uniNueva.hidden = true;
+  uniSel.addEventListener('change', () => { uniNueva.hidden = uniSel.value !== '__otra'; if (!uniNueva.hidden) uniNueva.focus(); });
+  const uni = el('div', 'inv-unidad'); uni.append(uniSel, uniNueva);
+  Object.defineProperty(uni, 'value', { get: () => (uniSel.value === '__otra' ? uniNueva.value.trim() : uniSel.value) });
   const costo = entrada('number', i?.costo ?? 0, { min: 0, step: '0.01' });
   const min = entrada('number', i?.minimo ?? 0, { min: 0, step: '0.001' });
   const prov = selector([['', 'Sin proveedor'], ...d.proveedores.map((p) => [p.id, p.nombre])], i?.proveedor_id ?? '');

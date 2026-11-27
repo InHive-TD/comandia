@@ -2,8 +2,11 @@
 const dlgRecetas = $('dlg-recetas');
 const dlgRecetaEd = $('dlg-receta-editor');
 const rc = { datos: null, tab: 'platillos', q: '', abiertas: new Set(), editando: null };
-const RC_FAMILIA = { kg: ['g', 'kg'], g: ['g', 'kg'], l: ['ml', 'l'], ml: ['ml', 'l'], pza: ['pza'] };
-const RC_TXT = { kg: 'kg', g: 'g', l: 'L', ml: 'ml', pza: 'pza' };
+/* Familias de unidades convertibles (factor respecto a la base de cada familia). Una unidad propia (caja, bolsa…) solo se usa tal cual. */
+const RC_FACTOR = { mg: 0.001, g: 1, kg: 1000, oz: 28.3495, lb: 453.592, ml: 1, cl: 10, l: 1000, cdta: 5, cda: 15, taza: 240, pza: 1, docena: 12 };
+const RC_FAMILIAS = [['mg', 'g', 'kg', 'oz', 'lb'], ['ml', 'cl', 'l', 'cdta', 'cda', 'taza'], ['pza', 'docena']];
+const rcFamilia = (u) => RC_FAMILIAS.find((f) => f.includes(u)) || [u];
+const RC_TXT = UNIDAD_TXT;
 const rcSin = (t) => String(t).toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '');
 
 async function iniciarRecetas() {
@@ -16,13 +19,15 @@ const rcInsumo = (id) => rc.datos.insumos.find((i) => i.id === id);
 const rcMoneda = (n) => dinero.format(n);
 /** Pasa una cantidad escrita en `u` (g, kg, ml, l, pza) a la unidad propia del insumo. */
 function rcAUnidadInsumo(valor, u, unidadInsumo) {
-  const base = { g: 1, kg: 1000, ml: 1, l: 1000, pza: 1 };
   if (u === unidadInsumo) return valor;
-  return (valor * base[u]) / base[unidadInsumo];
+  return (valor * (RC_FACTOR[u] ?? 1)) / (RC_FACTOR[unidadInsumo] ?? 1);
 }
 /** Cómo mostrar una cantidad guardada: 0.04 kg → 40 g. */
 function rcMostrar(cantidad, unidadInsumo) {
-  if ((unidadInsumo === 'kg' || unidadInsumo === 'l') && cantidad < 1) return { v: Math.round(cantidad * 1000 * 1000) / 1000, u: unidadInsumo === 'kg' ? 'g' : 'ml' };
+  if ((unidadInsumo === 'kg' || unidadInsumo === 'l' || unidadInsumo === 'lb') && cantidad < 1) {
+    const chica = unidadInsumo === 'kg' ? 'g' : unidadInsumo === 'l' ? 'ml' : 'oz';
+    return { v: Math.round(((cantidad * RC_FACTOR[unidadInsumo]) / RC_FACTOR[chica]) * 1000) / 1000, u: chica };
+  }
   return { v: cantidad, u: unidadInsumo };
 }
 const rcCosto = (lineas) => lineas.reduce((s, l) => { const i = rcInsumo(l.insumo_id); return s + (i ? l.cantidad * i.costo * (l.modo === 'resta' ? -1 : 1) : 0); }, 0);
@@ -106,7 +111,7 @@ function rcFila(l) {
   const quitar = el('button', 'btn chico', '🗑'); quitar.type = 'button'; quitar.title = 'Quitar'; quitar.addEventListener('click', () => { f.remove(); rcTotal(); });
   const poner = (idIns, unidadSel) => {
     const i = rcInsumo(Number(idIns)); uni.replaceChildren();
-    for (const u of (i ? RC_FAMILIA[i.unidad] : ['g'])) uni.append(new Option(RC_TXT[u], u));
+    for (const u of (i ? rcFamilia(i.unidad) : ['g'])) uni.append(new Option(RC_TXT[u], u));
     if (unidadSel && [...uni.options].some((o) => o.value === unidadSel)) uni.value = unidadSel;
   };
   if (l) { const i = rcInsumo(l.insumo_id); ins.value = String(l.insumo_id); const m = i ? rcMostrar(l.cantidad, i.unidad) : { v: l.cantidad, u: 'g' }; poner(l.insumo_id, m.u); cant.value = String(m.v); } else poner('', null);
