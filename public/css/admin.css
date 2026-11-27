@@ -887,3 +887,8 @@ body.menu-compacto .menu-desp-items { display: block; padding-left: 0; }
 .ex-barra .ex-leyenda { margin: 0; flex: 1 1 300px; }
 .ex-barra .ex-abrir { margin-left: auto; }
 #se-descripcion { width: 100%; box-sizing: border-box; resize: vertical; font: inherit; padding: .45rem .6rem; border: 1px solid #ccc; border-radius: 8px; }
+
+.ex-buscar { flex: 0 1 260px; min-width: 160px; padding: .45rem .7rem; border: 1px solid #ccc; border-radius: 8px; font: inherit; }
+.ex-barra .ex-buscar { margin-left: auto; }
+.ex-barra .ex-buscar + .ex-abrir { margin-left: 0; }
+.ex-tarjeta mark, .ex-grupo mark { background: #ffe38a; color: inherit; border-radius: 3px; padding: 0 1px; }

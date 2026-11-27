@@ -2160,6 +2160,24 @@ function campoCosto(precioInicial = 0) {
  *   · "Editar" abre el formulario de esa tarjeta (nombre, código, grupo, costo, activo) con su botón Guardar.
  */
 
+/* Buscador de modificadores: sin acentos ni mayúsculas; busca en nombre, código, tipo y «tipo + nombre» */
+let exBusqueda = '';
+const sinAcentos = (t) => String(t).toLowerCase().split('').map((c) => c.normalize('NFD').replace(/[\u0300-\u036f]/g, '')).join('');
+/** Devuelve el texto con los caracteres que cuadran con la búsqueda marcados. */
+function resaltar(texto, q = exBusqueda) {
+  const t = String(texto);
+  if (!q) return t;
+  const i = sinAcentos(t).indexOf(q);
+  if (i < 0) return t;
+  const f = document.createDocumentFragment();
+  const m = document.createElement('mark');
+  m.textContent = t.slice(i, i + q.length);
+  f.append(t.slice(0, i), m, t.slice(i + q.length));
+  return f;
+}
+const extraCuadra = (x, q) => [x.nombre, x.codigo || '', x.grupo || '', (x.grupo || '') + ' ' + x.nombre].some((t) => sinAcentos(t).includes(q));
+$('ex-buscar').addEventListener('input', () => { exBusqueda = sinAcentos($('ex-buscar').value.trim()); pintarExtras(); });
+
 function pintarExtras() {
   // Sugerencias de grupo (los que ya existen)
   $('lista-grupos').replaceChildren(...gruposExtras.map((g) => new Option(g)));
@@ -2174,15 +2192,25 @@ function pintarExtras() {
   $('ex-leyenda').textContent = categorias.length ? 'Cada tarjeta muestra en qué categorías aparece el modificador (verde = en todos sus platillos, amarillo = en algunos, ej. 1/11). Para cambiarlo, toca «Editar» y elige los platillos.' : '';
 
   // Tipos en el orden elegido (las vacías también se muestran); los extras sin tipo van al final, en "Otros"
+  const q = exBusqueda;
   const grupos = new Map(gruposExtras.map((g) => [g, []]));
   for (const x of extras) {
+    if (q && !extraCuadra(x, q)) continue;
     const g = x.grupo && grupos.has(x.grupo) ? x.grupo : 'Otros';
     if (!grupos.has(g)) grupos.set(g, []);
     grupos.get(g).push(x);
   }
   if (grupos.has('Otros') && grupos.get('Otros').length === 0) grupos.delete('Otros');
+  if (q) {
+    for (const [g, lista] of [...grupos]) if (lista.length === 0) grupos.delete(g);   // buscando: solo los tipos con resultados
+    if (grupos.size === 0) { caja.append(el('p', 'ayuda ex-vacio', 'Ningún modificador coincide con la búsqueda.')); return; }
+  }
   for (const [g, lista] of grupos) {
-    if (grupos.size > 1 || lista.length === 0) caja.append(el('h3', 'ex-grupo', lista.length ? `${g} (${lista.length})` : `${g} (vacía)`));
+    if (q || grupos.size > 1 || lista.length === 0) {
+      const h = el('h3', 'ex-grupo');
+      h.append(resaltar(g), lista.length ? ` (${lista.length})` : ' (vacía)');
+      caja.append(h);
+    }
     if (lista.length === 0) { caja.append(el('p', 'ayuda', 'Sin modificadores todavía. Crea uno con “＋ Modificador” y elige este tipo en “Más opciones”.')); continue; }
     const rejilla = el('div', 'ex-rejilla');
     for (const x of lista) rejilla.append(tarjetaExtra(x));
@@ -2196,8 +2224,8 @@ function tarjetaExtra(x) {
   // Cabecera: nombre, código y precio
   const cab = el('div', 'ex-cab');
   const titulo = el('div', 'ex-titulo');
-  titulo.append(el('strong', 'ex-nombre', x.nombre));
-  if (x.codigo) titulo.append(el('span', 'chip', x.codigo));
+  const nom = el('strong', 'ex-nombre'); nom.append(resaltar(x.nombre)); titulo.append(nom);
+  if (x.codigo) { const cc = el('span', 'chip'); cc.append(resaltar(x.codigo)); titulo.append(cc); }
   if (!x.activo) titulo.append(el('span', 'chip sin', 'Desactivado'));
   if (x.deshabilitado) titulo.append(el('span', 'chip sin', 'Deshabilitado en tu sucursal'));
   if (x.sucursal_id !== null) titulo.append(el('span', 'chip', esGerente ? 'Mío' : 'Solo ' + (sucursalesCarta.find((s) => s.id === x.sucursal_id) || { nombre: x.sucursal || 'una sucursal' }).nombre));
@@ -2431,6 +2459,7 @@ async function accionExtra(cuerpo, mensajeOk) {
 
 $('btn-extras').addEventListener('click', () => {
   $('x-error').textContent = '';
+  $('ex-buscar').value = ''; exBusqueda = '';
   mostrarVistaExtras(false);
   pintarExtras();
   abrirPagina(dlgExtras, 'btn-extras');
