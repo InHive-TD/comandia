@@ -2162,6 +2162,11 @@ function campoCosto(precioInicial = 0) {
 
 /* Buscador de modificadores: sin acentos ni mayúsculas; busca en nombre, código, tipo y «tipo + nombre» */
 let exBusqueda = '';
+/* Qué tipos están abiertos: se recuerda en este navegador (solo es una comodidad visual). */
+const CLAVE_TIPOS = `cmd_tipos_abiertos_${slugActual()}`;
+const tiposAbiertos = new Set((() => { try { return JSON.parse(localStorage.getItem(CLAVE_TIPOS) || '[]'); } catch { return []; } })());
+const tiposYaGuardados = () => { try { return localStorage.getItem(CLAVE_TIPOS) !== null; } catch { return true; } };
+const guardarTipos = () => { try { localStorage.setItem(CLAVE_TIPOS, JSON.stringify([...tiposAbiertos])); } catch { /* sin almacenamiento */ } };
 const sinAcentos = (t) => String(t).toLowerCase().split('').map((c) => c.normalize('NFD').replace(/[\u0300-\u036f]/g, '')).join('');
 /** Devuelve el texto con los caracteres que cuadran con la búsqueda marcados. */
 function resaltar(texto, q = exBusqueda) {
@@ -2205,16 +2210,31 @@ function pintarExtras() {
     for (const [g, lista] of [...grupos]) if (lista.length === 0) grupos.delete(g);   // buscando: solo los tipos con resultados
     if (grupos.size === 0) { caja.append(el('p', 'ayuda ex-vacio', 'Ningún modificador coincide con la búsqueda.')); return; }
   }
+  // Un bloque desplegable por tipo; se recuerda cuáles están abiertos. Buscando, se abren los que tienen resultados.
+  const claves = [...grupos.keys()];
+  if (!tiposYaGuardados() && claves.length) { tiposAbiertos.add(claves[0]); guardarTipos(); }
+  const barra = $('ex-expandir');
+  barra.replaceChildren();
+  const todo = el('button', 'btn chico', 'Expandir todo'); todo.type = 'button';
+  todo.addEventListener('click', () => { for (const k of claves) tiposAbiertos.add(k); guardarTipos(); pintarExtras(); });
+  const nada = el('button', 'btn chico', 'Colapsar todo'); nada.type = 'button';
+  nada.addEventListener('click', () => { for (const k of claves) tiposAbiertos.delete(k); guardarTipos(); pintarExtras(); });
+  barra.append(todo, nada);
   for (const [g, lista] of grupos) {
-    if (q || grupos.size > 1 || lista.length === 0) {
-      const h = el('h3', 'ex-grupo');
-      h.append(resaltar(g), lista.length ? ` (${lista.length})` : ' (vacía)');
-      caja.append(h);
+    const det = el('details', 'cat-grupo');
+    det.open = !!q || tiposAbiertos.has(g);
+    const resumen = el('summary', 'cat-resumen');
+    const nombreTipo = el('span', 'cat-nombre'); nombreTipo.append(resaltar(g));
+    resumen.append(nombreTipo, el('span', 'chip', lista.length === 0 ? 'vacío' : lista.length === 1 ? '1 modificador' : `${lista.length} modificadores`));
+    det.append(resumen);
+    if (lista.length === 0) det.append(el('p', 'ayuda', 'Sin modificadores todavía. Crea uno con “＋ Modificador” y elige este tipo.'));
+    else {
+      const rejilla = el('div', 'ex-rejilla');
+      for (const x of lista) rejilla.append(tarjetaExtra(x));
+      det.append(rejilla);
     }
-    if (lista.length === 0) { caja.append(el('p', 'ayuda', 'Sin modificadores todavía. Crea uno con “＋ Modificador” y elige este tipo en “Más opciones”.')); continue; }
-    const rejilla = el('div', 'ex-rejilla');
-    for (const x of lista) rejilla.append(tarjetaExtra(x));
-    caja.append(rejilla);
+    det.addEventListener('toggle', () => { if (q) return; if (det.open) tiposAbiertos.add(g); else tiposAbiertos.delete(g); guardarTipos(); });
+    caja.append(det);
   }
 }
 
