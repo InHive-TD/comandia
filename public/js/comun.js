@@ -467,3 +467,27 @@ function mantenerPresionado(nodo, accion, ms = 700) {
   for (const e of ['pointerup', 'pointerleave', 'pointercancel']) nodo.addEventListener(e, cancelar);
   nodo.addEventListener('contextmenu', (ev) => ev.preventDefault());
 }
+
+
+/**
+ * Regla de diseño: el texto de ayuda entre paréntesis en un formulario se muestra como un signo de información (ⓘ)
+ * y el texto aparece al pasar el cursor o tocarlo. "(opcional)" y "(recomendado)" se quedan a la vista.
+ * Se aplica solo dentro de formularios y ventanas, y también a lo que se pinta después.
+ */
+function convertirParentesis(raiz) {
+  for (const sm of (raiz.querySelectorAll ? raiz.querySelectorAll('dialog small, .formulario small') : [])) {
+    if (sm.dataset.tipListo || sm.children.length) continue;
+    const t = sm.textContent.trim();
+    const m = /^\(([^()]{6,})\)$/.exec(t);
+    if (!m || /^(opcional|recomendado)$/i.test(m[1].trim())) continue;
+    sm.dataset.tipListo = '1';
+    const tip = document.createElement('span');
+    tip.className = 'tip'; tip.tabIndex = 0; tip.textContent = 'i';
+    tip.dataset.tip = m[1].trim().charAt(0).toUpperCase() + m[1].trim().slice(1);
+    sm.replaceWith(tip);
+  }
+}
+document.addEventListener('DOMContentLoaded', () => {
+  convertirParentesis(document);
+  new MutationObserver((ms) => { for (const m of ms) for (const n of m.addedNodes) if (n.nodeType === 1) convertirParentesis(n); }).observe(document.body, { childList: true, subtree: true });
+});

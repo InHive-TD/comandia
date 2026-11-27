@@ -2259,7 +2259,7 @@ function resumenDisponibilidad(tiene) {
 
 /* Elegir en qué platillos aparece un extra: categoría completa (casilla con ➖ si va a medias) o platillo por platillo */
 const dlgEP = $('dlg-extra-platillos');
-let epExtra = null, epOriginal = new Set(), epMarcados = new Set();
+let epExtra = null, epOriginal = new Set(), epMarcados = new Set(), epModo = 'aparece', epSoloIds = null;   // epModo 'cobro' = elegir dónde se cobra; epSoloIds = limitar a esos platillos
 
 function epPintar() {
   const q = $('ep-buscar').value.trim().toLowerCase();
@@ -2267,7 +2267,7 @@ function epPintar() {
   lista.replaceChildren();
   let visibles = 0;
   for (const c of categorias) {
-    const deCat = productos.filter((p) => p.categoria_id === c.id);
+    const deCat = productos.filter((p) => p.categoria_id === c.id && (!epSoloIds || epSoloIds.has(p.id)));
     if (deCat.length === 0) continue;
     const mostrar = q ? deCat.filter((p) => p.nombre.toLowerCase().includes(q)) : deCat;
     if (mostrar.length === 0) continue;
@@ -2299,6 +2299,7 @@ function epPintar() {
   $('ep-guardar').disabled = cambios === 0;
 }
 function abrirExtraPlatillos(x) {
+  epModo = 'aparece'; epSoloIds = null;
   epExtra = x;   // null = extra nuevo: la elección queda en el formulario y se guarda junto con el extra
   epOriginal = x ? new Set(productos.filter((p) => p.extras.includes(x.id)).map((p) => p.id)) : new Set();
   epMarcados = x ? new Set(epOriginal) : new Set(efSel);
@@ -2309,12 +2310,13 @@ function abrirExtraPlatillos(x) {
   dlgEP.showModal();
 }
 $('ep-buscar').addEventListener('input', epPintar);
-$('ep-todos').addEventListener('click', () => { for (const p of productos) epMarcados.add(p.id); epPintar(); });
+$('ep-todos').addEventListener('click', () => { for (const p of productos) if (!epSoloIds || epSoloIds.has(p.id)) epMarcados.add(p.id); epPintar(); });
 $('ep-ninguno').addEventListener('click', () => { epMarcados.clear(); epPintar(); });
 $('ep-cancelar').addEventListener('click', () => dlgEP.close());
 $('ep-x').addEventListener('click', () => dlgEP.close());
 $('ep-guardar').addEventListener('click', async () => {
   $('ep-error').textContent = '';
+  if (epModo === 'cobro') { efCobroSel = new Set(epMarcados); epModo = 'aparece'; epSoloIds = null; dlgEP.close(); pintarCobro(); return; }
   if (!epExtra) { efSel = new Set(epMarcados); dlgEP.close(); efDonde(); return; }
   const agregar = [...epMarcados].filter((id) => !epOriginal.has(id));
   const quitar = [...epOriginal].filter((id) => !epMarcados.has(id));
@@ -2436,7 +2438,8 @@ $('x-cerrar').addEventListener('click', () => dlgExtras.close());
 /* ---- Ventana para crear o editar un extra ---- */
 const dlgExtraForm = $('dlg-extra-form');
 let efExtra = null;       // el extra que se edita (null = nuevo)
-let efCosto = null;
+let efCobroSel = new Set();   // platillos donde se cobra (modo «solo en algunos»)
+let efCobroInicial = 'no';    // cómo estaba el cobro al abrir (para limpiar precios propios si cambia)
 
 function pintarOpcionesGrupo(actual) {
   const sel = $('ef-grupo');
@@ -2467,6 +2470,29 @@ $('ef-elegir').addEventListener('click', () => abrirExtraPlatillos(efExtra));
 for (const id of ['ef-modo-todos', 'ef-modo-elegir']) $(id).addEventListener('change', efDonde);
 
 /** Vista previa: cómo lo ve el cliente al armar el platillo (título de la sección y el modificador debajo). */
+const efCobroModo = () => ($('ef-cobro-todos').checked ? 'todos' : $('ef-cobro-algunos').checked ? 'algunos' : 'no');
+const efPrecio = () => $('ef-precio').value.trim().replace(',', '.') || '0';
+function pintarCobro() {
+  const m = efCobroModo();
+  $('ef-cobro-detalle').hidden = m === 'no';
+  $('ef-cobro-elegir').hidden = m !== 'algunos';
+  $('ef-cobro-resumen').replaceChildren();
+  if (m === 'algunos') $('ef-cobro-resumen').append(el('span', 'chip ex-res' + (efCobroSel.size ? ' algunos' : ''), efCobroSel.size ? `Se cobra en ${efCobroSel.size} platillo${efCobroSel.size === 1 ? '' : 's'}; en los demás es gratis` : 'Aún no eliges dónde se cobra'));
+  pintarPreviaExtra();
+}
+for (const id of ['ef-cobro-no', 'ef-cobro-todos', 'ef-cobro-algunos']) $(id).addEventListener('change', pintarCobro);
+$('ef-precio').addEventListener('input', pintarPreviaExtra);
+$('ef-cobro-elegir').addEventListener('click', () => {
+  epModo = 'cobro'; epExtra = efExtra;
+  const aparece = $('ef-modo-todos').checked ? null : (efExtra ? new Set(productos.filter((p) => p.extras.includes(efExtra.id)).map((p) => p.id)) : new Set(efSel));
+  epSoloIds = aparece;
+  epOriginal = new Set(); epMarcados = new Set(efCobroSel);
+  $('ep-titulo').textContent = `¿En qué platillos se cobra${efExtra ? ' «' + efExtra.nombre + '»' : ' el modificador'}? En los demás será gratis.`;
+  $('ep-buscar').value = ''; $('ep-error').textContent = '';
+  epPintar();
+  dlgEP.showModal();
+});
+
 function pintarPreviaExtra() {
   const sel = $('ef-grupo').value;
   const seccion = sel === '__nueva' ? $('ef-grupo-nuevo').value.trim() : sel;
@@ -2474,11 +2500,11 @@ function pintarPreviaExtra() {
   const caja = $('ef-previa');
   caja.replaceChildren();
   if (!nombre) { caja.append(el('span', 'ayuda', 'Escribe el nombre para ver cómo se verá.')); return; }
-  const costo = efCosto ? Number(String(efCosto.valor()).replace(',', '.')) || 0 : 0;
+  const costo = efCobroModo() === 'no' ? 0 : Number(efPrecio().replace(',', '.')) || 0;
   caja.append(el('span', 'ef-prev-sec', seccion || 'Otros'));
   const info = gruposExtrasInfo.find((g) => g.nombre === seccion);
   const chip = el('span', 'ef-prev-chip', seccion ? `${seccion} ${nombre}` : nombre);
-  if (costo > 0) chip.append(el('b', '', ` +${dinero.format(costo)}`));
+  if (costo > 0) chip.append(el('b', '', ` +${dinero.format(costo)}${efCobroModo() === 'algunos' ? ' (solo en algunos)' : ''}`));
   caja.append(chip);
   if (info && info.codigo) caja.append(el('small', 'ayuda', `Cocina verá: ${info.codigo} ${($('ef-codigo').value.trim() || nombre).toUpperCase()}`));
 }
@@ -2498,9 +2524,14 @@ function abrirFormExtra(x) {
   $('ef-titulo').textContent = x ? 'Editar modificador' : 'Nuevo modificador';
   $('ef-nombre').value = x ? x.nombre : '';
   $('ef-codigo').value = x ? (x.codigo || '') : '';
-  efCosto = campoCosto(x ? x.precio : 0);
-  $('ef-costo-caja').replaceChildren(...efCosto.caja.children);
-  $('ef-costo-caja').oninput = $('ef-costo-caja').onchange = pintarPreviaExtra;
+  // Cobro: gratis · en todos donde aparece · solo en algunos platillos (precio propio en esos y gratis en el resto)
+  const conPrecio = x ? productos.filter((p) => p.extras.includes(x.id) && p.extras_precios && Number(p.extras_precios[x.id]) > 0) : [];
+  efCobroSel = new Set(conPrecio.map((p) => p.id));
+  efCobroInicial = x && x.precio > 0 ? 'todos' : conPrecio.length ? 'algunos' : 'no';
+  $('ef-cobro-no').checked = efCobroInicial === 'no';
+  $('ef-cobro-todos').checked = efCobroInicial === 'todos';
+  $('ef-cobro-algunos').checked = efCobroInicial === 'algunos';
+  $('ef-precio').value = x && x.precio > 0 ? x.precio.toFixed(2) : conPrecio.length ? Number(conPrecio[0].extras_precios[x.id]).toFixed(2) : '';
   pintarOpcionesGrupo(x ? (x.grupo || '') : '');
   $('ef-activo-fila').hidden = !x;
   $('ef-activo').checked = x ? x.activo : true;
@@ -2511,6 +2542,7 @@ function abrirFormExtra(x) {
   $('ef-error').textContent = '';
   efSel = new Set();
   efDonde();
+  pintarCobro();
   dlgExtraForm.showModal();
   $('ef-nombre').focus();
 }
@@ -2522,13 +2554,18 @@ async function guardarFormExtra() {
   const g = $('ef-grupo').value === '__nueva' ? $('ef-grupo-nuevo').value.trim() : $('ef-grupo').value;
   if ($('ef-grupo').value === '__nueva' && !g) { $('ef-error').textContent = 'Escribe el nombre de la nueva sección.'; $('ef-grupo-nuevo').focus(); return false; }
   if (!efExtra && efSel.size === 0 && !$('ef-modo-todos').checked) { $('ef-error').textContent = 'Elige en qué platillos va a aparecer (todos, o con «Elegir categorías o platillos…»).'; return false; }
-  const cuerpo = { accion: efExtra ? 'actualizar' : 'crear', nombre, codigo: $('ef-codigo').value.trim(), grupo: g, precio: efCosto.valor() };
+  const modoCobro = efCobroModo();
+  if (modoCobro !== 'no' && !(Number(efPrecio()) > 0)) { $('ef-error').textContent = 'Escribe el precio con el que se cobra (por ejemplo 10).'; $('ef-precio').focus(); return false; }
+  if (modoCobro === 'algunos' && efCobroSel.size === 0) { $('ef-error').textContent = 'Elige en qué platillos se cobra (botón «Elegir dónde se cobra…»).'; return false; }
+  const cuerpo = { accion: efExtra ? 'actualizar' : 'crear', nombre, codigo: $('ef-codigo').value.trim(), grupo: g, precio: modoCobro === 'todos' ? efPrecio() : '0' };
   if (efExtra) { cuerpo.id = efExtra.id; cuerpo.activo = $('ef-activo').checked; }
   try {
     const r = await enviarJson(API + 'admin/extras.php', cuerpo);
     const idExtra = efExtra ? efExtra.id : r.id;
     if (!efExtra && efSel.size) await enviarJson(API + 'admin/extras.php', { accion: 'asignar_platillos', id: idExtra, agregar: [...efSel], quitar: [] });
     if (!$('ef-todos-fila').hidden && $('ef-modo-todos').checked !== !!(efExtra && efExtra.todos)) await enviarJson(API + 'admin/extras.php', { accion: 'predeterminado', id: idExtra, valor: $('ef-modo-todos').checked });
+    if (modoCobro === 'algunos') await enviarJson(API + 'admin/extras.php', { accion: 'cobro_platillos', id: idExtra, precio: efPrecio(), platillos: [...efCobroSel] });
+    else if (efCobroInicial === 'algunos') await enviarJson(API + 'admin/extras.php', { accion: 'precio_general', id: idExtra });   // deja de cobrar con precios propios
     await cargarCatalogo();
     pintarExtras();
     avisar(efExtra ? 'Modificador actualizado' : $('ef-modo-todos').checked ? 'Modificador creado en todos los platillos' : `Modificador creado en ${efSel.size} platillo${efSel.size === 1 ? '' : 's'}`);

@@ -13,6 +13,7 @@
  *     eliminar   { id }
  *     asignar    { id, categoria_id, asignar }           pone o quita el extra a TODOS los productos de una categoría
  *     asignar_platillos { id, agregar: [producto_id], quitar: [producto_id] }   pone o quita el extra en platillos concretos
+ *     cobro_platillos { id, precio, platillos: [producto_id] }   cobra el modificador SOLO en esos platillos (en los demás es gratis)
  *     predeterminado { id, valor }          (solo el administrador) valor=1: va en TODOS los platillos, también los nuevos
  *     sucursal_deshabilitar { id, deshabilitar }   el gerente apaga o enciende un modificador GENERAL solo en su sucursal
  *     grupo_crear / grupo_editar { nombre, nuevo, codigo } / grupo_eliminar   secciones (Quitar, Con, Sin...)
@@ -254,6 +255,24 @@ export async function rutasExtras(app: FastifyInstance): Promise<void> {
           } else {
             await ejecutar(`DELETE FROM producto_extras WHERE extra_id = ? AND producto_id IN (SELECT p.id FROM productos p WHERE p.negocio_id = ?${soloSuyos(alcance)})`, [id, nid]);
           }
+          return { ok: true };
+        }
+        case 'cobro_platillos': {
+          // "Se cobra solo en algunos": el precio general queda en 0 (gratis) y el precio se pone solo en los platillos elegidos.
+          // precio vacío o 0 con lista vacía = se cobra igual en todos (precio general, sin precios propios).
+          await extraDe(nid, id, alcance);
+          const precio = leerPrecio(d);
+          const ids = Array.isArray(d['platillos']) ? [...new Set((d['platillos'] as unknown[]).map((n) => entero(n)).filter((n) => n > 0))].slice(0, 2000) : [];
+          await transaccion(async (tx) => {
+            await tx.ejecutar('UPDATE extras SET precio = 0 WHERE id = ? AND negocio_id = ?', [id, nid]);
+            await tx.ejecutar(`UPDATE producto_extras SET precio = NULL WHERE extra_id = ? AND producto_id IN (SELECT p.id FROM productos p WHERE p.negocio_id = ?${soloSuyos(alcance)})`, [id, nid]);
+            if (ids.length > 0) {
+              await tx.ejecutar(
+                `UPDATE producto_extras SET precio = ? WHERE extra_id = ? AND producto_id IN (SELECT p.id FROM productos p WHERE p.negocio_id = ? AND p.id IN (${ids.map(() => '?').join(',')})${soloSuyos(alcance)})`,
+                [precio, id, nid, ...ids],
+              );
+            }
+          });
           return { ok: true };
         }
         case 'precio_general': {
