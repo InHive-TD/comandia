@@ -17,7 +17,7 @@
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Outfit:wght@600;700;800&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="../css/estilos.css?v=1795557467">
   <link rel="stylesheet" href="../css/plano.css?v=1795557467">
-  <link rel="stylesheet" href="../css/admin.css?v=202611271645">
+  <link rel="stylesheet" href="../css/admin.css?v=202611271730">
   <link rel="stylesheet" href="../css/tablero.css?v=1795557101">
   <link rel="stylesheet" href="../css/shell.css?v=1795557467">
   <link rel="stylesheet" href="../css/acceso.css?v=202611261215">
@@ -112,7 +112,16 @@
             <button id="btn-plano" data-titulo="Plano de mesas" class="btn nav-ico i-plano" type="button">Plano de mesas</button>
           </div>
         </div>
-        <button id="btn-inventario" data-titulo="Inventario y proveedores" class="btn nav-ico i-inventario" type="button" hidden>Inventario</button>
+        <div class="menu-desp" data-grupo="inventario" id="grupo-inventario" hidden>
+          <button class="nav-sum" type="button" aria-expanded="false">Inventario</button>
+          <div class="menu-desp-items">
+            <button id="btn-inv-existencias" data-titulo="Inventario · Existencias" class="btn nav-ico i-inventario" type="button">Existencias</button>
+            <button id="btn-inv-insumos" data-titulo="Inventario · Insumos" class="btn nav-ico i-inventario" type="button">Insumos</button>
+            <button id="btn-inv-recetas" data-titulo="Inventario · Recetas" class="btn nav-ico i-inventario" type="button">Recetas</button>
+            <button id="btn-inv-proveedores" data-titulo="Inventario · Proveedores y compras" class="btn nav-ico i-inventario" type="button">Proveedores y compras</button>
+            <button id="btn-inv-mermas" data-titulo="Inventario · Mermas y movimientos" class="btn nav-ico i-inventario" type="button">Mermas y movimientos</button>
+          </div>
+        </div>
         <button id="btn-usuarios" class="btn nav-ico i-usuarios" type="button">Usuarios</button>
         <button id="btn-apariencia" class="btn nav-ico i-apariencia" type="button">Apariencia</button>
       </div>
@@ -485,7 +494,7 @@
 
   <dialog id="dlg-inventario" class="pagina">
     <div class="formulario dialogo">
-      <h2>Inventario y proveedores</h2>
+      <h2 id="inv-titulo">Inventario</h2>
       <label id="inv-suc-fila" hidden>Sucursal <select id="inv-sucursal"></select></label>
       <p id="inv-catalogo-aviso" class="ayuda" hidden>Como gerente puedes registrar compras, mermas y conteos de tu sucursal. El catálogo de insumos y proveedores lo edita el administrador de la empresa.</p>
       <div id="inv-tabs" class="inv-tabs">
@@ -951,14 +960,14 @@
 
   <div id="toast" class="toast" role="status" hidden></div>
 
-  <script src="../js/comun.js?v=202611271645"></script>
+  <script src="../js/comun.js?v=202611271730"></script>
   <script src="../js/selectorMesa.js?v=1795557467"></script>
   <script src="../js/tablero.js?v=1795557101"></script>
   <script src="../js/shell.js?v=1795557467"></script>
   <script src="../js/login.js?v=202611242250"></script>
   <script src="../js/vendor/qrcode.js"></script>
-  <script src="../js/admin.js?v=202611271645"></script>
-  <script src="../js/inventario.js?v=202611270900"></script>
-  <script src="../js/recetas.js?v=202611271700"></script>
+  <script src="../js/admin.js?v=202611271730"></script>
+  <script src="../js/inventario.js?v=202611271730"></script>
+  <script src="../js/recetas.js?v=202611271730"></script>
 </body>
 </html>

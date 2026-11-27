@@ -905,3 +905,4 @@ body.menu-compacto .menu-desp-items { display: block; padding-left: 0; }
 .rc-fila .rc-nombre { font-weight: 700; flex: 1 1 180px; }
 #dlg-receta-editor { width: min(640px, calc(100vw - 24px)); }
 @media (max-width: 520px) { .rc-linea, .rc-linea.con-modo { grid-template-columns: 1fr 5rem 4rem auto; } .rc-linea.con-modo select:first-child { grid-column: 1 / -1; } }
+.menu-desp[hidden] { display: none !important; }

@@ -9,7 +9,7 @@ const rcSin = (t) => String(t).toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g
 async function iniciarRecetas() {
   try {
     const e = await pedir(API + 'admin/inventario/estado.php');
-    $('btn-recetas').hidden = !(e.activo && e.recetas) || esGerente;
+    $('btn-recetas').hidden = !(e.activo && e.recetas) || esGerente;   // atajo dentro de Platillos
   } catch { $('btn-recetas').hidden = true; }
 }
 const rcInsumo = (id) => rc.datos.insumos.find((i) => i.id === id);
@@ -30,12 +30,13 @@ const rcCosto = (lineas) => lineas.reduce((s, l) => { const i = rcInsumo(l.insum
 async function rcCargar() {
   rc.datos = await pedir(API + 'admin/recetas.php');
 }
-$('btn-recetas').addEventListener('click', async () => {
+$('btn-recetas').addEventListener('click', () => $('btn-inv-recetas').click());   // atajo: misma pantalla que Inventario → Recetas
+$('btn-inv-recetas').addEventListener('click', async () => {
   $('rc-error').textContent = '';
   try { await rcCargar(); } catch (err) { avisar(err.message, true); return; }
   rc.q = ''; $('rc-buscar').value = '';
   rcPintar();
-  abrirPagina(dlgRecetas, 'btn-recetas');
+  abrirPagina(dlgRecetas, 'btn-inv-recetas');
 });
 $('rc-cerrar').addEventListener('click', () => dlgRecetas.close());
 for (const [id, tab] of [['rc-tab-platillos', 'platillos'], ['rc-tab-extras', 'extras']]) {
