@@ -17,7 +17,7 @@
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Outfit:wght@600;700;800&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="../css/estilos.css?v=1795557467">
   <link rel="stylesheet" href="../css/plano.css?v=1795557467">
-  <link rel="stylesheet" href="../css/admin.css?v=202611271600">
+  <link rel="stylesheet" href="../css/admin.css?v=202611271630">
   <link rel="stylesheet" href="../css/tablero.css?v=1795557101">
   <link rel="stylesheet" href="../css/shell.css?v=1795557467">
   <link rel="stylesheet" href="../css/acceso.css?v=202611261215">
@@ -361,17 +361,6 @@
         </div>
         <div id="ef-cobro-resumen"></div>
       </div>
-      <div id="ef-def-caja" class="ex-campo">
-        <span class="ex-etq">¿Viene marcado de fábrica?</span>
-        <div class="ef-modos">
-          <label class="ef-modo"><input id="ef-def-no" name="ef-def" type="radio" checked> <span>No</span></label>
-          <label class="ef-modo"><input id="ef-def-todos" name="ef-def" type="radio"> <span>Sí, donde aparece</span></label>
-          <label class="ef-modo"><input id="ef-def-algunos" name="ef-def" type="radio"> <span>Sí, solo en algunos</span></label>
-          <button id="ef-def-elegir" class="btn chico" type="button" hidden>☑ Elegir platillos…</button>
-        </div>
-        <div id="ef-def-resumen"></div>
-        <small class="ef-nota">Ej. «Con todo». Se desmarca solo cuando se elige otra opción de cualquier otro tipo de modificador.</small>
-      </div>
       <div id="ef-donde" class="ex-campo">
         <span class="ex-etq">¿En qué platillos aparece?</span>
         <div class="ef-modos">
@@ -381,6 +370,17 @@
         </div>
         <div id="ef-resumen"></div>
         <button id="ef-igualar" class="btn chico" type="button" hidden title="Algunos platillos cobran este modificador con precio propio. Toca para que todos cobren el precio general.">↺ Igualar precio en todos</button>
+      </div>
+      <div id="ef-def-caja" class="ex-campo">
+        <span class="ex-etq">¿Establecer por defecto?</span>
+        <div class="ef-modos">
+          <label class="ef-modo"><input id="ef-def-no" name="ef-def" type="radio" checked> <span>No</span></label>
+          <label class="ef-modo"><input id="ef-def-todos" name="ef-def" type="radio"> <span>Sí, en todos</span></label>
+          <label class="ef-modo"><input id="ef-def-algunos" name="ef-def" type="radio"> <span>Sí, solo en algunos</span></label>
+          <button id="ef-def-elegir" class="btn chico" type="button" hidden>☑ Elegir platillos…</button>
+        </div>
+        <div id="ef-def-resumen"></div>
+        <small class="ef-nota">Ej. «Con todo». Se desmarca solo cuando se elige otra opción de cualquier otro tipo de modificador.</small>
       </div>
       <div class="ex-campo ef-previa-fila">
         <span class="ex-etq">Vista previa</span>
@@ -919,13 +919,13 @@
 
   <div id="toast" class="toast" role="status" hidden></div>
 
-  <script src="../js/comun.js?v=202611271600"></script>
+  <script src="../js/comun.js?v=202611271630"></script>
   <script src="../js/selectorMesa.js?v=1795557467"></script>
   <script src="../js/tablero.js?v=1795557101"></script>
   <script src="../js/shell.js?v=1795557467"></script>
   <script src="../js/login.js?v=202611242250"></script>
   <script src="../js/vendor/qrcode.js"></script>
-  <script src="../js/admin.js?v=202611271600"></script>
+  <script src="../js/admin.js?v=202611271630"></script>
   <script src="../js/inventario.js?v=202611270900"></script>
 </body>
 </html>

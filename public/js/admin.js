@@ -2496,13 +2496,13 @@ function pintarDefecto() {
   const m = efDefModo();
   $('ef-def-elegir').hidden = m !== 'algunos';
   $('ef-def-resumen').replaceChildren();
-  if (m === 'algunos') $('ef-def-resumen').append(el('span', 'chip ex-res' + (efDefSel.size ? ' algunos' : ''), efDefSel.size ? `Viene marcado en ${efDefSel.size} platillo${efDefSel.size === 1 ? '' : 's'}` : 'Aún no eliges en qué platillos'));
+  if (m === 'algunos') $('ef-def-resumen').append(el('span', 'chip ex-res' + (efDefSel.size ? ' algunos' : ''), efDefSel.size ? `Por defecto en ${efDefSel.size} platillo${efDefSel.size === 1 ? '' : 's'}` : 'Aún no eliges en qué platillos'));
 }
 for (const id of ['ef-def-no', 'ef-def-todos', 'ef-def-algunos']) $(id).addEventListener('change', pintarDefecto);
 $('ef-def-elegir').addEventListener('click', () => {
   epModo = 'defecto'; epExtra = efExtra; epSoloIds = null;
   epOriginal = new Set(); epMarcados = new Set(efDefSel);
-  $('ep-titulo').textContent = `¿En qué platillos viene marcado${efExtra ? ' «' + efExtra.nombre + '»' : ' el modificador'}? Ahí también aparecerá.`;
+  $('ep-titulo').textContent = `¿En qué platillos se establece por defecto${efExtra ? ' «' + efExtra.nombre + '»' : ' el modificador'}? Ahí también aparecerá.`;
   $('ep-buscar').value = ''; $('ep-error').textContent = '';
   epPintar();
   dlgEP.showModal();
@@ -2630,7 +2630,7 @@ async function guardarFormExtra() {
   if (!efExtra && efSel.size === 0 && efCobroModo() !== 'algunos' && efDefModo() !== 'algunos' && !$('ef-modo-todos').checked) { $('ef-error').textContent = 'Elige en qué platillos va a aparecer (todos, o con «Elegir categorías o platillos…»).'; return false; }
   const modoCobro = efCobroModo();
   if (modoCobro !== 'no' && !(Number(efPrecio()) > 0)) { $('ef-error').textContent = 'Escribe el precio con el que se cobra (por ejemplo 10).'; $('ef-precio').focus(); return false; }
-  if (efDefModo() === 'algunos' && efDefSel.size === 0) { $('ef-error').textContent = 'Elige en qué platillos viene marcado (botón «Elegir platillos…»).'; return false; }
+  if (efDefModo() === 'algunos' && efDefSel.size === 0) { $('ef-error').textContent = 'Elige en qué platillos se establece por defecto (botón «Elegir platillos…»).'; return false; }
   if (modoCobro === 'algunos' && efCobroSel.size === 0) { $('ef-error').textContent = 'Elige en qué platillos se cobra (botón «Elegir dónde se cobra…»).'; return false; }
   const cuerpo = { accion: efExtra ? 'actualizar' : 'crear', nombre, codigo: $('ef-codigo').value.trim(), grupo: g, precio: modoCobro === 'todos' ? efPrecio() : '0' };
   if (efExtra) { cuerpo.id = efExtra.id; cuerpo.activo = $('ef-activo').checked; }
