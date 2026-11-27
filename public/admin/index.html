@@ -17,7 +17,7 @@
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Outfit:wght@600;700;800&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="../css/estilos.css?v=1795557467">
   <link rel="stylesheet" href="../css/plano.css?v=1795557467">
-  <link rel="stylesheet" href="../css/admin.css?v=202611271300">
+  <link rel="stylesheet" href="../css/admin.css?v=202611271330">
   <link rel="stylesheet" href="../css/tablero.css?v=1795557101">
   <link rel="stylesheet" href="../css/shell.css?v=1795557467">
   <link rel="stylesheet" href="../css/acceso.css?v=202611261215">
@@ -263,19 +263,18 @@
 
       <!-- Página 1: modificadores -->
       <section id="ex-vista-mods">
+        <div class="ex-barra"><p id="ex-leyenda" class="ayuda ex-leyenda"></p><button id="ex-nuevo-abrir" class="btn principal ex-abrir" type="button">＋ Agregar nuevo modificador</button></div>
         <div id="lista-extras" class="ex-lista"></div>
-        <div class="ex-acciones"><button id="ex-nuevo-abrir" class="btn principal ex-abrir" type="button">＋ Agregar nuevo modificador</button></div>
+        
       </section>
 
       <!-- Página 2: tipos de modificador -->
       <section id="ex-tipos" class="ex-panel" hidden>
         <h3 class="ex-subtitulo">Tipos de modificador</h3>
         <p class="ayuda">Son los títulos con los que se acomodan los modificadores (Quitar, Aparte, Solo…). Crea las que necesites y cámbiales el nombre o el orden; con ⤒ y ⤓ las mandas hasta arriba o hasta abajo. Al quitar un tipo <strong>sus modificadores no se borran</strong>: pasan a “Otros”.</p>
+        <div class="ex-barra"><span></span><button id="ex-sec-nuevo-abrir" class="btn principal ex-abrir" type="button">＋ Agregar nuevo tipo de modificador</button></div>
         <div id="ex-sec-lista" class="ex-sec-lista"></div>
-        <form id="ex-sec-form" class="ex-sec-nueva" autocomplete="off">
-          <input id="ex-sec-nueva" type="text" maxlength="40" placeholder="Nombre del nuevo tipo (ej. Picante, Tamaño)" aria-label="Nuevo tipo" required>
-          <button class="btn principal" type="submit">＋ Agregar nuevo tipo</button>
-        </form>
+        
       </section>
       <datalist id="lista-grupos"></datalist>
 
@@ -313,13 +312,16 @@
   <!-- Editar un tipo de modificadores: nombre, código y si se lee junto al nombre -->
   <dialog id="dlg-seccion-editar">
     <form id="form-seccion" class="formulario dialogo" autocomplete="off">
-      <h2>Editar tipo</h2>
+      <h2 id="se-titulo">Editar tipo</h2>
       <label>Nombre del tipo
-        <input id="se-nombre" type="text" maxlength="40" placeholder="Ej. Con, Sin, Extra" required>
+        <input id="se-nombre" type="text" maxlength="40" placeholder="Ej. Con, Sin, Extra, Salsas" required>
       </label>
       <label>Código para la cocina <small>(opcional)</small>
         <input id="se-codigo" type="text" maxlength="20" autocapitalize="characters" placeholder="Ej. S">
         <small>La cocina lo ve junto al del modificador: tipo S + modificador CEB = «S CEB». No puede repetirse con ningún otro código de la empresa.</small>
+      </label>
+      <label>Descripción <small>(opcional)</small>
+        <textarea id="se-descripcion" rows="2" maxlength="200" placeholder="Qué significa este tipo. Ej. «Sin»: ingredientes que el cliente pide quitar del platillo (sin cebolla, sin chile). Otros ejemplos: «Extra» para porciones adicionales, «Salsas» para elegir la salsa."></textarea>
       </label>
       <p class="ayuda">Los modificadores de este tipo se leen junto a su nombre: tipo «Sin» + modificador «cebolla» = «Sin cebolla» en el ticket y en el pedido.</p>
       <p id="se-error" class="msg-error" role="alert"></p>
@@ -906,13 +908,13 @@
 
   <div id="toast" class="toast" role="status" hidden></div>
 
-  <script src="../js/comun.js?v=202611271300"></script>
+  <script src="../js/comun.js?v=202611271330"></script>
   <script src="../js/selectorMesa.js?v=1795557467"></script>
   <script src="../js/tablero.js?v=1795557101"></script>
   <script src="../js/shell.js?v=1795557467"></script>
   <script src="../js/login.js?v=202611242250"></script>
   <script src="../js/vendor/qrcode.js"></script>
-  <script src="../js/admin.js?v=202611271300"></script>
+  <script src="../js/admin.js?v=202611271330"></script>
   <script src="../js/inventario.js?v=202611270900"></script>
 </body>
 </html>

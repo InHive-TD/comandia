@@ -68,7 +68,7 @@ async function leerCodigo(nid: number, d: Record<string, unknown>, idActual = 0,
  * Secciones de extras. Las que ya existen escritas en algún extra (extras.grupo) se "adoptan" solas en la tabla
  * extra_grupos, para que la lista siempre esté completa y ordenable. Devuelve las secciones en su orden.
  */
-export interface GrupoExtra { nombre: string; orden: number; sucursal_id: number | null; codigo: string | null; prefijo: boolean }
+export interface GrupoExtra { nombre: string; orden: number; sucursal_id: number | null; codigo: string | null; prefijo: boolean; descripcion: string | null }
 
 export async function listarGruposExtras(nid: number, alcance: number | null = null): Promise<GrupoExtra[]> {
   await ejecutar(
@@ -81,9 +81,9 @@ export async function listarGruposExtras(nid: number, alcance: number | null = n
   // El gerente ve primero las secciones generales y después las suyas; las de otras sucursales no existen para él.
   const donde = alcance === null ? '' : ` AND (sucursal_id IS NULL OR sucursal_id = ${Number(alcance)})`;
   const orden = alcance === null ? 'orden, id' : '(sucursal_id IS NOT NULL), orden, id';
-  return (await filas(`SELECT nombre, orden, sucursal_id, codigo, prefijo FROM extra_grupos WHERE negocio_id = ?${donde} ORDER BY ${orden}`, [nid])).map((g) => ({
+  return (await filas(`SELECT nombre, orden, sucursal_id, codigo, prefijo, descripcion FROM extra_grupos WHERE negocio_id = ?${donde} ORDER BY ${orden}`, [nid])).map((g) => ({
     nombre: String(g['nombre']), orden: Number(g['orden']), sucursal_id: g['sucursal_id'] === null ? null : Number(g['sucursal_id']),
-    codigo: (g['codigo'] as string | null) ?? null, prefijo: Boolean(Number(g['prefijo'])),
+    codigo: (g['codigo'] as string | null) ?? null, prefijo: Boolean(Number(g['prefijo'])), descripcion: (g['descripcion'] as string | null) ?? null,
   }));
 }
 
@@ -285,7 +285,9 @@ export async function rutasExtras(app: FastifyInstance): Promise<void> {
           const nombre = leerNombreGrupo(d['nombre']);
           await listarGruposExtras(nid);
           const sig = await fila('SELECT COALESCE(MAX(orden), 0) + 1 AS n FROM extra_grupos WHERE negocio_id = ?', [nid]);
-          const r = await ejecutar('INSERT IGNORE INTO extra_grupos (negocio_id, nombre, orden, sucursal_id) VALUES (?, ?, ?, ?)', [nid, nombre, Number(sig?.['n']), alcance]);
+          const codigoNuevo = await leerCodigo(nid, d, 0, alcance, '');
+          const descNueva = String(d['descripcion'] ?? '').trim().slice(0, 200) || null;
+          const r = await ejecutar('INSERT IGNORE INTO extra_grupos (negocio_id, nombre, orden, sucursal_id, codigo, descripcion) VALUES (?, ?, ?, ?, ?, ?)', [nid, nombre, Number(sig?.['n']), alcance, codigoNuevo, descNueva]);
           if (r.affectedRows === 0) throw new ErrorHttp(409, 'validacion', `Ya existe un tipo llamado “${nombre}”. Usa otro nombre.`);
           reply.code(201);
           return { ok: true };
@@ -306,7 +308,7 @@ export async function rutasExtras(app: FastifyInstance): Promise<void> {
           await transaccion(async (tx) => {
             await tx.ejecutar('UPDATE extra_grupos SET nombre = ? WHERE negocio_id = ? AND nombre = ?', [nuevo, nid, actual]);
             await tx.ejecutar('UPDATE extras SET grupo = ? WHERE negocio_id = ? AND grupo = ?', [nuevo, nid, actual]);
-            if (editando) await tx.ejecutar('UPDATE extra_grupos SET codigo = ? WHERE negocio_id = ? AND nombre = ?', [codigo ?? null, nid, nuevo]);
+            if (editando) await tx.ejecutar('UPDATE extra_grupos SET codigo = ?, descripcion = ? WHERE negocio_id = ? AND nombre = ?', [codigo ?? null, String(d['descripcion'] ?? '').trim().slice(0, 200) || null, nid, nuevo]);
           });
           return { ok: true };
         }

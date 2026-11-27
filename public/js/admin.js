@@ -2168,10 +2168,10 @@ function pintarExtras() {
   const caja = $('lista-extras');
   caja.replaceChildren();
   if (extras.length === 0) {
-    caja.append(el('p', 'ayuda ex-vacio', 'Todavía no hay modificadores. Toca “＋ Agregar nuevo modificador” (abajo) para crear el primero (por ejemplo, Sin cebolla).'));
+    caja.append(el('p', 'ayuda ex-vacio', 'Todavía no hay modificadores. Toca “＋ Agregar nuevo modificador” (arriba a la derecha) para crear el primero (por ejemplo, Sin cebolla).'));
     return;
   }
-  if (categorias.length) caja.append(el('p', 'ayuda ex-leyenda', 'Cada tarjeta muestra en qué categorías aparece el modificador (verde = en todos sus platillos, amarillo = en algunos, ej. 1/11). Para cambiarlo, toca «Editar» y elige los platillos.'));
+  $('ex-leyenda').textContent = categorias.length ? 'Cada tarjeta muestra en qué categorías aparece el modificador (verde = en todos sus platillos, amarillo = en algunos, ej. 1/11). Para cambiarlo, toca «Editar» y elige los platillos.' : '';
 
   // Tipos en el orden elegido (las vacías también se muestran); los extras sin tipo van al final, en "Otros"
   const grupos = new Map(gruposExtras.map((g) => [g, []]));
@@ -2347,6 +2347,7 @@ function pintarSeccionesExtras() {
     const n = extras.filter((x) => x.grupo === g).length;
     const nombre = el('span', 'ex-sec-nombre'); nombre.append(el('strong', '', (info.propio ? '' : '🔒 ') + g), el('small', '', ` · ${n} modificador${n === 1 ? '' : 'es'}`));
     if (info.codigo) nombre.append(el('span', 'chip', info.codigo));
+    if (info.descripcion) nombre.append(el('span', 'tip', 'i')), nombre.lastChild.dataset.tip = info.descripcion, nombre.lastChild.tabIndex = 0;
     if (!esGerente && info.sucursal_id !== null) {
       const suc = sucursalesCarta.find((x) => x.id === info.sucursal_id);
       nombre.append(el('span', 'chip', 'Solo ' + (suc ? suc.nombre : 'una sucursal')));
@@ -2378,8 +2379,10 @@ function pintarSeccionesExtras() {
 let seccionEditando = null;
 function abrirEditarSeccion(nombre, info) {
   seccionEditando = nombre;
-  $('se-nombre').value = nombre;
-  $('se-codigo').value = info.codigo || '';
+  $('se-titulo').textContent = nombre === null ? 'Nuevo tipo de modificador' : 'Editar tipo';
+  $('se-nombre').value = nombre || '';
+  $('se-codigo').value = (info && info.codigo) || '';
+  $('se-descripcion').value = (info && info.descripcion) || '';
   $('se-error').textContent = '';
   $('dlg-seccion-editar').showModal();
   $('se-nombre').focus();
@@ -2388,11 +2391,13 @@ $('se-cancelar').addEventListener('click', () => $('dlg-seccion-editar').close()
 $('form-seccion').addEventListener('submit', async (ev) => {
   ev.preventDefault();
   try {
-    await enviarJson(API + 'admin/extras.php', { accion: 'grupo_editar', nombre: seccionEditando, nuevo: $('se-nombre').value.trim(), codigo: $('se-codigo').value.trim() });
+    const campos = { codigo: $('se-codigo').value.trim(), descripcion: $('se-descripcion').value.trim() };
+    if (seccionEditando === null) await enviarJson(API + 'admin/extras.php', { accion: 'grupo_crear', nombre: $('se-nombre').value.trim(), ...campos });
+    else await enviarJson(API + 'admin/extras.php', { accion: 'grupo_editar', nombre: seccionEditando, nuevo: $('se-nombre').value.trim(), ...campos });
     $('dlg-seccion-editar').close();
     await cargarCatalogo();
     pintarExtras();
-    avisar('Tipo actualizado');
+    avisar(seccionEditando === null ? 'Tipo creado' : 'Tipo actualizado');
   } catch (err) { $('se-error').textContent = err.message; }
 });
 
@@ -2408,11 +2413,7 @@ function mostrarVistaExtras(tipos) {
 }
 $('ex-tab-mods').addEventListener('click', () => mostrarVistaExtras(false));
 $('ex-tab-secs').addEventListener('click', () => mostrarVistaExtras(true));
-$('ex-sec-form').addEventListener('submit', async (ev) => {
-  ev.preventDefault();
-  await accionExtra({ accion: 'grupo_crear', nombre: $('ex-sec-nueva').value.trim() }, 'Tipo creado');
-  if (!$('x-error').textContent) $('ex-sec-nueva').value = '';
-});
+$('ex-sec-nuevo-abrir').addEventListener('click', () => abrirEditarSeccion(null, null));
 
 /** Cierra los paneles de arriba (nuevo extra, variantes, tipos) para que solo haya uno abierto a la vez. */
 

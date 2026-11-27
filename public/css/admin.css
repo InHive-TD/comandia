@@ -879,3 +879,9 @@ body.menu-compacto .menu-desp-items { display: block; padding-left: 0; }
 .ef-previa-fila { display: flex; align-items: center; gap: .7rem; flex-wrap: wrap; }
 .ef-previa { flex-direction: row !important; align-items: center; flex-wrap: wrap; gap: .5rem !important; padding: .35rem .7rem !important; }
 .ef-prev-sec { display: none; }
+
+/* Barra con el botón de agregar, a la derecha, entre el texto y la lista */
+.ex-barra { display: flex; align-items: center; justify-content: space-between; gap: .8rem; flex-wrap: wrap; margin: .4rem 0 .6rem; }
+.ex-barra .ex-leyenda { margin: 0; flex: 1 1 300px; }
+.ex-barra .ex-abrir { margin-left: auto; }
+#se-descripcion { width: 100%; box-sizing: border-box; resize: vertical; font: inherit; padding: .45rem .6rem; border: 1px solid #ccc; border-radius: 8px; }

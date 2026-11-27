@@ -249,7 +249,7 @@ async function listar(nid: number, alcance: number | null): Promise<Record<strin
   return {
     ok: true, productos, categorias, estaciones, extras,
     grupos_extras: gruposExtras.map((g) => g.nombre),
-    grupos_extras_info: gruposExtras.map((g) => ({ nombre: g.nombre, sucursal_id: g.sucursal_id, codigo: g.codigo, prefijo: g.prefijo, propio: alcance === null || g.sucursal_id === alcance })),
+    grupos_extras_info: gruposExtras.map((g) => ({ nombre: g.nombre, sucursal_id: g.sucursal_id, codigo: g.codigo, prefijo: g.prefijo, descripcion: g.descripcion, propio: alcance === null || g.sucursal_id === alcance })),
   };
 }
 
