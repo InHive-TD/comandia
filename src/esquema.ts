@@ -338,4 +338,22 @@ async function actualizarV2(): Promise<void> {
     INDEX idx_invm_insumo (negocio_id, sucursal_id, insumo_id, creado_en),
     INDEX idx_invm_tipo (negocio_id, sucursal_id, tipo, creado_en)
   ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4`);
+  // Recetas: insumos que gasta un platillo por porción, y lo que suma o resta un modificador (cantidad en la unidad del insumo).
+  await ejecutar(`CREATE TABLE IF NOT EXISTS inv_recetas (
+    producto_id INT UNSIGNED NOT NULL,
+    insumo_id INT UNSIGNED NOT NULL,
+    cantidad DECIMAL(14,3) NOT NULL,
+    PRIMARY KEY (producto_id, insumo_id),
+    INDEX idx_invrec_insumo (insumo_id),
+    CONSTRAINT fk_invrec_prod FOREIGN KEY (producto_id) REFERENCES productos(id) ON DELETE CASCADE
+  ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci`);
+  await ejecutar(`CREATE TABLE IF NOT EXISTS inv_receta_extras (
+    extra_id INT UNSIGNED NOT NULL,
+    insumo_id INT UNSIGNED NOT NULL,
+    modo ENUM('suma','resta') NOT NULL DEFAULT 'suma',
+    cantidad DECIMAL(14,3) NOT NULL,
+    PRIMARY KEY (extra_id, insumo_id),
+    INDEX idx_invrecx_insumo (insumo_id),
+    CONSTRAINT fk_invrecx_extra FOREIGN KEY (extra_id) REFERENCES extras(id) ON DELETE CASCADE
+  ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci`);
 }

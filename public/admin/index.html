@@ -144,6 +144,7 @@
             <span class="barra-der">
               <button id="btn-nuevo" class="btn chico principal" type="button">＋ Nuevo platillo</button>
               <button id="btn-carga" data-titulo="Platillos · Carga masiva" class="btn chico" type="button" title="Crear o actualizar muchos platillos con una plantilla de Excel">Importar desde Excel</button>
+              <button id="btn-recetas" data-titulo="Platillos · Recetas" class="btn chico" type="button" title="Qué insumos gasta cada platillo: costo, margen y descuento de inventario" hidden>Recetas</button>
               <button id="btn-categorias" class="btn chico btn-categorias-platillos" type="button" title="Ver, agregar y acomodar las categorías de platillos">Categorías de platillos</button>
             </span>
           </div>
@@ -814,6 +815,37 @@
     </div>
   </dialog>
 
+  <!-- Recetas: insumos por porción de cada platillo y de cada modificador (módulo de inventario, nivel completo) -->
+  <dialog id="dlg-recetas" class="pagina">
+    <div class="formulario dialogo">
+      <h2>Recetas</h2>
+      <p class="ayuda">Qué insumos gasta una porción de cada platillo. Con esto se calcula el costo y el margen, y el inventario se descuenta al vender.</p>
+      <div class="ex-botones" role="tablist">
+        <button id="rc-tab-platillos" class="btn principal" type="button" role="tab" aria-selected="true">Platillos</button>
+        <button id="rc-tab-extras" class="btn" type="button" role="tab" aria-selected="false" title="Lo que suma o resta un modificador: «Con queso» suma queso; «Sin cebolla» resta cebolla">Modificadores</button>
+      </div>
+      <div class="ex-barra"><span id="rc-resumen" class="ayuda"></span><span id="rc-expandir" class="cat-barra"></span><input id="rc-buscar" type="search" class="ex-buscar" placeholder="🔍 Buscar…" aria-label="Buscar" autocomplete="off"></div>
+      <div id="rc-lista"></div>
+      <p id="rc-error" class="msg-error" role="alert"></p>
+      <div class="acciones-dialogo"><button id="rc-cerrar" class="btn" type="button">Cerrar</button></div>
+    </div>
+  </dialog>
+  <dialog id="dlg-receta-editor">
+    <form id="form-receta" class="formulario dialogo" autocomplete="off">
+      <h2 id="rc-ed-titulo">Receta</h2>
+      <p id="rc-ed-sub" class="ayuda"></p>
+      <label id="rc-ed-copiar-caja">Copiar la receta de otro <select id="rc-ed-copiar"></select></label>
+      <div id="rc-ed-lineas" class="rc-lineas"></div>
+      <button id="rc-ed-mas" class="btn chico" type="button">＋ Ingrediente</button>
+      <p id="rc-ed-total" class="rc-total"></p>
+      <p id="rc-ed-error" class="msg-error" role="alert"></p>
+      <div class="acciones-dialogo">
+        <button id="rc-ed-cancelar" class="btn" type="button">Cancelar</button>
+        <button class="btn principal" type="submit">Guardar receta</button>
+      </div>
+    </form>
+  </dialog>
+
   <!-- Carga masiva de platillos: plantilla de Excel + ZIP de fotos, con vista previa antes de guardar -->
   <dialog id="dlg-carga" class="pagina">
     <div class="formulario dialogo">
@@ -927,5 +959,6 @@
   <script src="../js/vendor/qrcode.js"></script>
   <script src="../js/admin.js?v=202611271645"></script>
   <script src="../js/inventario.js?v=202611270900"></script>
+  <script src="../js/recetas.js?v=202611271700"></script>
 </body>
 </html>

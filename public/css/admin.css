@@ -894,3 +894,14 @@ body.menu-compacto .menu-desp-items { display: block; padding-left: 0; }
 .ex-tarjeta mark, .ex-grupo mark { background: #ffe38a; color: inherit; border-radius: 3px; padding: 0 1px; }
 
 .ef-nota { display: block; font-size: .72rem; color: #777; line-height: 1.25; margin-top: .2rem; }
+
+/* Recetas */
+.rc-lineas { display: flex; flex-direction: column; gap: .4rem; margin: .5rem 0; }
+.rc-linea { display: grid; grid-template-columns: minmax(0, 2fr) 5.5rem 4.5rem auto; gap: .4rem; align-items: center; }
+.rc-linea.con-modo { grid-template-columns: 5.5rem minmax(0, 2fr) 5.5rem 4.5rem auto; }
+.rc-linea select, .rc-linea input { min-width: 0; width: 100%; box-sizing: border-box; }
+.rc-total { font-weight: 700; margin: .4rem 0; }
+.rc-fila { display: flex; align-items: center; gap: .6rem; flex-wrap: wrap; padding: .4rem .2rem; border-bottom: 1px solid #eee; }
+.rc-fila .rc-nombre { font-weight: 700; flex: 1 1 180px; }
+#dlg-receta-editor { width: min(640px, calc(100vw - 24px)); }
+@media (max-width: 520px) { .rc-linea, .rc-linea.con-modo { grid-template-columns: 1fr 5rem 4rem auto; } .rc-linea.con-modo select:first-child { grid-column: 1 / -1; } }
