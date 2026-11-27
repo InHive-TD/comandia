@@ -77,6 +77,8 @@ export async function asegurarEsquema(): Promise<void> {
   await asegurarColumna('productos', 'grupo_obligatorio', 'VARCHAR(40) NULL');
   // Foto de perfil de cada usuario (nombre del archivo en uploads, igual que las fotos de platillos)
   await asegurarColumna('usuarios', 'foto', 'VARCHAR(80) NULL');
+  // Lo mismo para el administrador de la plataforma (se guarda en uploads/0/)
+  await asegurarColumna('plataforma_admins', 'foto', 'VARCHAR(80) NULL');
   // Acceso con correo: el admin invita, la persona confirma el correo y crea su propia contraseña.
   // Estos pasos no esperan candados: si la base está ocupada, avisan y el servidor arranca igual (se reintentan al siguiente arranque).
   await esquemaSuave(async (c) => {

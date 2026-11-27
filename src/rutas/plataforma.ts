@@ -3,6 +3,8 @@ import type { FastifyInstance, FastifyRequest } from 'fastify';
 import { contextoPlataforma, csrfToken, cuerpoJson, verificarCsrf } from '../auth.js';
 import { ejecutar, fila } from '../db.js';
 import { ErrorHttp } from '../errores.js';
+import { borrarFoto, procesarFoto } from '../fotos.js';
+import { leerFormulario } from '../formulario.js';
 import { type Sesion, sesionDe } from '../sesion.js';
 import { rutasPlataformaIntegraciones } from './plataformaIntegraciones.js';
 import { rutasPlataformaNegocios } from './plataformaNegocios.js';
@@ -12,20 +14,20 @@ const esperar = (ms: number): Promise<void> => new Promise((r) => setTimeout(r, 
 
 export const sesionPlataforma = (req: FastifyRequest): Promise<Sesion> => sesionDe(req, contextoPlataforma);
 
-export async function plataformaActual(req: FastifyRequest): Promise<{ id: number; nombre: string; usuario: string } | null> {
+export async function plataformaActual(req: FastifyRequest): Promise<{ id: number; nombre: string; usuario: string; foto: string | null } | null> {
   const ses = await sesionPlataforma(req);
   const id = ses.obtener<number>('plat_id');
   if (!id) return null;
-  const f = await fila('SELECT id, nombre, usuario FROM plataforma_admins WHERE id = ? AND activo = 1', [id]);
+  const f = await fila('SELECT id, nombre, usuario, foto FROM plataforma_admins WHERE id = ? AND activo = 1', [id]);
   if (!f) {
     ses.quitar('plat_id');
     return null;
   }
-  return { id: Number(f['id']), nombre: String(f['nombre']), usuario: String(f['usuario']) };
+  return { id: Number(f['id']), nombre: String(f['nombre']), usuario: String(f['usuario']), foto: (f['foto'] as string | null) ?? null };
 }
 
 /** Exige sesión de plataforma (y CSRF si la petición modifica datos). */
-export async function requerirPlataforma(req: FastifyRequest): Promise<{ id: number; nombre: string; usuario: string }> {
+export async function requerirPlataforma(req: FastifyRequest): Promise<{ id: number; nombre: string; usuario: string; foto: string | null }> {
   const u = await plataformaActual(req);
   if (!u) throw new ErrorHttp(401, 'no_autenticado', 'Inicia sesión para continuar.');
   if (req.method !== 'GET') verificarCsrf(req, await sesionPlataforma(req));
@@ -40,7 +42,7 @@ export async function rutasPlataforma(app: FastifyInstance): Promise<void> {
   app.get('/sesion', async (req) => {
     const ses = await sesionPlataforma(req);
     const u = await plataformaActual(req);
-    return { ok: true, autenticado: u !== null, usuario: u ? { nombre: u.nombre } : null, csrf: csrfToken(ses) };
+    return { ok: true, autenticado: u !== null, usuario: u ? { nombre: u.nombre, foto: u.foto } : null, csrf: csrfToken(ses) };
   });
 
   app.post('/login', async (req) => {
@@ -57,7 +59,7 @@ export async function rutasPlataforma(app: FastifyInstance): Promise<void> {
     const n = await fila('SELECT COUNT(*) AS n FROM intentos_login WHERE negocio_id = 0 AND ip = ? AND creado_en > (NOW() - INTERVAL 10 MINUTE)', [ip]);
     if (Number(n?.['n']) >= 8) throw new ErrorHttp(429, 'bloqueado', 'Demasiados intentos. Espera 10 minutos e inténtalo de nuevo.');
 
-    const f = await fila('SELECT id, nombre, password_hash FROM plataforma_admins WHERE usuario = ? AND activo = 1', [usuario]);
+    const f = await fila('SELECT id, nombre, password_hash, foto FROM plataforma_admins WHERE usuario = ? AND activo = 1', [usuario]);
     const correcto = await bcrypt.compare(password, f ? String(f['password_hash']) : HASH_RELLENO);
     if (!f || !correcto) {
       await ejecutar('INSERT INTO intentos_login (negocio_id, ip, usuario) VALUES (0, ?, ?)', [ip, usuario]);
@@ -67,7 +69,23 @@ export async function rutasPlataforma(app: FastifyInstance): Promise<void> {
     await ejecutar('DELETE FROM intentos_login WHERE negocio_id = 0 AND ip = ?', [ip]);
     ses.regenerar();
     ses.poner('plat_id', Number(f['id']));
-    return { ok: true, usuario: { nombre: String(f['nombre']) }, csrf: csrfToken(ses) };
+    return { ok: true, usuario: { nombre: String(f['nombre']), foto: (f['foto'] as string | null) ?? null }, csrf: csrfToken(ses) };
+  });
+
+  /** Foto de perfil del administrador de la plataforma. Se guarda en uploads/0/ (la carpeta 0 es "ninguna empresa"). */
+  app.post('/perfil/foto', async (req) => {
+    const u = await requerirPlataforma(req);
+    const f = await leerFormulario(req);
+    if (f.texto('accion') === 'quitar') {
+      await ejecutar('UPDATE plataforma_admins SET foto = NULL WHERE id = ?', [u.id]);
+      await borrarFoto(u.foto, 0);
+      return { ok: true, foto: null };
+    }
+    if (!f.foto) throw new ErrorHttp(400, 'validacion', 'Elige una foto.');
+    const nueva = await procesarFoto(f.foto, 0, true);
+    await ejecutar('UPDATE plataforma_admins SET foto = ? WHERE id = ?', [nueva, u.id]);
+    await borrarFoto(u.foto, 0);
+    return { ok: true, foto: nueva };
   });
 
   app.post('/logout', async (req) => {

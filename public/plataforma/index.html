@@ -67,7 +67,7 @@
           <button id="nav-ia" data-sec="ia" data-titulo="AI Models" class="btn nav-ico i-ia" type="button">AI Models</button>
         </div>
         <div class="menu-usuario">
-          <span id="usuario-ini" class="avatar" aria-hidden="true"></span>
+          <button id="usuario-ini" class="avatar avatar-btn" type="button" title="Cambiar mi foto" aria-label="Cambiar mi foto"></button>
           <span class="usuario-datos"><strong id="usuario-nombre"></strong><span>Administrador de plataforma</span></span>
           <button id="btn-salir-menu" class="btn-salir-menu" type="button" title="Salir" aria-label="Salir"></button>
         </div>
@@ -127,6 +127,22 @@
   </main>
 
   <!-- Alta / edición de empresa -->
+  <!-- Mi perfil: foto de quien está usando el panel -->
+  <dialog id="dlg-perfil">
+    <div class="formulario dialogo perfil-caja">
+      <div id="perfil-avatar" class="avatar grande"></div>
+      <h2 id="perfil-rol">Administrador de plataforma</h2>
+      <p id="perfil-nombre" class="ayuda"></p>
+      <input id="perfil-archivo" type="file" accept="image/jpeg,image/png,image/webp" hidden>
+      <p id="perfil-error" class="msg-error" role="alert"></p>
+      <div class="perfil-botones">
+        <button id="perfil-cambiar" class="btn principal" type="button">📷 Cambiar foto</button>
+        <button id="perfil-quitar" class="btn" type="button" hidden>Quitar foto</button>
+      </div>
+      <div class="acciones-dialogo"><button id="perfil-cerrar" class="btn" type="button">Cerrar</button></div>
+    </div>
+  </dialog>
+
   <dialog id="dlg-empresa">
     <form id="form-empresa" class="formulario dialogo">
       <h2 id="e-titulo">Nueva empresa</h2>

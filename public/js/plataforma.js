@@ -50,16 +50,55 @@ async function iniciar() {
   }
 }
 
+/* Foto de perfil: las fotos de la plataforma viven en /uploads/0/ */
+let perfil = { nombre: '', foto: null, iniciales: '?' };
+function pintarAvatares() {
+  for (const id of ['usuario-ini', 'usuario-ini-movil', 'perfil-avatar']) {
+    const a = $(id);
+    if (perfil.foto) { a.style.backgroundImage = `url("/uploads/${encodeURIComponent(perfil.foto).replace('%2F', '/')}")`; a.textContent = ''; a.classList.add('con-foto'); }
+    else { a.style.backgroundImage = ''; a.textContent = perfil.iniciales; a.classList.remove('con-foto'); }
+  }
+  $('perfil-quitar').hidden = !perfil.foto;
+}
+
 async function entrar(usuario) {
   $('quien').textContent = usuario.nombre;
   $('usuario-nombre').textContent = usuario.nombre;
-  const ini = (usuario.nombre || '?').trim().charAt(0).toUpperCase();
-  $('usuario-ini').textContent = ini;
-  $('usuario-ini-movil').textContent = ini;
+  const partes = String(usuario.nombre || '').trim().split(/\s+/).filter(Boolean);
+  perfil = { nombre: String(usuario.nombre || '').trim(), foto: usuario.foto || null, iniciales: ((partes[0] || '?')[0] + (partes.length > 1 ? partes[partes.length - 1][0] : '')).toUpperCase() };
+  $('perfil-nombre').textContent = perfil.nombre;
+  pintarAvatares();
   mostrar('vista-panel');
   await cargar();
   await cargarIntegraciones();
 }
+
+/* Mi perfil: cambiar o quitar la propia foto tocando el avatar del menú */
+const dlgPerfil = $('dlg-perfil');
+$('usuario-ini').addEventListener('click', () => { $('perfil-error').textContent = ''; menuAbierto(false); dlgPerfil.showModal(); });
+$('perfil-cerrar').addEventListener('click', () => dlgPerfil.close());
+$('perfil-cambiar').addEventListener('click', () => $('perfil-archivo').click());
+async function enviarPerfil(datos) {
+  $('perfil-error').textContent = '';
+  try {
+    const r = await pedir(API + 'perfil/foto.php', { method: 'POST', body: datos });
+    perfil.foto = r.foto;
+    pintarAvatares();
+    avisar(r.foto ? 'Foto actualizada' : 'Foto quitada');
+  } catch (err) { $('perfil-error').textContent = err.message; }
+}
+$('perfil-archivo').addEventListener('change', async () => {
+  const archivo = $('perfil-archivo').files[0];
+  $('perfil-archivo').value = '';
+  if (!archivo) return;
+  const datos = new FormData();
+  datos.append('accion', 'subir');
+  datos.append('foto', archivo);
+  $('perfil-cambiar').disabled = true;
+  await enviarPerfil(datos);
+  $('perfil-cambiar').disabled = false;
+});
+$('perfil-quitar').addEventListener('click', () => { const d = new FormData(); d.append('accion', 'quitar'); enviarPerfil(d); });
 
 $('form-login').addEventListener('submit', async (ev) => {
   ev.preventDefault();
