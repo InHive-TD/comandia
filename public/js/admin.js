@@ -2168,7 +2168,7 @@ function pintarExtras() {
   const caja = $('lista-extras');
   caja.replaceChildren();
   if (extras.length === 0) {
-    caja.append(el('p', 'ayuda ex-vacio', 'Todavía no hay modificadores. Toca “＋ Nuevo modificador” para crear el primero (por ejemplo, Sin cebolla).'));
+    caja.append(el('p', 'ayuda ex-vacio', 'Todavía no hay modificadores. Toca “＋ Agregar nuevo modificador” (abajo) para crear el primero (por ejemplo, Sin cebolla).'));
     return;
   }
   if (categorias.length) caja.append(el('p', 'ayuda ex-leyenda', 'Cada tarjeta muestra en qué categorías aparece el modificador (verde = en todos sus platillos, amarillo = en algunos, ej. 1/11). Para cambiarlo, toca «Editar» y elige los platillos.'));
@@ -2183,7 +2183,7 @@ function pintarExtras() {
   if (grupos.has('Otros') && grupos.get('Otros').length === 0) grupos.delete('Otros');
   for (const [g, lista] of grupos) {
     if (grupos.size > 1 || lista.length === 0) caja.append(el('h3', 'ex-grupo', lista.length ? `${g} (${lista.length})` : `${g} (vacía)`));
-    if (lista.length === 0) { caja.append(el('p', 'ayuda', 'Sin modificadores todavía. Crea uno con “＋ Nuevo modificador” y elige esta sección en “Más opciones”.')); continue; }
+    if (lista.length === 0) { caja.append(el('p', 'ayuda', 'Sin modificadores todavía. Crea uno con “＋ Agregar nuevo modificador” y elige esta sección en “Más opciones”.')); continue; }
     const rejilla = el('div', 'ex-rejilla');
     for (const x of lista) rejilla.append(tarjetaExtra(x));
     caja.append(rejilla);
@@ -2374,9 +2374,18 @@ function pintarSeccionesExtras() {
   });
 }
 
-$('ex-sec-abrir').addEventListener('click', () => { const abrir = $('ex-secciones').hidden; cerrarPanelesExtras(); $('ex-secciones').hidden = !abrir; });
-$('ex-sec-cerrar').addEventListener('click', () => { $('ex-secciones').hidden = true; });
-$('ex-sec-x').addEventListener('click', () => { $('ex-secciones').hidden = true; });
+/** Dos páginas dentro de Modificadores: la lista de modificadores y la de sus secciones. */
+function mostrarVistaExtras(secciones) {
+  $('ex-vista-mods').hidden = secciones;
+  $('ex-secciones').hidden = !secciones;
+  for (const [id, activo] of [['ex-tab-mods', !secciones], ['ex-tab-secs', secciones]]) {
+    $(id).classList.toggle('principal', activo);
+    $(id).setAttribute('aria-selected', String(activo));
+  }
+  $('x-error').textContent = '';
+}
+$('ex-tab-mods').addEventListener('click', () => mostrarVistaExtras(false));
+$('ex-tab-secs').addEventListener('click', () => mostrarVistaExtras(true));
 $('ex-sec-form').addEventListener('submit', async (ev) => {
   ev.preventDefault();
   await accionExtra({ accion: 'grupo_crear', nombre: $('ex-sec-nueva').value.trim() }, 'Sección creada');
@@ -2384,10 +2393,6 @@ $('ex-sec-form').addEventListener('submit', async (ev) => {
 });
 
 /** Cierra los paneles de arriba (nuevo extra, variantes, secciones) para que solo haya uno abierto a la vez. */
-function cerrarPanelesExtras() {
-  $('ex-secciones').hidden = true;
-}
-$('ex-nuevo-abrir').addEventListener('click', cerrarPanelesExtras, true);   // fase de captura: cierra los otros antes de abrir este
 
 async function accionExtra(cuerpo, mensajeOk) {
   $('x-error').textContent = '';
@@ -2403,6 +2408,7 @@ async function accionExtra(cuerpo, mensajeOk) {
 
 $('btn-extras').addEventListener('click', () => {
   $('x-error').textContent = '';
+  mostrarVistaExtras(false);
   pintarExtras();
   abrirPagina(dlgExtras, 'btn-extras');
 });
