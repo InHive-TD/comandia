@@ -2747,19 +2747,14 @@ let efCobroInicial = 'no';    // cómo estaba el cobro al abrir (para limpiar pr
 
 function pintarOpcionesGrupo(actual) {
   const sel = $('ef-grupo');
-  sel.replaceChildren(new Option('Sin tipo (Otros)', ''));
+  // Todo modificador va dentro de un tipo que ya exista (se crean en «＋ Tipo de modificador»): no hay «sin tipo» ni creación aquí.
+  const vacio = new Option('Elige un tipo…', ''); vacio.disabled = true;
+  sel.replaceChildren(vacio);
   const nombres = [...gruposExtras];
   if (actual && !nombres.includes(actual)) nombres.push(actual);
   for (const g of nombres) sel.append(new Option(g, g));
-  sel.append(new Option('＋ Nuevo tipo…', '__nueva'));
   sel.value = actual || '';
-  $('ef-grupo-nuevo').hidden = true; $('ef-grupo-nuevo').value = '';
 }
-$('ef-grupo').addEventListener('change', () => {
-  const nueva = $('ef-grupo').value === '__nueva';
-  $('ef-grupo-nuevo').hidden = !nueva;
-  if (nueva) $('ef-grupo-nuevo').focus();
-});
 
 /** Bloque «Disponible en» del formulario de edición: resumen + elegir platillos + igualar precio. */
 let efSel = new Set();   // platillos elegidos para un extra NUEVO (todavía no existe en el servidor)
@@ -2798,7 +2793,7 @@ $('ef-cobro-elegir').addEventListener('click', () => {
 
 function pintarPreviaExtra() {
   const sel = $('ef-grupo').value;
-  const seccion = sel === '__nueva' ? $('ef-grupo-nuevo').value.trim() : sel;
+  const seccion = sel;
   const nombre = $('ef-nombre').value.trim();
   const caja = $('ef-previa');
   caja.replaceChildren();
@@ -2811,7 +2806,7 @@ function pintarPreviaExtra() {
   caja.append(chip);
   if (info && info.codigo) caja.append(el('small', 'ayuda', `Cocina verá: ${info.codigo} ${($('ef-codigo').value.trim() || nombre).toUpperCase()}`));
 }
-for (const id of ['ef-nombre', 'ef-grupo', 'ef-grupo-nuevo']) { $(id).addEventListener('input', pintarPreviaExtra); $(id).addEventListener('change', pintarPreviaExtra); }
+for (const id of ['ef-nombre', 'ef-grupo']) { $(id).addEventListener('input', pintarPreviaExtra); $(id).addEventListener('change', pintarPreviaExtra); }
 $('ef-igualar').addEventListener('click', async () => {
   if (!efExtra) return;
   $('ef-error').textContent = '';
@@ -2859,8 +2854,8 @@ async function guardarFormExtra() {
   $('ef-error').textContent = '';
   const nombre = $('ef-nombre').value.trim();
   if (!nombre) { $('ef-error').textContent = 'Escribe cómo se llama el modificador.'; $('ef-nombre').focus(); return false; }
-  const g = $('ef-grupo').value === '__nueva' ? $('ef-grupo-nuevo').value.trim() : $('ef-grupo').value;
-  if ($('ef-grupo').value === '__nueva' && !g) { $('ef-error').textContent = 'Escribe el nombre del nuevo tipo.'; $('ef-grupo-nuevo').focus(); return false; }
+  const g = $('ef-grupo').value;
+  if (!g) { $('ef-error').textContent = 'Elige el tipo del modificador (si no hay ninguno, primero crea un tipo con «＋ Tipo de modificador»).'; $('ef-grupo').focus(); return false; }
   if (!efExtra && efSel.size === 0 && efCobroModo() !== 'algunos' && efDefModo() !== 'algunos' && !$('ef-modo-todos').checked) { $('ef-error').textContent = 'Elige en qué platillos va a aparecer (todos, o con «Elegir categorías o platillos…»).'; return false; }
   const modoCobro = efCobroModo();
   if (modoCobro !== 'no' && !(Number(efPrecio()) > 0)) { $('ef-error').textContent = 'Escribe el precio con el que se cobra (por ejemplo 10).'; $('ef-precio').focus(); return false; }
@@ -2890,14 +2885,21 @@ async function guardarFormExtra() {
     return false;
   }
 }
-$('ex-nuevo-abrir').addEventListener('click', () => abrirFormExtra(null));
+$('ex-nuevo-abrir').addEventListener('click', () => {
+  if (!gruposExtras.length) {   // sin tipos todavía: primero se crea uno
+    avisar('Primero crea un tipo de modificador (por ejemplo «Con» o «Sin»); luego podrás agregar modificadores dentro de él.', true);
+    abrirEditarSeccion(null, null);
+    return;
+  }
+  abrirFormExtra(null);
+});
 $('ef-cancelar').addEventListener('click', () => dlgExtraForm.close());
 $('form-extra').addEventListener('submit', async (ev) => {
   ev.preventDefault();
   if (await guardarFormExtra()) dlgExtraForm.close();
 });
 $('ef-otro').addEventListener('click', async () => {
-  const grupo = $('ef-grupo').value === '__nueva' ? $('ef-grupo-nuevo').value.trim() : $('ef-grupo').value;
+  const grupo = $('ef-grupo').value;
   const sel = new Set(efSel);
   if (await guardarFormExtra()) { abrirFormExtra(null); pintarOpcionesGrupo(grupo); efSel = sel; efDonde(); }   // la misma tipo se conserva para el siguiente
 });

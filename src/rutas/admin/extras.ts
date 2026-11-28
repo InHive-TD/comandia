@@ -113,9 +113,11 @@ const soloSuyos = (alcance: number | null): string => (alcance === null ? '' : `
 
 /** Una sección existente debe ser general o de la sucursal de quien pide (la de otra sucursal "no existe"). */
 async function grupoUsable(nid: number, alcance: number | null, nombre: string | null): Promise<void> {
-  if (nombre === null || alcance === null) return;
+  // Todo modificador va dentro de un tipo que ya exista: primero se crea el tipo y luego el modificador.
+  if (nombre === null) throw fallo('Elige el tipo del modificador. Si todavía no tienes ninguno, primero crea un tipo de modificador.');
   const g = await fila('SELECT sucursal_id FROM extra_grupos WHERE negocio_id = ? AND nombre = ?', [nid, nombre]);
-  if (g && g['sucursal_id'] !== null && Number(g['sucursal_id']) !== alcance) throw fallo('Ese tipo no existe en tu sucursal. Elige otro o crea uno nuevo.');
+  if (!g) throw fallo(`El tipo «${nombre}» no existe. Primero crea el tipo de modificador.`);
+  if (alcance !== null && g['sucursal_id'] !== null && Number(g['sucursal_id']) !== alcance) throw fallo('Ese tipo no existe en tu sucursal. Elige otro o crea uno nuevo.');
 }
 
 /** Secciones que quien pide puede mover/renombrar/quitar: todas para el administrador; solo las suyas para el gerente. */
