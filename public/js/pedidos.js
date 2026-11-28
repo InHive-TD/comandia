@@ -744,7 +744,7 @@ let accionesProducto = null;
 function abrirAccionesPlato(p) {
   accionesProducto = p;
   $('pa-titulo').textContent = p.nombre;
-  $('pa-baja').textContent = p.agotado ? 'Volver a habilitar' : 'Dar de baja (agotado hoy)';
+  $('pa-baja').textContent = p.agotado ? 'Volver a habilitar' : 'Marcar como agotado';
   $('pa-baja').classList.toggle('peligro', !p.agotado);
   dlgAcciones.showModal();
 }
@@ -762,7 +762,7 @@ function abrirDetalle(p) {
   $('dt-desc').hidden = !p.descripcion;
   $('dt-precio').textContent = dinero.format(p.precio) + (p.agotado ? ' · Agotado hoy' : '');
   const img = $('dt-foto');
-  if (p.foto) { img.src = p.foto; img.hidden = false; } else { img.removeAttribute('src'); img.hidden = true; }
+  if (p.foto) { img.src = '../' + p.foto; img.hidden = false; } else { img.removeAttribute('src'); img.hidden = true; }
   $('dt-agregar').hidden = !!p.agotado;
   $('dt-agregar').onclick = () => { dlgDetalle.close(); tocarProducto(p); };
   dlgDetalle.showModal();
