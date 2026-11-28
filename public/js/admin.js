@@ -735,10 +735,24 @@ function limpiarVistaPrevia() {
   urlVistaPrevia = null;
 }
 
+let fotoGuardada = null;   // URL de la foto que ya tiene el platillo en el servidor (null = no tiene)
 function ponerVistaPrevia(url) {
   const img = $('f-vista');
   if (url) { img.src = url; img.hidden = false; } else { img.removeAttribute('src'); img.hidden = true; }
+  $('f-quitar-btn').hidden = !url;
 }
+/** «Quitar foto»: si acaba de elegir una nueva la descarta (y vuelve a la guardada); si no, marca quitar la foto actual. */
+$('f-quitar-btn').addEventListener('click', () => {
+  limpiarVistaPrevia();
+  if ($('f-foto').files.length) {
+    $('f-foto').value = '';
+    ponerVistaPrevia($('f-quitar').checked ? null : fotoGuardada);
+  } else {
+    $('f-quitar').checked = true;
+    ponerVistaPrevia(null);
+  }
+  acActualizar();
+});
 
 /** Abre el formulario de platillo. Con categoriaId (botón de una categoría) el platillo nuevo ya viene en esa categoría. */
 function abrirFormulario(p = null, categoriaId = null) {
@@ -769,13 +783,15 @@ function abrirFormulario(p = null, categoriaId = null) {
     $('f-pedir').checked = !!p.pedir_opciones;
     $('f-obligatoria').checked = !!p.opciones_obligatorias;
     pintarGrupoObligatorio(p.grupo_obligatorio || '');
-    ponerVistaPrevia(p.foto ? RUTA_FOTOS + encodeURIComponent(p.foto) : null);
+    fotoGuardada = p.foto ? RUTA_FOTOS + encodeURIComponent(p.foto) : null;
+    ponerVistaPrevia(fotoGuardada);
   } else {
     if (categoriaId !== null) select.value = String(categoriaId);
     $('f-disponible').checked = true;
     $('f-pedir').checked = false;
     $('f-obligatoria').checked = false;
     pintarGrupoObligatorio('');
+    fotoGuardada = null;
     ponerVistaPrevia(null);
   }
   { const ex = leerExtrasForm(); pintarExtrasProducto(ex.marcados, ex.precios); }   // ya con la categoría elegida: usa su orden de tipos
