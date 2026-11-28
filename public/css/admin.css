@@ -969,3 +969,8 @@ fieldset.extras-campo { position: relative; }
 
 .cr-platillos { margin: 4px 0; border: 1px solid var(--color-borde, #d9cbbd); border-radius: 8px; padding: 4px 8px; }
 .cr-platillos > summary { cursor: pointer; font-weight: 600; padding: 4px 0; }
+
+.cr-cuerpo { display: grid; gap: 10px; }
+.cr-cuerpo[hidden], .cr-resumen[hidden] { display: none; }
+.cr-resumen { margin: 0; }
+.cr-cab .cr-flecha { flex: none; min-width: 34px; padding: 4px 8px; }

@@ -2095,6 +2095,7 @@ $('tp-cerrar').addEventListener('click', () => dlgTomaPedidos.close());
 const dlgCarriles = $('dlg-carriles');
 let crEstado = null;     // lo que manda el servidor (carriles de la empresa y de cada sucursal, estaciones y categorías)
 let crLista = [];        // carriles que se están editando
+const crAbiertos = new Set();   // ids de carriles expandidos (por defecto todos compactos)
 const COLORES_CR = [['verde', '🟢 Verde'], ['naranja', '🟠 Naranja'], ['azul', '🔵 Azul'], ['morado', '🟣 Morado'], ['rojo', '🔴 Rojo'], ['gris', '⚪ Gris']];
 const TIPOS_CR = [['aqui', '🍽 Comer aquí'], ['llevar', '🥡 Para llevar'], ['recoger', '🛍 Recoger']];
 const copiaCarriles = (l) => l.map((c) => ({ ...c, tipos: [...c.tipos], estaciones: [...c.estaciones], categorias: [...c.categorias], productos: [...(c.productos || [])] }));
@@ -2207,6 +2208,28 @@ function crPintar() {
       det.append(fila); gp.append(det);
     }
     t.append(gp);
+    // Compactar / expandir: cada carril se pliega a su encabezado (con un resumen de su regla)
+    const cuerpo = el('div', 'cr-cuerpo');
+    for (const hijo of [...t.children]) if (hijo !== cab) cuerpo.append(hijo);
+    const abierto = crAbiertos.has(c.id);
+    cuerpo.hidden = !abierto;
+    const partes = [];
+    const nombresTipo = c.tipos.map((v) => (TIPOS_CR.find((x) => x[0] === v) || [v, v])[1]);
+    if (nombresTipo.length) partes.push(nombresTipo.join(' + '));
+    if (c.estaciones.length) partes.push(`${c.estaciones.length} parrilla${c.estaciones.length === 1 ? '' : 's'}`);
+    if (c.categorias.length) partes.push(`${c.categorias.length} categoría${c.categorias.length === 1 ? '' : 's'}`);
+    if (c.productos.length) partes.push(`${c.productos.length} platillo${c.productos.length === 1 ? '' : 's'}`);
+    const resumen = el('p', 'cr-resumen ayuda', partes.length ? partes.join(' · ') : 'Recibe todos los pedidos');
+    resumen.hidden = abierto;
+    const flecha = el('button', 'btn chico cr-flecha', abierto ? '▾' : '▸'); flecha.type = 'button';
+    flecha.title = 'Compactar o expandir'; flecha.setAttribute('aria-expanded', String(abierto));
+    flecha.addEventListener('click', () => {
+      const ab = cuerpo.hidden; cuerpo.hidden = !ab; resumen.hidden = ab;
+      if (ab) crAbiertos.add(c.id); else crAbiertos.delete(c.id);
+      flecha.textContent = ab ? '▾' : '▸'; flecha.setAttribute('aria-expanded', String(ab));
+    });
+    cab.prepend(flecha);
+    t.append(resumen, cuerpo);
     caja.append(t);
   });
   acActualizar();
@@ -2235,7 +2258,8 @@ $('cr-heredar').addEventListener('change', () => {
 });
 $('cr-agregar').addEventListener('click', () => {
   if (crLista.length >= 8) { $('cr-error').textContent = 'Máximo 8 carriles.'; return; }
-  crLista.push({ id: 'c' + Date.now().toString(36).slice(-6), nombre: '', color: 'azul', tipos: [], estaciones: [], categorias: [], productos: [] });
+  const nuevo = { id: 'c' + Date.now().toString(36).slice(-6), nombre: '', color: 'azul', tipos: [], estaciones: [], categorias: [], productos: [] };
+  crLista.push(nuevo); crAbiertos.add(nuevo.id);   // un carril nuevo se abre para llenarlo
   crPintar();
 });
 $('cr-defecto').addEventListener('click', () => { crLista = copiaCarriles(crEstado.defecto); crPintar(); });
