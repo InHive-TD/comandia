@@ -345,6 +345,13 @@ async function actualizarV2(): Promise<void> {
     nombre VARCHAR(20) NOT NULL,
     PRIMARY KEY (negocio_id, nombre)
   ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci`);
+  // Orden propio de los tipos de modificador en un platillo (si no hay filas, se usa el orden estándar de Modificadores).
+  await ejecutar(`CREATE TABLE IF NOT EXISTS producto_grupo_orden (
+    producto_id INT UNSIGNED NOT NULL,
+    grupo VARCHAR(80) NOT NULL,
+    orden INT NOT NULL DEFAULT 0,
+    PRIMARY KEY (producto_id, grupo)
+  ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4`);
   // Alcance del insumo: sucursal_id NULL = general (lo creó el administrador de la empresa y aparece en todas las sucursales);
   // con valor = lo creó el administrador de esa sucursal. `estandar`/`factor_estandar`: la unidad natural compatible (g, ml, pza)
   // y cuántas de ellas vale una unidad madre, para calcular siempre con las mismas unidades.

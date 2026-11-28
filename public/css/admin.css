@@ -925,3 +925,9 @@ body.menu-compacto .menu-desp-items { display: block; padding-left: 0; }
 .barra-guardar { align-items: center; flex-wrap: nowrap; }
 .ac-pendiente { color: #b45309; font-weight: 600; white-space: nowrap; }
 @media (max-width: 700px) { .ac-pendiente { display: none; } }
+fieldset.extras-campo { position: relative; }
+.extras-campo .ordenar-tipos { position: absolute; top: -12px; right: 10px; background: #fff; z-index: 1; }
+.ord-tipos { display: grid; gap: 6px; margin: 8px 0 12px; min-width: min(320px, 80vw); }
+.ord-tipo { display: flex; align-items: center; gap: 6px; }
+.ord-tipo .ord-nombre { flex: 1; font-weight: 600; text-align: left; }
+.extras-campo .ordenar-tipos { border: 1px solid #d9cbbd; border-radius: 6px; padding: 2px 8px; font-size: .78rem; cursor: pointer; color: #6b5a4c; }

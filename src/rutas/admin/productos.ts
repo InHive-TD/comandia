@@ -42,6 +42,8 @@ export interface CamposProducto {
   pedirOpciones: 0 | 1;
   obligatorias: 0 | 1;
   grupoObligatorio: string | null;
+  /** Orden propio de los tipos de modificador en este platillo (vacío = el estándar de la pestaña Modificadores). */
+  gruposOrden: string[];
 }
 
 /** Lee y valida todos los campos del formulario de un producto. Lanza un error legible si algo no cuadra. */
@@ -125,9 +127,16 @@ export async function leerCampos(nid: number, alcance: number | null, f: Formula
     }
   }
 
+  let gruposOrden: string[] = [];
+  try {
+    const crudo: unknown = JSON.parse(f.texto('grupos_orden', '[]') || '[]');
+    if (Array.isArray(crudo)) gruposOrden = [...new Set(crudo.map((g) => String(g).trim()).filter((g) => g !== '' && g.length <= 80))].slice(0, 40);
+  } catch { /* orden inválido: se usa el estándar */ }
+
   return {
     obligatorias,
     grupoObligatorio,
+    gruposOrden,
     codigo: codigo === '' ? null : codigo,
     porcion: porcion === '' ? null : porcion,
     estacionId: estacionId > 0 ? estacionId : null,
@@ -164,7 +173,11 @@ async function fotoActual(nid: number, id: number): Promise<string | null> {
 }
 
 /** Deja en producto_extras exactamente los extras indicados (dentro de una transacción). */
-export async function guardarExtras(tx: { ejecutar: (sql: string, p?: unknown[]) => Promise<unknown> }, productoId: number, extras: number[], precios: Map<number, number>): Promise<void> {
+export async function guardarExtras(tx: { ejecutar: (sql: string, p?: unknown[]) => Promise<unknown> }, productoId: number, extras: number[], precios: Map<number, number>, gruposOrden?: string[]): Promise<void> {
+  if (gruposOrden !== undefined) {
+    await tx.ejecutar('DELETE FROM producto_grupo_orden WHERE producto_id = ?', [productoId]);
+    for (const [i, g] of gruposOrden.entries()) await tx.ejecutar('INSERT INTO producto_grupo_orden (producto_id, grupo, orden) VALUES (?, ?, ?)', [productoId, g, i]);
+  }
   await tx.ejecutar('DELETE FROM producto_extras WHERE producto_id = ?', [productoId]);
   for (const extraId of extras) await tx.ejecutar('INSERT INTO producto_extras (producto_id, extra_id, precio) VALUES (?, ?, ?)', [productoId, extraId, precios.get(extraId) ?? null]);
 }
@@ -194,6 +207,12 @@ async function listar(nid: number, alcance: number | null): Promise<Record<strin
     if (a['precio'] !== null) precios.set(k, { ...(precios.get(k) ?? {}), [Number(a['extra_id'])]: Number(a['precio']) });
   }
 
+  const ordenes = new Map<number, string[]>();   // producto_id → tipos de modificador en el orden propio de ese platillo
+  for (const a of await filas('SELECT o.producto_id, o.grupo FROM producto_grupo_orden o JOIN productos pr ON pr.id = o.producto_id WHERE pr.negocio_id = ? ORDER BY o.producto_id, o.orden', [nid])) {
+    const k = Number(a['producto_id']);
+    ordenes.set(k, [...(ordenes.get(k) ?? []), String(a['grupo'])]);
+  }
+
   const defectos = new Map<number, number[]>();   // producto_id → extras que vienen marcados solo en ese platillo
   for (const a of await filas('SELECT d.producto_id, d.extra_id FROM extra_defecto_platillo d JOIN productos pr ON pr.id = d.producto_id WHERE pr.negocio_id = ?', [nid])) {
     const k = Number(a['producto_id']);
@@ -218,6 +237,7 @@ async function listar(nid: number, alcance: number | null): Promise<Record<strin
     extras: asignados.get(Number(f['id'])) ?? [],
     extras_precios: precios.get(Number(f['id'])) ?? {},
     extras_defecto: defectos.get(Number(f['id'])) ?? [],
+    grupos_orden: ordenes.get(Number(f['id'])) ?? [],
     sucursal_id: f['sucursal_id'] === null ? null : Number(f['sucursal_id']),
     sucursal: f['sucursal'], // producto propio de una sucursal (null = carta general)
     propio: alcance !== null && f['sucursal_id'] !== null, // el gerente lo puede editar por completo
@@ -302,7 +322,7 @@ export async function rutasAdminProductos(app: FastifyInstance): Promise<void> {
                  VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
                 [nid, destino, c.categoriaId, c.nombre, c.descripcion, c.precio, foto, c.disponible, c.codigo, c.porcion, c.estacionId, c.pedirOpciones, c.obligatorias, c.grupoObligatorio, Number(sig?.['n'])],
               );
-              await guardarExtras(tx, r.insertId, c.extras, c.preciosExtra);
+              await guardarExtras(tx, r.insertId, c.extras, c.preciosExtra, c.gruposOrden);
               return r.insertId;
             });
             reply.code(201);
@@ -328,7 +348,7 @@ export async function rutasAdminProductos(app: FastifyInstance): Promise<void> {
                         codigo = ?, porcion = ?, estacion_id = ?, pedir_opciones = ?, opciones_obligatorias = ?, grupo_obligatorio = ? WHERE id = ? AND negocio_id = ?`,
                 [c.categoriaId, c.nombre, c.descripcion, c.precio, foto, c.disponible, c.codigo, c.porcion, c.estacionId, c.pedirOpciones, c.obligatorias, c.grupoObligatorio, id, nid],
               );
-              await guardarExtras(tx, id, c.extras, c.preciosExtra);
+              await guardarExtras(tx, id, c.extras, c.preciosExtra, c.gruposOrden);
             });
           } catch (e) {
             await borrarFoto(nueva, nid);

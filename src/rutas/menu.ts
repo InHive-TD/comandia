@@ -42,12 +42,24 @@ export async function rutasMenu(app: FastifyInstance): Promise<void> {
          LEFT JOIN extra_grupos g ON g.negocio_id = e.negocio_id AND g.nombre = e.grupo
          JOIN productos pr ON pr.id = pe.producto_id
         WHERE e.activo = 1 AND e.negocio_id = ? AND pr.negocio_id = e.negocio_id${suc > 0 ? ` AND ${extraVisible(suc)}` : ''}
-        ORDER BY e.orden, e.id`,
+        ORDER BY COALESCE(g.orden, 2147483647), e.orden, e.id`,
       [nid],
     );
+    // Orden propio de los tipos de modificador en cada platillo (si no hay, vale el de la pestaña Modificadores)
+    const ordenes = new Map<number, string[]>();
+    for (const o of await filas('SELECT o.producto_id, o.grupo FROM producto_grupo_orden o JOIN productos pr ON pr.id = o.producto_id WHERE pr.negocio_id = ? ORDER BY o.producto_id, o.orden', [nid])) {
+      const k = Number(o['producto_id']);
+      ordenes.set(k, [...(ordenes.get(k) ?? []), String(o['grupo'])]);
+    }
     for (const x of filasExtras) {
       const k = Number(x['producto_id']);
       extras.set(k, [...(extras.get(k) ?? []), { id: Number(x['id']), nombre: x['nombre'], precio: Number(x['precio']), codigo: x['codigo'], grupo: x['grupo'], grupo_codigo: x['grupo_codigo'] ?? null, defecto: Boolean(Number(x['defecto'])) }]);
+    }
+    for (const [k, lista] of extras) {
+      const orden = ordenes.get(k);
+      if (!orden) continue;
+      const lugar = (x: unknown): number => { const i = orden.indexOf(String((x as { grupo: string | null }).grupo ?? 'Otros')); return i < 0 ? orden.length : i; };
+      extras.set(k, [...lista].sort((a, b) => lugar(a) - lugar(b)));   // sort estable: dentro de cada tipo queda el orden estándar
     }
 
     // Agrupar por categoría conservando el orden: [{ categoria, productos: [...] }, ...]

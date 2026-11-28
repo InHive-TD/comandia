@@ -438,6 +438,60 @@ function alCambiarObligatoria() {
 $('f-obligatoria').addEventListener('change', alCambiarObligatoria);
 
 /** Casillas con los extras (los desactivados se muestran solo si el producto los tiene). */
+let fGruposOrden = null;   // orden propio de los tipos en el platillo que se edita (null = el estándar de la pestaña Modificadores)
+
+/** Lo marcado y los precios propios que hay ahora en el formulario (para volver a pintar sin perderlos). */
+function leerExtrasForm() {
+  const marcados = [...$('f-extras').querySelectorAll('input[type=checkbox]:checked')].map((c) => Number(c.value));
+  const precios = {};
+  for (const i of $('f-extras').querySelectorAll('input.precio-extra-prod')) if (!i.hidden && i.value.trim() !== '') precios[i.dataset.extra] = i.value.trim();
+  return { marcados, precios };
+}
+
+/** Tipos de modificador que muestra el formulario, en el orden que se ve. */
+const tiposEnFormulario = () => [...$('f-extras').querySelectorAll('.grupo-cab .grupo-titulo')].map((t) => t.textContent);
+
+/** Ventanita para reordenar los tipos de modificador de este platillo (se guarda al guardar el platillo). */
+function abrirOrdenTipos() {
+  const d = document.createElement('dialog');
+  d.className = 'dlg-confirmar';
+  const titulo = el('p', 'confirmar-texto', 'Orden de los tipos de modificador en este platillo ');
+  const tip = el('span', 'tip', 'i'); tip.dataset.tip = 'Por defecto se usa el orden de la pestaña Modificadores. Aquí lo cambias solo para este platillo; con «Orden estándar» vuelve al de siempre.'; tip.tabIndex = 0;
+  titulo.append(tip);
+  const lista = el('div', 'ord-tipos');
+  const pintar = () => {
+    lista.replaceChildren();
+    const orden = tiposEnFormulario();
+    orden.forEach((g, i) => {
+      const fila = el('div', 'ord-tipo');
+      const mover = (dir) => {
+        const nuevo = [...orden]; const j = i + dir;
+        [nuevo[i], nuevo[j]] = [nuevo[j], nuevo[i]];
+        const { marcados, precios } = leerExtrasForm();
+        fGruposOrden = nuevo;
+        pintarExtrasProducto(marcados, precios);
+        pintar();
+      };
+      const sube = el('button', 'btn chico', '↑'); sube.type = 'button'; sube.disabled = i === 0; sube.addEventListener('click', () => mover(-1));
+      const baja = el('button', 'btn chico', '↓'); baja.type = 'button'; baja.disabled = i === orden.length - 1; baja.addEventListener('click', () => mover(1));
+      fila.append(el('span', 'ord-nombre', g), sube, baja);
+      lista.append(fila);
+    });
+  };
+  const botones = el('div', 'confirmar-botones');
+  const estandar = el('button', 'btn', 'Orden estándar'); estandar.type = 'button';
+  estandar.addEventListener('click', () => { const { marcados, precios } = leerExtrasForm(); fGruposOrden = null; pintarExtrasProducto(marcados, precios); pintar(); });
+  const listo = el('button', 'btn principal', 'Listo'); listo.type = 'button';
+  listo.addEventListener('click', () => d.close());
+  botones.append(estandar, listo);
+  d.append(titulo, lista, botones);
+  d.addEventListener('close', () => d.remove());
+  document.body.append(d);
+  pintar();
+  d.showModal();
+}
+$('f-ordenar-tipos').addEventListener('click', abrirOrdenTipos);
+
 function pintarExtrasProducto(marcados, precios = {}) {
   const caja = $('f-extras');
   caja.replaceChildren();
@@ -446,12 +500,17 @@ function pintarExtrasProducto(marcados, precios = {}) {
     caja.append(el('p', 'vacio ayuda', 'Aún no hay modificadores. Créalos con el botón “Modificadores”.'));
     return;
   }
-  const grupos = new Map(gruposExtras.map((g) => [g, []]));   // secciones en el orden que eligió el dueño
+  let grupos = new Map(gruposExtras.map((g) => [g, []]));   // secciones en el orden que eligió el dueño
   for (const x of visibles) {
     const g = x.grupo && grupos.has(x.grupo) ? x.grupo : 'Otros';
     if (!grupos.has(g)) grupos.set(g, []);
     grupos.get(g).push(x);
   }
+  if (fGruposOrden && fGruposOrden.length) {   // orden propio de este platillo; los tipos que no estén en su lista van después, en el orden estándar
+    const resto = [...grupos.keys()].filter((g) => !fGruposOrden.includes(g));
+    grupos = new Map([...fGruposOrden, ...resto].filter((g) => grupos.has(g)).map((g) => [g, grupos.get(g)]));
+  }
+  $('f-ordenar-tipos').hidden = [...grupos].filter(([, l]) => l.length).length < 2;
   for (const [g, lista] of [...grupos].filter(([, l]) => l.length)) {
     // Encabezado de sección con acceso rápido: marcar / quitar toda la sección en este platillo
     const cab = el('div', 'grupo-cab');
@@ -617,6 +676,7 @@ function abrirFormulario(p = null, categoriaId = null) {
     $('f-error').textContent = 'Primero crea una categoría (botón “Categorías de platillos”).';
   }
 
+  fGruposOrden = p && p.grupos_orden && p.grupos_orden.length ? [...p.grupos_orden] : null;
   pintarExtrasProducto(p ? p.extras : extras.filter((x) => x.todos && x.activo).map((x) => x.id), p ? p.extras_precios || {} : {});   // un platillo nuevo trae marcados los que van en todos
 
   if (p) {
@@ -720,6 +780,7 @@ formProducto.addEventListener('submit', async (ev) => {
       if (!i.hidden && i.value.trim() !== '') preciosExtra[i.dataset.extra] = i.value.trim();
     }
     datos.append('precios_extra', JSON.stringify(preciosExtra));
+    datos.append('grupos_orden', JSON.stringify(fGruposOrden || []));
     if ($('f-quitar').checked) datos.append('quitar_foto', '1');
 
     const archivo = $('f-foto').files[0];
