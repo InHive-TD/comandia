@@ -726,11 +726,19 @@ function abrirFormulario(p = null, categoriaId = null) {
   $('f-eliminar').hidden = !p;
   $('f-eliminar').dataset.nombre = p ? p.nombre : '';
   abrirPagina(dlgProducto, 'btn-productos');
+  mostrarBarraProducto();
 }
 
 $('btn-nuevo').addEventListener('click', () => abrirFormulario());
 $('f-cancelar').addEventListener('click', () => dlgProducto.close());
 dlgProducto.addEventListener('close', limpiarVistaPrevia);
+// Guardar / Eliminar / ✕ del platillo viven en la barra superior, a la derecha
+const mostrarBarraProducto = () => { $('barra-producto').hidden = !dlgProducto.open; $('bp-eliminar').hidden = $('f-eliminar').hidden; };
+$('bp-guardar').addEventListener('click', () => $('f-guardar').click());
+$('bp-eliminar').addEventListener('click', () => $('f-eliminar').click());
+$('bp-cerrar').addEventListener('click', () => dlgProducto.close());
+dlgProducto.addEventListener('close', mostrarBarraProducto);
+new MutationObserver(() => { $('bp-guardar').disabled = $('f-guardar').disabled; $('bp-guardar').textContent = $('f-guardar').textContent; }).observe($('f-guardar'), { attributes: true, childList: true, characterData: true, subtree: true });
 
 $('f-foto').addEventListener('change', () => {
   limpiarVistaPrevia();

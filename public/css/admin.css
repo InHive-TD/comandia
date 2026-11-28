@@ -943,3 +943,8 @@ fieldset.extras-campo { position: relative; }
 /* Botón de orden de tipos: visible, en su propia fila arriba de los modificadores */
 .extras-campo .ordenar-tipos { position: static; display: block; margin: 0 0 8px auto; background: var(--color-tarjeta, #fff); border: 1px solid var(--color-borde, #d9cbbd); border-radius: 8px; padding: 6px 12px; font-size: .85rem; color: inherit; }
 .extras-campo .ordenar-tipos[hidden] { display: none; }
+
+.barra-guardar .btn { padding: 6px 14px; font-size: .88rem; }
+.barra-guardar .btn-x { padding: 6px 10px; min-width: 34px; line-height: 1; }
+#barra-producto[hidden] { display: none; }
+.acciones-dialogo[hidden] { display: none; }
