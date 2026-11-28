@@ -897,10 +897,12 @@ formProducto.addEventListener('submit', async (ev) => {
       datos.append('foto', await reducirImagen(archivo), 'foto.jpg');
     }
 
-    await pedir(API + 'admin/productos.php', { method: 'POST', body: datos });
-    categoriasAbiertas.add($('f-categoria').value); guardarAbiertas();   // al volver, esa categoría se ve abierta con el platillo
-    dlgProducto.close();
+    const resp = await pedir(API + 'admin/productos.php', { method: 'POST', body: datos });
+    categoriasAbiertas.add($('f-categoria').value); guardarAbiertas();   // al volver a la lista, esa categoría se ve abierta con el platillo
     await cargarCatalogo();
+    // Se queda dentro del platillo: se vuelve a cargar tal como quedó guardado (y un platillo nuevo pasa a ser «Editar»)
+    const guardado = productos.find((x) => String(x.id) === String(id || (resp && resp.id)));
+    if (guardado) { const y = window.scrollY; abrirFormulario(guardado); window.scrollTo({ top: y }); }
     avisar('Platillo guardado');
   } catch (err) {
     error.textContent = err.message;

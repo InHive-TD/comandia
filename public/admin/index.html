@@ -17,7 +17,7 @@
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Outfit:wght@600;700;800&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="../css/estilos.css?v=1795557467">
   <link rel="stylesheet" href="../css/plano.css?v=1795557467">
-  <link rel="stylesheet" href="../css/admin.css?v=202611280115">
+  <link rel="stylesheet" href="../css/admin.css?v=202611280130">
   <link rel="stylesheet" href="../css/tablero.css?v=1795557101">
   <link rel="stylesheet" href="../css/shell.css?v=1795557467">
   <link rel="stylesheet" href="../css/acceso.css?v=202611261215">
@@ -214,6 +214,16 @@
         <input id="f-descripcion" type="text" maxlength="255">
       </label>
 
+      <div class="campo-foto">
+        <span class="etiqueta">Foto</span>
+        <img id="f-vista" class="vista-previa" alt="" hidden>
+        <input id="f-foto" type="file" accept="image/jpeg,image/png,image/webp,image/*">
+        <small class="ayuda">Medida recomendada: 1200 × 900 px (horizontal 4:3). JPG, PNG o WebP, hasta 8 MB. Se reduce y se recorta al centro para el menú.</small>
+        <label id="f-quitar-fila" class="casilla" hidden>
+          <input id="f-quitar" type="checkbox"> Quitar la foto actual
+        </label>
+      </div>
+
       <label class="casilla">
         <input id="f-pedir" type="checkbox">
         <span>Pedir las opciones aunque toquen la foto <small>(si no, la foto lo agrega directo)</small></span>
@@ -234,16 +244,6 @@
         </div>
         <div id="f-extras" class="lista-extras-prod"></div>
       </fieldset>
-
-      <div class="campo-foto">
-        <span class="etiqueta">Foto</span>
-        <img id="f-vista" class="vista-previa" alt="" hidden>
-        <input id="f-foto" type="file" accept="image/jpeg,image/png,image/webp,image/*">
-        <small class="ayuda">Medida recomendada: 1200 × 900 px (horizontal 4:3). JPG, PNG o WebP, hasta 8 MB. Se reduce y se recorta al centro para el menú.</small>
-        <label id="f-quitar-fila" class="casilla" hidden>
-          <input id="f-quitar" type="checkbox"> Quitar la foto actual
-        </label>
-      </div>
 
       <p id="f-error" class="msg-error" role="alert"></p>
 
@@ -975,7 +975,7 @@
   <script src="../js/shell.js?v=1795557467"></script>
   <script src="../js/login.js?v=202611242250"></script>
   <script src="../js/vendor/qrcode.js"></script>
-  <script src="../js/admin.js?v=202611280115"></script>
+  <script src="../js/admin.js?v=202611280130"></script>
   <script src="../js/inventario.js?v=202611271930"></script>
   <script src="../js/recetas.js?v=202611271930"></script>
 </body>
