@@ -960,3 +960,9 @@ fieldset.extras-campo { position: relative; }
 .agm-cab, .agm-fila { display: flex; align-items: center; gap: 8px; min-height: 32px; cursor: pointer; }
 .agm-filas { display: grid; padding-left: 26px; }
 .agm-cab input, .agm-fila input { width: 18px; height: 18px; margin: 0; }
+
+.agm-cab { cursor: default; }
+.agm-cab strong { flex: 1; cursor: pointer; }
+.agm-cuenta { color: #8a7a6c; font-weight: 600; }
+.agm-flecha { border: 0; background: transparent; font-size: 1rem; cursor: pointer; padding: 4px 8px; color: inherit; }
+.agm-filas[hidden] { display: none; }

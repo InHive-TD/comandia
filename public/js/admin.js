@@ -529,9 +529,15 @@ function dialogoAgregarMods() {
     const caja = el('div', 'agm-tipo');
     const cab = el('label', 'agm-cab');
     const tc = document.createElement('input'); tc.type = 'checkbox';
-    cab.append(tc, el('strong', '', g));
     const items = [];
     const filas = el('div', 'agm-filas');
+    filas.hidden = true;   // por defecto cada tipo aparece colapsado
+    const cuenta = el('small', 'agm-cuenta', '');
+    const flecha = el('button', 'agm-flecha', '▸'); flecha.type = 'button'; flecha.setAttribute('aria-expanded', 'false'); flecha.title = 'Mostrar u ocultar';
+    const alternar = () => { filas.hidden = !filas.hidden; flecha.textContent = filas.hidden ? '▸' : '▾'; flecha.setAttribute('aria-expanded', String(!filas.hidden)); };
+    flecha.addEventListener('click', alternar);
+    const nombreTipo = el('strong', '', g); nombreTipo.addEventListener('click', (ev) => { ev.preventDefault(); alternar(); });
+    cab.append(tc, nombreTipo, cuenta, flecha);
     for (const x of lista) {
       const f = el('label', 'agm-fila');
       const c = document.createElement('input'); c.type = 'checkbox'; c.checked = sel.has(x.id);
@@ -539,7 +545,7 @@ function dialogoAgregarMods() {
       c.addEventListener('change', () => { if (c.checked) sel.add(x.id); else sel.delete(x.id); estado(); });
       items.push([x, c]); filas.append(f);
     }
-    const estado = () => { const n = items.filter(([, c]) => c.checked).length; tc.checked = n === items.length; tc.indeterminate = n > 0 && n < items.length; };
+    const estado = () => { const n = items.filter(([, c]) => c.checked).length; tc.checked = n === items.length; tc.indeterminate = n > 0 && n < items.length; cuenta.textContent = `${n}/${items.length}`; };
     tc.addEventListener('change', () => { for (const [x, c] of items) { c.checked = tc.checked; if (tc.checked) sel.add(x.id); else sel.delete(x.id); } estado(); });
     estado();
     caja.append(cab, filas); cuerpo.append(caja);
