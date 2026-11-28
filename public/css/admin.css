@@ -974,3 +974,5 @@ fieldset.extras-campo { position: relative; }
 .cr-cuerpo[hidden], .cr-resumen[hidden] { display: none; }
 .cr-resumen { margin: 0; }
 .cr-cab .cr-flecha { flex: none; min-width: 34px; padding: 4px 8px; }
+
+.lote-op.sel-todo { border-style: dashed; background: var(--color-fondo, #f6f6f6); }

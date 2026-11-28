@@ -3448,6 +3448,7 @@ function paPintar() {
     };
     opT('todos', 'Todos', c.tipos.length === 0, () => { c.tipos.length = 0; paPintar(); });
     for (const [v, tx] of TIPOS_CR) opT(v, tx, c.tipos.includes(v), (si) => { poner(c.tipos, v, si); if (c.tipos.length >= TIPOS_CR.length) c.tipos.length = 0; paPintar(); });
+    filaT.dataset.sinSeltodo = '1';   // aquí «Todos» ya es la opción por defecto
     gt.append(filaT); cuerpo.append(gt);
 
     // Qué prepara: cada categoría con su casilla (toda la categoría) y, al expandirla, sus platillos.
@@ -3561,3 +3562,37 @@ async function guardarParrillas() {
   } catch (err) { $('pa-error').textContent = err.message; avisar(err.message, true); return false; }
 }
 PAG['dlg-parrillas'] = { sucio: paSucio, guardar: guardarParrillas };
+
+
+/* ------------------------------------------------------------------ */
+/*  Regla general: toda lista de casillas lleva «Seleccionar todo»      */
+/* ------------------------------------------------------------------ */
+(function () {
+  const cajas = (grupo) => [...grupo.children].filter((l) => l.classList.contains('lote-op') && !l.classList.contains('sel-todo')).map((l) => l.querySelector('input[type="checkbox"]')).filter(Boolean);
+  const sincronizar = (grupo, x) => {
+    const libres = cajas(grupo).filter((c) => !c.disabled);
+    x.checked = libres.length > 0 && libres.every((c) => c.checked);
+    x.indeterminate = !x.checked && libres.some((c) => c.checked);
+  };
+  function procesar() {
+    const grupos = new Set();
+    document.querySelectorAll('label.lote-op').forEach((l) => { if (l.parentElement && l.querySelector('input[type="checkbox"]')) grupos.add(l.parentElement); });
+    for (const g of grupos) {
+      if (g.dataset.sinSeltodo || g.querySelector(':scope > .sel-todo')) continue;
+      if (cajas(g).length < 2) continue;
+      const x = document.createElement('input'); x.type = 'checkbox';
+      const l = el('label', 'lote-op sel-todo'); l.append(x, el('span', '', 'Seleccionar todo'));
+      x.addEventListener('change', () => {
+        const valor = x.checked;
+        for (const c of cajas(g)) if (!c.disabled && c.checked !== valor) { c.checked = valor; c.dispatchEvent(new Event('change', { bubbles: true })); }
+        sincronizar(g, x);
+      });
+      g.addEventListener('change', (ev) => { if (ev.target !== x) sincronizar(g, x); });
+      g.prepend(l);
+      sincronizar(g, x);
+    }
+  }
+  let pendiente = false;
+  new MutationObserver(() => { if (pendiente) return; pendiente = true; requestAnimationFrame(() => { pendiente = false; procesar(); }); }).observe(document.body, { childList: true, subtree: true });
+  procesar();
+})();
