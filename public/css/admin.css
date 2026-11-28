@@ -260,6 +260,10 @@ dialog::backdrop { background: rgba(42, 16, 21, .55); }
 .fila-categoria { display: grid; grid-template-columns: auto 1fr auto auto; gap: 8px; align-items: center; }
 form.fila-categoria { grid-template-columns: 1fr auto; }
 .fila-categoria .cuenta { font-size: .8rem; color: #8a7a6c; grid-column: 1 / -1; margin-top: -4px; }
+/* Categorías de platillos: todo en una sola línea (mover · nombre · Guardar · Modificadores · Eliminar · cuántos platillos) */
+.lista-categorias .fila-categoria { grid-template-columns: auto minmax(0, 1fr) auto auto auto auto; }
+.lista-categorias .fila-categoria .cuenta { grid-column: auto; margin: 0; white-space: nowrap; min-width: 5.2rem; text-align: right; }
+.lista-categorias .fila-categoria .btn { white-space: nowrap; }
 
 /* Producto: código / porción / parrilla */
 .fila-doble { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
@@ -343,7 +347,8 @@ fieldset.extras-campo { border: 1px solid #d9c690; border-radius: 10px; padding:
 @media (max-width: 420px) {
   .fila-extra .asignar { grid-template-columns: 1fr 1fr; }
   .fila-extra .asignar select { grid-column: 1 / -1; }
-  .fila-categoria { grid-template-columns: auto 1fr 1fr; }
+  .fila-categoria, .lista-categorias .fila-categoria { grid-template-columns: auto 1fr 1fr; }
+  .lista-categorias .fila-categoria .cuenta { grid-column: 1 / -1; text-align: left; margin-top: -4px; }
   .fila-categoria > .mover { grid-column: 1; grid-row: 1 / span 2; }
   .fila-categoria input[type="text"] { grid-column: 2 / -1; }
   form.fila-categoria { grid-template-columns: 1fr; }

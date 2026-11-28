@@ -453,7 +453,7 @@ const tiposEnFormulario = () => [...$('f-extras').querySelectorAll('.grupo-cab .
 
 /** Ventanita para reordenar los tipos de modificador (de un platillo o de una categoría).
  *  leer(): tipos en el orden actual · aplicar(lista | null): guarda el nuevo orden (null = volver al de más arriba). */
-function dialogoOrdenTipos({ titulo, tip, textoEstandar, leer, aplicar }) {
+function dialogoOrdenTipos({ titulo, tip, textoEstandar, leer, aplicar, quitar = null, vacio = '' }) {
   const d = document.createElement('dialog');
   d.className = 'dlg-confirmar';
   const cab = el('p', 'confirmar-texto', titulo + ' ');
@@ -463,6 +463,7 @@ function dialogoOrdenTipos({ titulo, tip, textoEstandar, leer, aplicar }) {
   const pintar = () => {
     lista.replaceChildren();
     const orden = leer();
+    if (!orden.length && vacio) lista.append(el('p', 'ayuda', vacio));
     orden.forEach((g, i) => {
       const fila = el('div', 'ord-tipo');
       const mover = async (dir) => {
@@ -474,6 +475,11 @@ function dialogoOrdenTipos({ titulo, tip, textoEstandar, leer, aplicar }) {
       const sube = el('button', 'btn chico', '↑'); sube.type = 'button'; sube.disabled = i === 0; sube.addEventListener('click', () => mover(-1));
       const baja = el('button', 'btn chico', '↓'); baja.type = 'button'; baja.disabled = i === orden.length - 1; baja.addEventListener('click', () => mover(1));
       fila.append(el('span', 'ord-nombre', g), sube, baja);
+      if (quitar) {   // quitar este tipo de todos los platillos (con confirmación)
+        const q = el('button', 'btn chico peligro', 'Quitar'); q.type = 'button'; q.title = 'Quitar este tipo de todos los platillos de la categoría';
+        q.addEventListener('click', async () => { if (await quitar(g)) pintar(); });
+        fila.append(q);
+      }
       lista.append(fila);
     });
   };
@@ -879,14 +885,30 @@ function pintarCategorias() {
       }
     });
 
-    const tipos = el('button', 'btn', '↕ Tipos');
+    const tipos = el('button', 'btn', '↕ Modificadores');
     tipos.type = 'button';
-    tipos.title = 'Orden de los tipos de modificador en los platillos de esta categoría';
+    tipos.title = 'Ordenar o quitar los tipos de modificador de los platillos de esta categoría';
     tipos.addEventListener('click', () => dialogoOrdenTipos({
       titulo: `Orden de los tipos de modificador · ${c.nombre}`,
-      tip: 'Vale para todos los platillos de esta categoría que no tengan un orden propio (se cambia al editar el platillo). «Orden estándar» usa el de la pestaña Modificadores.',
+      tip: 'Solo aparecen los tipos que usan los platillos de esta categoría. El orden vale para los platillos que no tengan uno propio (se cambia al editar el platillo); «Orden estándar» usa el de la pestaña Modificadores. «Quitar» lo saca de todos los platillos de la categoría.',
       textoEstandar: 'Orden estándar',
-      leer: () => { const propio = ordenDeCategoria(c.id); const todos = [...new Set([...gruposExtras, 'Otros'])]; return [...propio.filter((g) => todos.includes(g)), ...todos.filter((g) => !propio.includes(g))]; },
+      vacio: 'Los platillos de esta categoría todavía no tienen modificadores. Se agregan al editar cada platillo.',
+      // Solo los tipos que de verdad tienen los platillos de esta categoría, en su orden
+      leer: () => {
+        const cat = categorias.find((x) => x.id === c.id) || c;
+        const todos = [...new Set([...gruposExtras, 'Otros'])].filter((g) => (cat.grupos_presentes || []).includes(g));
+        const propio = (cat.grupos_orden || []).filter((g) => todos.includes(g));
+        return [...propio, ...todos.filter((g) => !propio.includes(g))];
+      },
+      quitar: async (g) => {
+        if (!(await confirmar(`¿Seguro que quieres quitar «${g}»? Esto lo quitará de todos los platillos de la categoría «${c.nombre}» (también sus precios propios y los marcados «por defecto»). Los modificadores no se borran: podrás volver a agregarlos al editar cada platillo.`, { si: 'Quitar', peligro: true }))) return false;
+        try {
+          const r = await enviarJson(API + 'admin/categorias.php', { accion: 'quitar_tipo', id: c.id, grupo: g });
+          await cargarCatalogo(); pintarCategorias();
+          avisar(`«${g}» se quitó de ${r.platillos} platillo${r.platillos === 1 ? '' : 's'}`);
+          return true;
+        } catch (err) { avisar(err.message, true); return false; }
+      },
       aplicar: async (nuevo) => {
         try { await enviarJson(API + 'admin/categorias.php', { accion: 'grupos_orden', id: c.id, grupos: nuevo || [] }); await cargarCatalogo(); avisar(nuevo ? 'Orden guardado para esta categoría' : 'Esta categoría usa el orden estándar'); }
         catch (err) { avisar(err.message, true); }

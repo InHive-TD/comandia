@@ -1,14 +1,14 @@
 /**
  * Administración de categorías del menú (Tacos, Bebidas, Postres...). Solo el dueño de la empresa.
  *
- *   POST (JSON) → { accion: 'crear' | 'renombrar' | 'ordenar' | 'grupos_orden' | 'eliminar', ... }
+ *   POST (JSON) → { accion: 'crear' | 'renombrar' | 'ordenar' | 'grupos_orden' | 'quitar_tipo' | 'eliminar', ... }
  *
  * La lista de categorías no se pide aquí: viene dentro de GET /admin/productos.
  * Todas las consultas filtran por negocio_id para que una empresa nunca toque datos de otra.
  */
 import type { FastifyInstance } from 'fastify';
 import { cuerpoJson, exigirMetodo, requerirRol } from '../../auth.js';
-import { ejecutar, fila, transaccion } from '../../db.js';
+import { ejecutar, fila, filas, transaccion } from '../../db.js';
 import { fallo } from '../../errores.js';
 import { enteros, entero, largo } from '../../util.js';
 
@@ -63,6 +63,22 @@ export async function rutasCategorias(app: FastifyInstance): Promise<void> {
             for (const [i, g] of grupos.entries()) await tx.ejecutar('INSERT INTO categoria_grupo_orden (categoria_id, grupo, orden) VALUES (?, ?, ?)', [id, g, i]);
           });
           return { ok: true };
+        }
+        case 'quitar_tipo': {
+          // Quita un tipo de modificador de TODOS los platillos de la categoría (los modificadores siguen existiendo).
+          if (!(await fila('SELECT 1 AS x FROM categorias WHERE id = ? AND negocio_id = ?', [id, nid]))) throw fallo('Esa categoría no existe.');
+          const grupo = String(d['grupo'] ?? '').trim();
+          if (grupo === '' || grupo.length > 80) throw fallo('Falta el tipo de modificador.');
+          const donde = grupo === 'Otros' ? "(e.grupo IS NULL OR e.grupo = '' OR e.grupo = 'Otros')" : 'e.grupo = ?';
+          const par = grupo === 'Otros' ? [] : [grupo];
+          const ids = (await filas(
+            `SELECT DISTINCT pe.producto_id FROM producto_extras pe JOIN extras e ON e.id = pe.extra_id JOIN productos p ON p.id = pe.producto_id
+              WHERE p.categoria_id = ? AND p.negocio_id = ? AND e.negocio_id = ? AND ${donde}`, [id, nid, nid, ...par])).map((r) => Number(r['producto_id']));
+          await transaccion(async (tx) => {
+            await tx.ejecutar(`DELETE pe FROM producto_extras pe JOIN extras e ON e.id = pe.extra_id JOIN productos p ON p.id = pe.producto_id WHERE p.categoria_id = ? AND p.negocio_id = ? AND e.negocio_id = ? AND ${donde}`, [id, nid, nid, ...par]);
+            await tx.ejecutar(`DELETE d FROM extra_defecto_platillo d JOIN extras e ON e.id = d.extra_id JOIN productos p ON p.id = d.producto_id WHERE p.categoria_id = ? AND p.negocio_id = ? AND e.negocio_id = ? AND ${donde}`, [id, nid, nid, ...par]);
+          });
+          return { ok: true, platillos: ids.length };
         }
         case 'eliminar': {
           // No se borra una categoría con productos: se perdería el menú sin querer.

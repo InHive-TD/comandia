@@ -252,7 +252,11 @@ async function listar(nid: number, alcance: number | null): Promise<Record<strin
         WHERE c.negocio_id = ? GROUP BY c.id, c.nombre, c.orden ORDER BY c.orden, c.id`,
       [nid],
     )
-  ).map((c) => ({ id: Number(c['id']), nombre: c['nombre'], orden: Number(c['orden']), productos: Number(c['productos']), grupos_orden: [] as string[] }));
+  ).map((c) => ({ id: Number(c['id']), nombre: c['nombre'], orden: Number(c['orden']), productos: Number(c['productos']), grupos_orden: [] as string[], grupos_presentes: [] as string[] }));
+  // Tipos de modificador que de verdad tienen asignados los platillos de cada categoría
+  for (const o of await filas(`SELECT DISTINCT p.categoria_id, COALESCE(NULLIF(e.grupo, ''), 'Otros') AS grupo FROM producto_extras pe JOIN extras e ON e.id = pe.extra_id JOIN productos p ON p.id = pe.producto_id WHERE p.negocio_id = ?`, [nid])) {
+    categorias.find((c) => c.id === Number(o['categoria_id']))?.grupos_presentes.push(String(o['grupo']));
+  }
   for (const o of await filas('SELECT o.categoria_id, o.grupo FROM categoria_grupo_orden o JOIN categorias c ON c.id = o.categoria_id WHERE c.negocio_id = ? ORDER BY o.categoria_id, o.orden', [nid])) {
     categorias.find((c) => c.id === Number(o['categoria_id']))?.grupos_orden.push(String(o['grupo']));
   }
