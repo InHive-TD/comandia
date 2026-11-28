@@ -13,6 +13,7 @@ const NIVEL_TEXTO = ['', '⚡ ALTA', '⚡⚡ URGENTE'];
 let estacionId = null;          // 0 = vista general
 let estaciones = [];
 let datos = null;               // última respuesta de cocina.php
+let vistaParrillas = [];        // ids de las parrillas elegidas en «Vista» ([] = vista general)
 let recibidoEn = 0;             // performance.now() de esa respuesta
 let firma = '';
 let vistos = new Set();
@@ -241,13 +242,14 @@ async function cargar(forzar = false) {
   if (cargando) { if (!forzar) return; while (cargando) await new Promise((r) => setTimeout(r, 50)); }
   cargando = true;
   try {
-    const r = await pedir(API + `cocina.php?estacion=${estacionId}`);
+    const r = await pedir(API + `cocina.php?estacion=${estacionId}` + (vistaParrillas.length ? `&parrillas=${vistaParrillas.join(',')}` : ''));
     datos = r;
+    ajustarVista(r.parrillas);
     $('tablero').classList.toggle('horizontal', !!r.horizontal);   // ajuste del administrador: una fila con scroll lateral
     recibidoEn = performance.now();
     detectarNuevos();
     detectarEdiciones();
-    const nueva = JSON.stringify([r.ordenes.map(quitarEspera), r.listas.map((o) => o.id), (r.programadas || []).map((o) => o.id)]);
+    const nueva = JSON.stringify([vistaParrillas, r.ordenes.map(quitarEspera), r.listas.map((o) => o.id), (r.programadas || []).map((o) => o.id)]);
     if (nueva !== firma) { firma = nueva; pintar(); }
     pintarListas();
     pintarProgramadas();
@@ -669,7 +671,7 @@ function filaItem(o, i) {
   if (i.mio && i.nivel > 0 && i.estado !== 'listo') b.append(el('span', 'nivel', NIVEL_TEXTO[i.nivel]));
   if (!i.mio) {
     const e = estaciones.find((x) => x.id === i.estacion_id);
-    b.append(el('span', 'parrilla-etiqueta', e ? e.nombre : ''));
+    b.append(el('span', 'parrilla-etiqueta', i.parrilla || (e ? e.nombre : '')));
   }
   if (i.notas) b.append(el('span', 'nota', `“${i.notas}”`));
 
@@ -780,7 +782,7 @@ async function moverAListas(o) {
 
 async function todoListo(o) {
   try {
-    const r = await enviarJson(API + 'cocina.php', { accion: 'todo_listo', orden_id: o.id, estacion_id: estacionId });
+    const r = await enviarJson(API + 'cocina.php', { accion: 'todo_listo', orden_id: o.id, estacion_id: estacionId, parrillas: vistaParrillas });
     avisar(r.orden_estado === 'lista' ? `Pedido ${o.turno.slice(-3)} listo para entregar` : `Tu parte del pedido ${o.turno.slice(-3)} está lista`);
   } catch (err) {
     avisar(err.message);
@@ -877,3 +879,54 @@ async function quitarItem(o, i) {
 $('dp-cerrar').addEventListener('click', () => $('dlg-pedido').close());
 
 iniciar();
+
+
+/* ------------------------------------------------------------------ */
+/*  Vista: general o una/varias parrillas (según la administración)    */
+/* ------------------------------------------------------------------ */
+function textoVista(p) {
+  const n = vistaParrillas.map((id) => (p.lista.find((x) => x.id === id) || {}).nombre).filter(Boolean);
+  return n.length ? n.join(' + ') : 'General';
+}
+function ajustarVista(p) {
+  const boton = $('btn-vista');
+  if (!boton) return;
+  if (!p || !p.activo || !p.lista.length) { boton.hidden = true; if (vistaParrillas.length) { vistaParrillas = []; guardar('cocina_vista', ''); } return; }
+  // Si una parrilla elegida ya no existe o ya no se ofrece, se quita.
+  const validas = vistaParrillas.filter((id) => p.lista.some((x) => x.id === id));
+  if (validas.length !== vistaParrillas.length) { vistaParrillas = validas; guardar('cocina_vista', validas.join(',')); firma = ''; }
+  boton.hidden = false;
+  boton.textContent = '🔥 ' + textoVista(p);
+  boton.dataset.vista = vistaParrillas.length ? '1' : '';
+}
+function abrirVista() {
+  const p = datos && datos.parrillas;
+  if (!p) return;
+  const lista = $('vista-lista');
+  lista.replaceChildren();
+  const fila = (texto, marcado, alCambiar, tipo) => {
+    const l = el('label', 'vista-op');
+    const c = el('input'); c.type = tipo; c.name = 'vista-op'; c.checked = marcado;
+    c.addEventListener('change', () => alCambiar(c.checked));
+    l.append(c, el('span', '', texto));
+    lista.append(l);
+  };
+  fila('General (todos los pedidos)', vistaParrillas.length === 0, () => { aplicarVista([]); $('dlg-vista').close(); }, 'radio');
+  for (const x of p.lista) {
+    fila(x.nombre, vistaParrillas.includes(x.id), (on) => {
+      const nuevas = on ? [...vistaParrillas, x.id] : vistaParrillas.filter((id) => id !== x.id);
+      aplicarVista(nuevas);
+      abrirVista();
+    }, 'checkbox');
+  }
+  if (!$('dlg-vista').open) $('dlg-vista').showModal();
+}
+function aplicarVista(ids) {
+  vistaParrillas = ids;
+  guardar('cocina_vista', ids.join(','));
+  firma = '';
+  cargar(true);
+}
+$('btn-vista').addEventListener('click', abrirVista);
+$('vista-cerrar').addEventListener('click', () => $('dlg-vista').close());
+vistaParrillas = (leer('cocina_vista') || '').split(',').map(Number).filter((n) => n > 0);

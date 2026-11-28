@@ -18,7 +18,7 @@
   <link rel="stylesheet" href="../css/estilos.css?v=1795557467">
   <link rel="stylesheet" href="../css/admin.css?v=1795557467">
   <link rel="stylesheet" href="../css/menu-barra.css?v=1795557467">
-  <link rel="stylesheet" href="../css/cocina.css?v=1795557467">
+  <link rel="stylesheet" href="../css/cocina.css?v=202611281300">
   <link rel="stylesheet" href="../css/shell.css?v=1795557467">
   <link rel="stylesheet" href="../css/acceso.css?v=202611261215">
   <link rel="stylesheet" href="../api/tema.php">
@@ -38,6 +38,7 @@
     <div class="barra-botones" id="barra-cocina" hidden>
       <!-- Sonido: solo el icono (el texto cambia por JS en aria-label/title) -->
       <button id="btn-sonido" class="btn claro btn-icono" type="button" aria-label="Sonido" title="Sonido">🔔</button>
+      <button id="btn-vista" class="btn claro" type="button" hidden title="Cambiar de vista">🔥 General</button>
       <button id="btn-nombres" class="btn claro" type="button" aria-pressed="false">Ver por nombre</button>
       <button id="btn-salir" class="btn claro" type="button">Salir</button>
     </div>
@@ -113,6 +114,13 @@
   <script src="../js/shell.js?v=1795841000"></script>
   <script src="../js/login.js?v=202611242250"></script>
   <script src="../js/eventos.js?v=1795557467"></script>
-  <script src="../js/cocina.js?v=1795851000"></script>
+  <dialog id="dlg-vista">
+    <div class="formulario dialogo">
+      <h2>Vista de cocina</h2>
+      <div id="vista-lista"></div>
+      <div class="acciones-dialogo"><button id="vista-cerrar" class="btn principal" type="button">Listo</button></div>
+    </div>
+  </dialog>
+  <script src="../js/cocina.js?v=202611281300"></script>
 </body>
 </html>

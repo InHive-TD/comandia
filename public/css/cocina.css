@@ -520,3 +520,7 @@ body.barra-auto main.contenedor { padding-top: 8px; min-height: 100vh; }
 @media (min-width: 1100px) { .tablero.carriles:not(.horizontal) { grid-template-columns: repeat(var(--cols, 2), minmax(0, 1fr)); } }
 
 .chip-lista { max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; box-sizing: border-box; }
+
+.vista-op{display:flex;align-items:center;gap:.6rem;padding:.7rem .2rem;font-size:1.05rem}
+.vista-op input{width:1.3rem;height:1.3rem}
+#btn-vista[data-vista="1"]{background:var(--acento,#e8590c);color:#fff}

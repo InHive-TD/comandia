@@ -128,3 +128,28 @@ export async function rutasParrillas(app: FastifyInstance): Promise<void> {
     },
   });
 }
+
+/** ¿A qué parrilla va este platillo? La PRIMERA (en su orden) cuyas reglas lo aceptan; null = sin parrilla.
+ *  Una parrilla acepta un platillo si coincide su categoría o el platillo está en su lista; sin categorías ni platillos acepta
+ *  todo lo que cumpla su tipo de pedido; una parrilla sin ninguna regla no acepta nada. */
+export function parrillaDeRenglon(parrillas: Array<{ id: number } & ReglasParrilla>, categoria: unknown, productoId: number | null, modalidad: string): number | null {
+  for (const p of parrillas) {
+    if (!p.categorias.length && !p.productos.length && !p.tipos.length) continue;
+    if (p.tipos.length && !p.tipos.includes(modalidad)) continue;
+    if (p.categorias.length || p.productos.length) {
+      const porCategoria = p.categorias.includes(String(categoria ?? ''));
+      const porPlatillo = productoId !== null && p.productos.includes(productoId);
+      if (!porCategoria && !porPlatillo) continue;
+    }
+    return p.id;
+  }
+  return null;
+}
+
+/** Parrillas que puede tocar un usuario: null = sin restricción (administrador, gerente, parrillas apagadas o sin parrillas asignadas). */
+export async function parrillasPermitidas(nid: number, usuarioId: number, rol: string): Promise<number[] | null> {
+  if (rol === 'admin' || rol === 'gerente') return null;
+  if (!(await parrillasActivas(nid))) return null;
+  const mias = (await parrillasDe(nid)).filter((p) => p.usuarios.includes(usuarioId)).map((p) => p.id);
+  return mias.length ? mias : null;
+}

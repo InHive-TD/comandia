@@ -19,6 +19,7 @@ import {
 } from '../ordenes.js';
 import { entero } from '../util.js';
 import { carrilesEn, cocinaHorizontalEn } from './admin/prioridades.js';
+import { parrillaDeRenglon, parrillasActivas, parrillasDe, parrillasPermitidas } from './admin/parrillas.js';
 
 const BONO_MINUTOS = [0, 10, 20]; // por nivel de prioridad
 const ESTADOS_ITEM = ['pendiente', 'preparando', 'listo'];
@@ -38,6 +39,8 @@ interface ItemCocina {
   nivel: number;
   extras: { nombre: unknown; codigo: unknown }[];
   mio?: boolean;
+  parrilla_id?: number | null;
+  parrilla?: string;
 }
 
 export async function rutasCocina(app: FastifyInstance): Promise<void> {
@@ -45,7 +48,7 @@ export async function rutasCocina(app: FastifyInstance): Promise<void> {
     method: ['GET', 'POST'],
     url: '/cocina',
     handler: async (req) => {
-      await requerirRol(req, 'taquero', 'caja', 'admin', 'mesero', 'gerente');
+      const yo = await requerirRol(req, 'taquero', 'caja', 'admin', 'mesero', 'gerente');
       const c = contexto(req);
 
       // ------------------------------------------------------------ GET
@@ -109,6 +112,15 @@ export async function rutasCocina(app: FastifyInstance): Promise<void> {
           }
         }
 
+        // Parrillas (si el dueño las encendió): a qué parrilla va cada renglón y cuáles ve / puede tocar quien pide la pantalla.
+        const parrillasOn = await parrillasActivas(c.nid);
+        const listaParrillas = parrillasOn ? await parrillasDe(c.nid) : [];
+        const permitidas = parrillasOn ? await parrillasPermitidas(c.nid, yo.id, yo.rol) : null;   // null = sin restricción
+        const ofrecidas = permitidas === null ? listaParrillas : listaParrillas.filter((p) => permitidas.includes(p.id));
+        const pedidas = String(q['parrillas'] ?? '').split(',').map((v) => Number(v)).filter((v) => ofrecidas.some((p) => p.id === v));
+        const seleccion = parrillasOn ? [...new Set(pedidas)] : [];
+        const soloMios = seleccion.length > 0 && listaParrillas.filter((p) => seleccion.includes(p.id)).every((p) => p.ver === 'mios');
+        const nombreParrilla = new Map(listaParrillas.map((p) => [p.id, p.nombre]));
         const bonoModalidad = await bonosModalidad(c);
         type FilaCocina = Record<string, unknown> & { id: number; prioritario: boolean; modalidad: string; prio_ts: number; orden_ts: number; faltan: number | null; items: ItemCocina[] };
         const activas: FilaCocina[] = [];
@@ -121,20 +133,32 @@ export async function rutasCocina(app: FastifyInstance): Promise<void> {
           // ¿Qué renglones son de ESTA parrilla? (los que no tienen parrilla, de cualquiera)
           let puntaje: number | null = null;
           for (const it of items) {
-            it.mio = estacionId === 0 || it.estacion_id === null || it.estacion_id === estacionId;
+            if (parrillasOn) {
+              it.parrilla_id = parrillaDeRenglon(listaParrillas, it.categoria, it.producto_id, String(o['modalidad']));
+              if (it.parrilla_id !== null) it.parrilla = nombreParrilla.get(it.parrilla_id) ?? '';
+              const suya = it.parrilla_id !== null && (permitidas === null || permitidas.includes(it.parrilla_id));
+              const enVista = seleccion.length === 0 ? true : it.parrilla_id !== null && seleccion.includes(it.parrilla_id);
+              // Vista general: sin restricción todo es suyo; con restricción, solo lo de sus parrillas. En una vista de parrilla: lo de esa(s) parrilla(s).
+              it.mio = seleccion.length === 0 ? (permitidas === null || suya) : enVista;
+            } else {
+              it.mio = estacionId === 0 || it.estacion_id === null || it.estacion_id === estacionId;
+            }
             if (it.mio && it.estado !== 'listo') {
               const p = espera / 60 + (BONO_MINUTOS[it.nivel] ?? 0) + (bonoModalidad[String(o['modalidad'])] ?? 0);
               puntaje = puntaje === null ? p : Math.max(puntaje, p);
             }
           }
 
+          // En la vista de una parrilla solo aparecen los pedidos que traen algo suyo; con «solo mis platillos» se quita lo demás.
+          if (seleccion.length > 0 && !items.some((x) => x.mio)) continue;
+          const itemsVista = soloMios ? items.filter((x) => x.mio) : items;
           const fila: FilaCocina = {
             id: Number(o['id']),
             turno: `${o['fecha_turno']}-${String(o['turno']).padStart(3, '0')}`,
             cliente: o['nombre_cliente'], estado: o['estado'], notas: o['notas'], hora: o['hora'], origen: o['origen'], modalidad: String(o['modalidad']), mesa: o['mesa'], mesa_zona: o['mesa_zona'],
             total: Number(o['total']), pagado: Boolean(Number(o['pagado'])), revision: Number(o['revision']), editado: o['editado'], para: o['para'],
             faltan: o['faltan'] === null ? null : Number(o['faltan']), orden_ts: Number(o['orden_ts']), prioritario: Number(o['prioritario']) === 1, prio_ts: Number(o['prio_ts']),
-            espera, puntaje: puntaje === null ? null : Math.round(puntaje * 10) / 10, items,
+            espera, puntaje: puntaje === null ? null : Math.round(puntaje * 10) / 10, items: itemsVista,
           };
           if (o['estado'] === 'lista') {
             listas.push(fila);
@@ -194,6 +218,7 @@ export async function rutasCocina(app: FastifyInstance): Promise<void> {
           bonos: BONO_MINUTOS, bonos_modalidad: bonoModalidad,
           horizontal: await cocinaHorizontalEn(c.nid, c.sid),   // comandas en una fila con scroll lateral
           carriles: await carrilesEn(c.nid, c.sid),            // carriles configurables (por defecto: Comer aquí / Para llevar)
+          parrillas: { activo: parrillasOn, lista: ofrecidas.map((p) => ({ id: p.id, nombre: p.nombre, color: p.color, ver: p.ver })), seleccion, restringido: permitidas !== null },
         };
       }
 
@@ -209,9 +234,15 @@ export async function rutasCocina(app: FastifyInstance): Promise<void> {
           const desde = datos['desde'] === undefined || datos['desde'] === null ? null : String(datos['desde']);
           if (!ESTADOS_ITEM.includes(estado) || (desde !== null && !ESTADOS_ITEM.includes(desde))) throw fallo('Estado no válido.');
           return enTransaccion(c, async (t) => {
-            const f = (await t.filas('SELECT i.orden_id, o.estado AS orden_estado FROM orden_items i JOIN ordenes o ON o.id = i.orden_id WHERE i.id = ? AND o.negocio_id = ? FOR UPDATE', [itemId, t.nid]))[0];
+            const f = (await t.filas('SELECT i.orden_id, i.categoria, i.producto_id, o.modalidad, o.estado AS orden_estado FROM orden_items i JOIN ordenes o ON o.id = i.orden_id WHERE i.id = ? AND o.negocio_id = ? FOR UPDATE', [itemId, t.nid]))[0];
             if (!f) throw fallo('Ese renglón ya no existe.', 404);
             if (!ESTADOS_ACTIVOS.includes(String(f['orden_estado']))) throw fallo('Ese pedido ya no está en cocina.', 409);
+            // Con parrillas encendidas, un cocinero con parrillas asignadas solo cambia los platillos de las suyas.
+            const permitidas = await parrillasPermitidas(t.nid, yo.id, yo.rol);
+            if (permitidas !== null) {
+              const pid = parrillaDeRenglon(await parrillasDe(t.nid), f['categoria'], f['producto_id'] === null ? null : Number(f['producto_id']), String(f['modalidad']));
+              if (pid === null || !permitidas.includes(pid)) throw fallo('Ese platillo no es de tu parrilla.', 403);
+            }
             // Si la otra tablet ya lo cambió (desde ≠ estado actual), no se pisa: se avisa.
             const r = await t.ejecutar(`UPDATE orden_items SET estado = ? WHERE id = ?${desde !== null ? ' AND estado = ?' : ''}`, desde !== null ? [estado, itemId, desde] : [estado, itemId]);
             const ordenEstado = await actualizarEstadoOrden(t, Number(f['orden_id']));
@@ -226,12 +257,28 @@ export async function rutasCocina(app: FastifyInstance): Promise<void> {
             const o = (await t.filas('SELECT estado FROM ordenes WHERE id = ? AND negocio_id = ? FOR UPDATE', [ordenId, t.nid]))[0];
             if (!o) throw fallo('Ese pedido ya no existe.', 404);
             if (!ESTADOS_ACTIVOS.includes(String(o['estado']))) throw fallo('Ese pedido ya no está en cocina.', 409);
-            const r = await t.ejecutar(
-              `UPDATE orden_items SET estado = 'listo' WHERE orden_id = ? AND estado <> 'listo' AND (? = 0 OR estacion_id = ? OR estacion_id IS NULL)`,
-              [ordenId, estacionId, estacionId],
-            );
+            let marcados = 0;
+            if (await parrillasActivas(t.nid)) {
+              // Con parrillas: se marcan los renglones de las parrillas elegidas (y solo las que este usuario puede tocar).
+              const permitidas = await parrillasPermitidas(t.nid, yo.id, yo.rol);
+              const todas = await parrillasDe(t.nid);
+              const pedidas = Array.isArray(datos['parrillas']) ? (datos['parrillas'] as unknown[]).map(Number) : [];
+              const objetivo = new Set(pedidas.filter((id) => todas.some((p) => p.id === id) && (permitidas === null || permitidas.includes(id))));
+              const rens = await t.filas("SELECT i.id, i.categoria, i.producto_id, o.modalidad FROM orden_items i JOIN ordenes o ON o.id = i.orden_id WHERE i.orden_id = ? AND i.estado <> 'listo'", [ordenId]);
+              const ids = rens.filter((x) => {
+                const pid = parrillaDeRenglon(todas, x['categoria'], x['producto_id'] === null ? null : Number(x['producto_id']), String(x['modalidad']));
+                if (objetivo.size > 0) return pid !== null && objetivo.has(pid);
+                return permitidas === null || (pid !== null && permitidas.includes(pid));
+              }).map((x) => Number(x['id']));
+              if (ids.length) marcados = (await t.ejecutar(`UPDATE orden_items SET estado = 'listo' WHERE id IN (${ids.map(() => '?').join(',')})`, ids)).changedRows;
+            } else {
+              marcados = (await t.ejecutar(
+                `UPDATE orden_items SET estado = 'listo' WHERE orden_id = ? AND estado <> 'listo' AND (? = 0 OR estacion_id = ? OR estacion_id IS NULL)`,
+                [ordenId, estacionId, estacionId],
+              )).changedRows;
+            }
             const ordenEstado = await actualizarEstadoOrden(t, ordenId);
-            return { ok: true, marcados: r.changedRows, orden_estado: ordenEstado };
+            return { ok: true, marcados, orden_estado: ordenEstado };
           });
         }
 
