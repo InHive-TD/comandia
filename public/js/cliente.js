@@ -924,3 +924,12 @@ window.addEventListener('load', medirNav);
   window.addEventListener('scroll', ajustar, { passive: true });
   new MutationObserver(() => { document.body.classList.remove('nav-oculta'); ajustar(); }).observe($('vista-pedido'), { attributes: true, attributeFilter: ['hidden'] });
 })();
+
+/* El logo y el nombre del negocio llevan siempre al inicio del menú de ESTA sucursal (la misma dirección del QR), nunca fuera de ella. */
+{
+  const marca = document.getElementById('marca-inicio');
+  if (marca) {
+    marca.href = location.pathname + location.search;   // conserva sucursal y mesa; también sirve con clic derecho o mantener pulsado
+    marca.addEventListener('click', (ev) => { ev.preventDefault(); $('nav-menu').click(); });
+  }
+}
