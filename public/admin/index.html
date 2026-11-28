@@ -17,7 +17,7 @@
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Outfit:wght@600;700;800&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="../css/estilos.css?v=1795557467">
   <link rel="stylesheet" href="../css/plano.css?v=1795557467">
-  <link rel="stylesheet" href="../css/admin.css?v=202611271950">
+  <link rel="stylesheet" href="../css/admin.css?v=202611272010">
   <link rel="stylesheet" href="../css/tablero.css?v=1795557101">
   <link rel="stylesheet" href="../css/shell.css?v=1795557467">
   <link rel="stylesheet" href="../css/acceso.css?v=202611261215">
@@ -143,6 +143,7 @@
         <!-- Guardar de la página abierta (hoy: Ajustes de cliente); a la derecha de la barra -->
         <span id="barra-accion" class="barra-der barra-guardar" hidden>
           <small id="ac-pendiente" class="ac-pendiente" hidden>● Cambios sin guardar</small>
+          <button id="ac-extra" class="btn" type="button" hidden></button>
           <button id="ac-guardar" class="btn principal" type="button" disabled>Guardar</button>
         </span>
       </div>
@@ -480,9 +481,7 @@
         <button class="btn" type="submit">＋ Crear mesa</button>
       </form>
       <p id="pl-error" class="msg-error" role="alert"></p>
-      <p id="pl-pendiente" class="ayuda" hidden>Tienes cambios sin guardar.</p>
       <div class="acciones-dialogo">
-        <button id="pl-guardar" class="btn principal" type="button" disabled>Guardar plano</button>
         <button id="pl-cerrar" class="btn" type="button">Cerrar</button>
       </div>
     </div>
@@ -541,7 +540,6 @@
       </div>
       <p id="pg-error" class="msg-error" role="alert"></p>
       <div class="acciones-dialogo">
-        <button id="pg-guardar" class="btn principal" type="button">Guardar datos de pago</button>
         <button id="pg-quitar" class="btn peligro" type="button" hidden>Quitar los de esta sucursal</button>
         <button id="pg-cerrar" class="btn" type="button">Cerrar</button>
       </div>
@@ -569,7 +567,6 @@
       </div>
       <p id="cr-error" class="msg-error" role="alert"></p>
       <div class="acciones-dialogo">
-        <button id="cr-guardar" class="btn principal" type="button">Guardar carriles</button>
         <button id="cr-cerrar" class="btn" type="button">Cerrar</button>
       </div>
     </div>
@@ -701,9 +698,7 @@
       <p id="ap-aviso" class="ayuda"></p>
       <p id="ap-error" class="msg-error" role="alert"></p>
       <div class="acciones-dialogo">
-        <button id="ap-restablecer" class="btn" type="button">Restablecer</button>
         <button id="ap-cerrar" class="btn" type="button">Cerrar</button>
-        <button id="ap-guardar" class="btn principal" type="button">Guardar</button>
       </div>
     </div>
   </dialog>
@@ -968,7 +963,7 @@
   <script src="../js/shell.js?v=1795557467"></script>
   <script src="../js/login.js?v=202611242250"></script>
   <script src="../js/vendor/qrcode.js"></script>
-  <script src="../js/admin.js?v=202611271950"></script>
+  <script src="../js/admin.js?v=202611272010"></script>
   <script src="../js/inventario.js?v=202611271930"></script>
   <script src="../js/recetas.js?v=202611271930"></script>
 </body>

@@ -500,6 +500,11 @@ function pintarExtrasProducto(marcados, precios = {}) {
 // Cada sección del menú lateral es un <dialog class="pagina"> mostrado en el área de contenido (sin ventana flotante).
 // Solo hay una abierta a la vez; al cerrarla se vuelve a la lista de productos.
 const paginasPortal = [...document.querySelectorAll('dialog.pagina')];
+/* Guardar de cada página de ajustes: un solo botón en la barra superior (a la derecha). Cada página se registra aquí:
+   { sucio(): hay cambios sin guardar, guardar(): guarda y devuelve true si todo salió bien, bloqueado?(): impide guardar,
+     extra?: { texto, fn } botón secundario (ej. Restablecer) }. Estructura para todas las páginas de ajustes nuevas. */
+const PAG = {};
+const regAbierto = () => { const d = paginasPortal.find((o) => o.open && PAG[o.id]); return d ? PAG[d.id] : null; };
 for (const d of paginasPortal) $('panel-contenido').append(d);   // dentro del área de contenido, junto a la lista
 
 /* Grupos desplegables del menú (Cliente / Pedidos / Cocina): se recuerda cuáles están abiertos y el de la sección activa se abre solo */
@@ -563,10 +568,12 @@ function abrirPagina(dlg, idBoton) {
   fijarRuta(dlg === dlgProducto ? 'btn-productos' : idBoton);
   marcarMenu(idBoton === 'btn-categorias' || idBoton === 'btn-carga' ? 'btn-productos' : idBoton);   // Categorías de platillos cuelga de Platillos
   window.scrollTo({ top: 0 });
+  acActualizar();
 }
 
 // Al cerrarse una página, si ya no queda ninguna abierta se regresa a Productos
 for (const d of paginasPortal) d.addEventListener('close', () => {
+  acActualizar();
   if (paginasPortal.some((o) => o.open)) return;
   if (volverA === 'platillos') { $('vista-platillos').hidden = false; marcarMenu('btn-productos'); fijarRuta('btn-productos'); }
   else $('btn-reportes').click();   // sin nada abierto se vuelve a Inicio (reportes)
@@ -1392,8 +1399,9 @@ function apAplicar(c) {
   s.setProperty('--texto-llevar', apContraste(c.llevar, '#ffffff') >= 3.2 ? '#ffffff' : '#1a1a1a');   // letras en negritas grandes: basta contraste 3.2 (así el azul de siempre conserva letras blancas)
   const malo = apContraste(c.texto, c.fondo) < 4.5;
   $('ap-aviso').textContent = malo ? '⚠ El texto casi no se lee sobre ese fondo; elige colores con más contraste.' : '';
-  $('ap-guardar').disabled = malo;
+  acActualizar();
 }
+const apMalo = () => !!apColores.texto && apContraste(apColores.texto, apColores.fondo) < 4.5;
 
 function apQuitarVistaPrevia() {
   const s = document.documentElement.style;
@@ -1442,6 +1450,7 @@ async function apCargar() {
   apPintar();
   apAplicar(apColores);
   $('ap-logo-quitar').hidden = !apDatos.logo;
+  acActualizar();
 }
 
 $('btn-apariencia').addEventListener('click', async () => {
@@ -1451,20 +1460,24 @@ $('btn-apariencia').addEventListener('click', async () => {
 });
 dlgApariencia.addEventListener('close', apQuitarVistaPrevia);
 $('ap-cerrar').addEventListener('click', () => dlgApariencia.close());
-$('ap-guardar').addEventListener('click', async () => {
+/** Guarda los colores (se ven al instante como vista previa). Devuelve true si salió bien y cierra la página. */
+async function guardarApariencia() {
   $('ap-error').textContent = '';
   try {
     const r = await enviarJson(API + 'admin/marca.php', { accion: 'colores', colores: apColores });
+    apDatos.colores = { ...apColores };
     apRecargarTema();
     avisar(r.avisos && r.avisos.length ? r.avisos[0] : 'Apariencia guardada', !!(r.avisos && r.avisos.length));
     dlgApariencia.close();
-  } catch (err) { $('ap-error').textContent = err.message; }
-});
-$('ap-restablecer').addEventListener('click', async () => {
+    return true;
+  } catch (err) { $('ap-error').textContent = err.message; return false; }
+}
+async function restablecerApariencia() {
   if (!(await confirmar('¿Volver a los colores originales de Comandia?', { si: 'Restablecer', no: 'Volver' }))) return;
   try { await enviarJson(API + 'admin/marca.php', { accion: 'restablecer' }); apRecargarTema(); await apCargar(); avisar('Colores restablecidos'); }
   catch (err) { $('ap-error').textContent = err.message; }
-});
+}
+PAG['dlg-apariencia'] = { sucio: () => !!apDatos && JSON.stringify(apColores) !== JSON.stringify(apDatos.colores), bloqueado: apMalo, guardar: guardarApariencia, extra: { texto: 'Restablecer', fn: restablecerApariencia } };
 $('ap-logo-archivo').addEventListener('change', async (ev) => {
   const archivo = ev.target.files[0];
   ev.target.value = '';
@@ -1489,37 +1502,38 @@ $('ap-logo-quitar').addEventListener('click', async () => {
 const dlgAjustes = $('dlg-prioridades');
 let datosPrio = null;
 
-/** Distribución de comandas en Cocina (apiladas / una fila con scroll lateral): interruptor general (dueño) y por sucursal. Se guarda al marcar. */
+/** Distribución de comandas en Cocina (apiladas / una fila con scroll lateral): interruptor general (dueño) y por sucursal. Se guarda con el botón Guardar. */
+let chOrig = null;
+let chEstado = new Map();
 function pintarCocinaHorizontal(ch) {
+  chOrig = { general: ch.general, puede_general: ch.puede_general, sucursales: ch.sucursales.map((s) => ({ id: s.id, activo: s.activo })) };
+  chEstado = new Map(ch.sucursales.map((s) => [s.id, s.activo]));
   $('ch-general-fila').hidden = !ch.puede_general;
   $('ch-general').checked = ch.general;
   const lista = $('ch-lista');
   lista.replaceChildren();
   for (const s of ch.sucursales) {
     const x = el('input'); x.type = 'checkbox'; x.checked = s.activo;
-    x.addEventListener('change', () => guardarCocinaHorizontal({ ambito: 'sucursal', sucursal_id: s.id, activo: x.checked }));
+    x.addEventListener('change', () => { chEstado.set(s.id, x.checked); acActualizar(); });
     const fila = el('label', 'lote-op'); fila.append(x, el('span', '', s.nombre));
     lista.append(fila);
   }
 }
-async function guardarCocinaHorizontal(cambio) {
-  $('pr-error').textContent = '';
-  try {
-    const r = await enviarJson(API + 'admin/prioridades.php', { accion: 'cocina_horizontal', ...cambio });
-    pintarCocinaHorizontal(r.cocina_horizontal);
-    avisar('Guardado');
-  } catch (err) {
-    $('pr-error').textContent = err.message;
-    try { pintarCocinaHorizontal((await pedir(API + 'admin/prioridades.php')).cocina_horizontal); } catch { /* se queda como estaba */ }
-  }
+function chCambios() {
+  if (!chOrig) return [];
+  const c = [];
+  if (chOrig.puede_general && $('ch-general').checked !== chOrig.general) c.push({ ambito: 'general', activo: $('ch-general').checked });
+  for (const s of chOrig.sucursales) if (chEstado.get(s.id) !== s.activo) c.push({ ambito: 'sucursal', sucursal_id: s.id, activo: chEstado.get(s.id) });
+  return c;
 }
-$('ch-general').addEventListener('change', () => guardarCocinaHorizontal({ ambito: 'general', activo: $('ch-general').checked }));
+$('ch-general').addEventListener('change', acActualizar);
 
 async function cargarAjustes() {
   datosPrio = await pedir(API + 'admin/prioridades.php');
   pintarCocinaHorizontal(datosPrio.cocina_horizontal);
   $('pm-prep').value = datosPrio.min_preparacion;
   pintarLote();
+  acActualizar();
 }
 
 /* "Preparar en lote": categorías colapsadas; al expandir una se ven sus platillos. Se puede elegir la categoría completa
@@ -1544,7 +1558,7 @@ function pintarLote() {
     marca.type = 'checkbox'; marca.className = 'lote-cat-marca';
     marca.setAttribute('aria-label', `Toda la categoría ${c.nombre}`);
     marca.addEventListener('click', (ev) => ev.stopPropagation());
-    marca.addEventListener('change', () => { if (marca.checked) loteCats.add(c.id); else loteCats.delete(c.id); refrescarLote(); guardarLote(); });
+    marca.addEventListener('change', () => { if (marca.checked) loteCats.add(c.id); else loteCats.delete(c.id); refrescarLote(); acActualizar(); });
     const cuenta = el('span', 'chip');
     resumen.append(marca, el('span', 'cat-nombre', c.nombre), cuenta);
     det.append(resumen);
@@ -1555,7 +1569,7 @@ function pintarLote() {
       const f = el('label', 'lote-op');
       const x = document.createElement('input');
       x.type = 'checkbox'; x.value = String(p.id);
-      x.addEventListener('change', () => { if (x.checked) loteProds.add(p.id); else loteProds.delete(p.id); refrescarLote(); guardarLote(); });
+      x.addEventListener('change', () => { if (x.checked) loteProds.add(p.id); else loteProds.delete(p.id); refrescarLote(); acActualizar(); });
       f.append(x, el('span', '', p.nombre));
       cuerpo.append(f);
       casillas.push({ p, x });
@@ -1565,7 +1579,10 @@ function pintarLote() {
     c._ui = { marca, cuenta, casillas };
   }
   refrescarLote();
+  loteOrig = loteSnap();
 }
+const loteSnap = () => JSON.stringify({ c: [...loteCats].sort(), p: [...loteProds].sort() });
+let loteOrig = '';
 
 /** Pone al día las casillas y los contadores según lo elegido (categoría completa → sus platillos quedan marcados y fijos). */
 function refrescarLote() {
@@ -1595,11 +1612,18 @@ let ctBase = null;       // foto de los tipos de pedido tal como se pintaron (pa
 let ctAmbitoPrevio = null;
 const ctSnap = () => JSON.stringify({ a: $('ct-ambito').value, m: [...document.querySelectorAll('#ct-mods input')].filter((x) => x.checked).map((x) => x.dataset.mod), x: $('ct-mixto').checked, s: $('ct-mesa').value });
 const ctSucio = () => ctBase !== null && ctSnap() !== ctBase;
-const acSucio = () => !!cpOriginal && (cpCambios().length > 0 || ctSucio());
+const acSucio = () => { const r = regAbierto(); return !!r && !!r.sucio(); };
 function acActualizar() {
-  const sucio = acSucio();
-  $('ac-guardar').disabled = !sucio;
+  const r = regAbierto();
+  const barra = $('barra-accion');
+  if (!barra) return;
+  barra.hidden = !r;
+  if (!r) return;
+  const sucio = !!r.sucio();
+  $('ac-guardar').disabled = !sucio || !!(r.bloqueado && r.bloqueado());
   $('ac-pendiente').hidden = !sucio;
+  const ex = $('ac-extra');
+  ex.hidden = !r.extra; if (r.extra) ex.textContent = r.extra.texto;
 }
 /** Pregunta qué hacer con los cambios pendientes: 'guardar', 'descartar' o null (seguir editando). */
 function decidirCambios(mensaje) {
@@ -1702,106 +1726,142 @@ async function guardarClientePedidos() {
 $('cp-general').addEventListener('change', cpActualizarPendiente);
 $('ac-guardar').addEventListener('click', guardarClientePedidos);
 
-/* Al salir de la página con cambios sin guardar se pregunta: Guardar / Descartar / Cancelar. */
+/* Al salir de una página de ajustes con cambios sin guardar se pregunta: Guardar / Descartar / Cancelar. */
 let acSaltar = false;
+$('ac-guardar').addEventListener('click', async () => { const r = regAbierto(); if (r) { $('ac-guardar').disabled = true; await r.guardar(); acActualizar(); } });
+$('ac-extra').addEventListener('click', () => { const r = regAbierto(); if (r && r.extra) r.extra.fn(); });
 document.addEventListener('click', async (ev) => {
-  if (acSaltar || !dlgPedidosQr.open || !acSucio()) return;
-  const b = ev.target.closest('.menu-lateral .nav-ico, .barra-movil button, #cp-cerrar, #ct-ir-pago');
-  if (!b || b.id === 'btn-pedidos-qr' || b.id === 'ac-guardar') return;
+  if (acSaltar || !acSucio()) return;
+  const b = ev.target.closest('.menu-lateral .nav-ico, .barra-movil button, dialog.pagina [id$="-cerrar"]:not(#pl-cerrar), #ct-ir-pago');
+  if (!b || b.id === 'ac-guardar' || b.id === 'ac-extra') return;
+  if (b.classList.contains('activo')) return;   // el botón de la misma página
   ev.preventDefault(); ev.stopImmediatePropagation();
-  const r = await decidirCambios('Tienes cambios sin guardar en Ajustes de cliente. ¿Qué quieres hacer?');
+  const r = await decidirCambios('Tienes cambios sin guardar en esta página. ¿Qué quieres hacer?');
   if (r === null) return;
-  if (r === 'guardar' && !(await guardarClientePedidos())) return;
+  if (r === 'guardar' && !(await regAbierto().guardar())) return;
   acSaltar = true; b.click(); acSaltar = false;
 }, true);
-window.addEventListener('beforeunload', (ev) => { if (dlgPedidosQr.open && acSucio()) { ev.preventDefault(); ev.returnValue = ''; } });
-
-async function guardarLote() {
-  $('pr-error').textContent = '';
-  const cats = [...loteCats];
-  // Los platillos de una categoría completa ya van incluidos: solo se guardan los sueltos de las demás
-  const completas = new Set(datosPrio.productos.filter((p) => loteCats.has(p.categoria_id)).map((p) => p.id));
-  const prods = [...loteProds].filter((id) => !completas.has(id));
-  try {
-    await enviarJson(API + 'admin/prioridades.php', { accion: 'lote', categorias: cats, productos: prods });
-    avisar('Guardado: cocina verá esas categorías y platillos en “Preparar en lote”');
-  } catch (err) { $('pr-error').textContent = err.message; }
+window.addEventListener('beforeunload', (ev) => { if (acSucio()) { ev.preventDefault(); ev.returnValue = ''; } });
+/** Selector «¿Para quién?»: si hay cambios, pregunta antes de repintar con otros valores. */
+function protegerSelector(sel, sucio, guardar, repintar) {
+  let previo = sel.value;
+  const recordar = () => { previo = sel.value; };   // el valor que se veía justo antes de que el usuario lo cambiara
+  sel.addEventListener('focus', recordar); sel.addEventListener('pointerdown', recordar);
+  sel.addEventListener('change', async () => {
+    const nuevo = sel.value;
+    sel.value = previo;
+    if (sucio()) {
+      const r = await decidirCambios('Tienes cambios sin guardar para esta selección. ¿Qué quieres hacer?');
+      if (r === null) return;
+      if (r === 'guardar' && !(await guardar())) return;
+    }
+    sel.value = nuevo; previo = nuevo;
+    repintar();
+  });
 }
 
-async function guardarAjustes() {
+const cocinaSucio = () => !!datosPrio && ((Number($('pm-prep').value) || 0) !== datosPrio.min_preparacion || chCambios().length > 0 || loteSnap() !== loteOrig);
+
+/** Guarda todo lo pendiente de Ajustes de cocina (minutos de agenda, distribución y preparar en lote). Devuelve true si salió bien. */
+async function guardarCocina() {
   $('pr-error').textContent = '';
   try {
-    await enviarJson(API + 'admin/prioridades.php', { accion: 'modalidad', aqui: datosPrio.modalidad.aqui, llevar: datosPrio.modalidad.llevar, prep: Number($('pm-prep').value) || 0 });
+    if ((Number($('pm-prep').value) || 0) !== datosPrio.min_preparacion) await enviarJson(API + 'admin/prioridades.php', { accion: 'modalidad', aqui: datosPrio.modalidad.aqui, llevar: datosPrio.modalidad.llevar, prep: Number($('pm-prep').value) || 0 });
+    for (const c of chCambios()) await enviarJson(API + 'admin/prioridades.php', { accion: 'cocina_horizontal', ...c });
+    if (loteSnap() !== loteOrig) {
+      // Los platillos de una categoría completa ya van incluidos: solo se guardan los sueltos de las demás
+      const completas = new Set(datosPrio.productos.filter((p) => loteCats.has(p.categoria_id)).map((p) => p.id));
+      await enviarJson(API + 'admin/prioridades.php', { accion: 'lote', categorias: [...loteCats], productos: [...loteProds].filter((id) => !completas.has(id)) });
+    }
+    avisar('Ajustes de cocina guardados');
     await cargarAjustes();
-    avisar('Ajuste guardado');
-  } catch (err) {
-    $('pr-error').textContent = err.message;
-  }
+    return true;
+  } catch (err) { $('pr-error').textContent = err.message; return false; }
 }
+PAG['dlg-prioridades'] = { sucio: cocinaSucio, guardar: guardarCocina };
 
 $('btn-prioridades').addEventListener('click', async () => {
   $('pr-error').textContent = '';
   try { await cargarAjustes(); } catch (err) { avisar(err.message, true); return; }
   abrirPagina(dlgAjustes, 'btn-prioridades');
 });
-$('pm-prep').addEventListener('change', guardarAjustes);
+$('pm-prep').addEventListener('input', acActualizar);
 $('pr-cerrar').addEventListener('click', () => dlgAjustes.close());
 
 /* Ajustes de tomar pedidos: interruptor del código rápido. Lo cambian el dueño (empresa o cualquier sucursal) y el gerente
-   (solo su sucursal). Se guarda al marcar. */
+   (solo su sucursal). Se guarda con el botón Guardar de la barra. */
 const dlgTomaPedidos = $('dlg-toma-pedidos');
+
+let tpOrig = null; let tpEstado = new Map(); let tpSucursales = [];
+let tmOrig = null; let tmEstado = new Map();
 
 /** Dibuja el interruptor general y una casilla por sucursal con el estado que manda el servidor. */
 function pintarCodigoRapido(cr) {
+  tpOrig = { general: cr.general, puede_general: cr.puede_general, sucursales: cr.sucursales.map((s) => ({ id: s.id, activo: s.activo })) };
+  tpEstado = new Map(cr.sucursales.map((s) => [s.id, s.activo]));
+  tpSucursales = cr.sucursales;
   $('tp-general-fila').hidden = !cr.puede_general;
   $('tp-general').checked = cr.general;
   $('tp-nota').hidden = cr.general || cr.puede_general;
+  tpPintarLista();
+}
+function tpPintarLista() {
   const lista = $('tp-lista');
   lista.replaceChildren();
-  for (const s of cr.sucursales) {
-    const x = el('input'); x.type = 'checkbox'; x.checked = cr.general && s.activo; x.disabled = !cr.general;
-    x.addEventListener('change', () => guardarCodigoRapido({ ambito: 'sucursal', sucursal_id: s.id, activo: x.checked }));
+  for (const s of tpSucursales) {
+    const x = el('input'); x.type = 'checkbox'; x.checked = $('tp-general').checked && tpEstado.get(s.id); x.disabled = !$('tp-general').checked;
+    x.addEventListener('change', () => { tpEstado.set(s.id, x.checked); acActualizar(); });
     const fila = el('label', 'lote-op'); fila.append(x, el('span', '', s.nombre));
     lista.append(fila);
   }
 }
-
-async function guardarCodigoRapido(cambio) {
-  $('tp-error').textContent = '';
-  try {
-    const r = await enviarJson(API + 'admin/prioridades.php', { accion: 'codigo_rapido', ...cambio });
-    pintarCodigoRapido(r.codigo_rapido);
-    avisar('Guardado');
-  } catch (err) {
-    $('tp-error').textContent = err.message;
-    try { pintarCodigoRapido((await pedir(API + 'admin/prioridades.php')).codigo_rapido); } catch { /* se queda como estaba */ }
-  }
+function tpCambios() {
+  if (!tpOrig) return [];
+  const g = $('tp-general').checked; const c = [];
+  if (tpOrig.puede_general && g !== tpOrig.general) c.push({ ambito: 'general', activo: g });
+  if (g) for (const s of tpOrig.sucursales) if (tpEstado.get(s.id) !== s.activo) c.push({ ambito: 'sucursal', sucursal_id: s.id, activo: tpEstado.get(s.id) });
+  return c;
 }
 function pintarPedirPorMesa(pm) {
+  tmOrig = { general: pm.general, puede_general: pm.puede_general, sucursales: pm.sucursales.map((s) => ({ id: s.id, activo: s.activo })) };
+  tmEstado = new Map(pm.sucursales.map((s) => [s.id, s.activo]));
   $('tm-general-fila').hidden = !pm.puede_general;
   $('tm-general').checked = pm.general;
   const lista = $('tm-lista');
   lista.replaceChildren();
   for (const s of pm.sucursales) {
     const x = el('input'); x.type = 'checkbox'; x.checked = s.activo;
-    x.addEventListener('change', () => guardarPedirPorMesa({ ambito: 'sucursal', sucursal_id: s.id, activo: x.checked }));
+    x.addEventListener('change', () => { tmEstado.set(s.id, x.checked); acActualizar(); });
     const fila = el('label', 'lote-op'); fila.append(x, el('span', '', s.nombre + ' · pedir por mesa'));
     lista.append(fila);
   }
 }
-async function guardarPedirPorMesa(cambio) {
-  $('tm-error').textContent = '';
+function tmCambios() {
+  if (!tmOrig) return [];
+  const c = [];
+  if (tmOrig.puede_general && $('tm-general').checked !== tmOrig.general) c.push({ ambito: 'general', activo: $('tm-general').checked });
+  for (const s of tmOrig.sucursales) if (tmEstado.get(s.id) !== s.activo) c.push({ ambito: 'sucursal', sucursal_id: s.id, activo: tmEstado.get(s.id) });
+  return c;
+}
+/** Guarda lo pendiente de Ajustes de pedidos (pedir por mesa y código rápido). Devuelve true si salió bien. */
+async function guardarTomaPedidos() {
+  $('tp-error').textContent = ''; $('tm-error').textContent = '';
   try {
-    const r = await enviarJson(API + 'admin/prioridades.php', { accion: 'pedir_por_mesa', ...cambio });
-    pintarPedirPorMesa(r.pedir_por_mesa);
-    avisar('Guardado');
+    for (const c of tmCambios()) await enviarJson(API + 'admin/prioridades.php', { accion: 'pedir_por_mesa', ...c });
+    for (const c of tpCambios()) await enviarJson(API + 'admin/prioridades.php', { accion: 'codigo_rapido', ...c });
+    avisar('Ajustes de pedidos guardados');
+    const ap = await pedir(API + 'admin/prioridades.php');
+    pintarCodigoRapido(ap.codigo_rapido); pintarPedirPorMesa(ap.pedir_por_mesa); acActualizar();
+    return true;
   } catch (err) {
-    $('tm-error').textContent = err.message;
-    try { pintarPedirPorMesa((await pedir(API + 'admin/prioridades.php')).pedir_por_mesa); } catch { /* se queda */ }
+    $('tp-error').textContent = err.message;
+    try { const ap = await pedir(API + 'admin/prioridades.php'); pintarCodigoRapido(ap.codigo_rapido); pintarPedirPorMesa(ap.pedir_por_mesa); acActualizar(); } catch { /* se queda como estaba */ }
+    return false;
   }
 }
-$('tm-general').addEventListener('change', () => guardarPedirPorMesa({ ambito: 'general', activo: $('tm-general').checked }));
-$('tp-general').addEventListener('change', () => guardarCodigoRapido({ ambito: 'general', activo: $('tp-general').checked }));
+$('tm-general').addEventListener('change', acActualizar);
+$('tp-general').addEventListener('change', () => { tpPintarLista(); acActualizar(); });
+PAG['dlg-toma-pedidos'] = { sucio: () => tpCambios().length > 0 || tmCambios().length > 0, guardar: guardarTomaPedidos };
 
 $('btn-toma-pedidos').addEventListener('click', async () => {
   $('tp-error').textContent = '';
@@ -1837,6 +1897,8 @@ function crCargarAmbito() {
     crLista = copiaCarriles(suc.carriles);
   }
   crPintar();
+  crBase = crSnap();
+  acActualizar();
 }
 
 function crPintar() {
@@ -1845,7 +1907,6 @@ function crPintar() {
   const suc = crEstado.sucursales.find((s) => String(s.id) === $('cr-ambito').value);
   $('cr-heredado').hidden = !editar || !$('cr-heredar').checked || $('cr-ambito').value === 'general';
   $('cr-acciones').hidden = hereda;
-  $('cr-guardar').hidden = !editar;
   $('cr-heredar-fila').hidden = !editar;
   $('cr-ambito').closest('label').hidden = $('cr-ambito').options.length < 2;   // el gerente solo tiene su sucursal
   const caja = $('cr-lista');
@@ -1905,6 +1966,7 @@ function crPintar() {
     grupo('Categoría de los platillos', crEstado.categorias.map((k) => [k, k]), c.categorias, (v, si) => poner(c.categorias, v, si), 'Aún no hay categorías.');
     caja.append(t);
   });
+  acActualizar();
 }
 
 async function abrirCarriles() {
@@ -1919,7 +1981,7 @@ async function abrirCarriles() {
   abrirPagina(dlgCarriles, 'btn-carriles');
 }
 $('btn-carriles').addEventListener('click', abrirCarriles);
-$('cr-ambito').addEventListener('change', crCargarAmbito);
+protegerSelector($('cr-ambito'), () => crSucio(), () => guardarCarriles(), () => crCargarAmbito());
 $('cr-heredar').addEventListener('change', () => {
   if (!$('cr-heredar').checked && $('cr-ambito').value !== 'general') {
     // Empieza con una copia de lo que usa hoy para editarla
@@ -1934,7 +1996,12 @@ $('cr-agregar').addEventListener('click', () => {
   crPintar();
 });
 $('cr-defecto').addEventListener('click', () => { crLista = copiaCarriles(crEstado.defecto); crPintar(); });
-$('cr-guardar').addEventListener('click', async () => {
+for (const ev of ['input', 'change', 'click']) $('cr-lista').addEventListener(ev, () => setTimeout(acActualizar, 0));
+let crBase = null;
+const crSnap = () => JSON.stringify({ a: $('cr-ambito').value, h: $('cr-heredar').checked, l: crLista });
+const crSucio = () => !!crEstado && crEstado.puede_editar && crBase !== null && crSnap() !== crBase;
+/** Guarda los carriles de lo seleccionado en «¿Para quién?». Devuelve true si salió bien. */
+async function guardarCarriles() {
   $('cr-error').textContent = '';
   const hereda = $('cr-heredar').checked;
   const cuerpo = { accion: 'carriles', ...crAmbito() };
@@ -1944,19 +2011,21 @@ $('cr-guardar').addEventListener('click', async () => {
     crEstado = r.carriles;
     crCargarAmbito();
     avisar('Carriles guardados');
-  } catch (err) { $('cr-error').textContent = err.message; }
-});
+    return true;
+  } catch (err) { $('cr-error').textContent = err.message; return false; }
+}
+PAG['dlg-carriles'] = { sucio: crSucio, guardar: guardarCarriles };
 $('cr-cerrar').addEventListener('click', () => dlgCarriles.close());
 
 /* Ajustes de pedidos por QR: su propia página */
 const dlgPedidosQr = $('dlg-pedidos-qr');
+PAG['dlg-caja'] = { sucio: () => false, guardar: async () => true };   // Ajustes de caja aún no tiene opciones propias: el botón queda listo para cuando las tenga
 $('btn-pedidos-qr').addEventListener('click', async () => {
   $('cp-error').textContent = '';
   try { await cargarClientePedidos(); await cargarCfgCliente(); } catch (err) { avisar(err.message, true); return; }
   abrirPagina(dlgPedidosQr, 'btn-pedidos-qr');
-  $('barra-accion').hidden = false;
 });
-dlgPedidosQr.addEventListener('close', () => { $('barra-accion').hidden = true; });
+PAG['dlg-pedidos-qr'] = { sucio: () => !!cpOriginal && (cpCambios().length > 0 || ctSucio()), guardar: () => guardarClientePedidos() };
 
 /* Tipos de pedido, plato por plato y datos de pago: por empresa (dueño) y por sucursal (dueño o gerente) */
 let cfgCliente = null;   // lo que manda el servidor: { puede_general, general, sucursales: [{ id, nombre, propio, efectivo }] }
@@ -1992,18 +2061,7 @@ function ctPintar() {
   ctBase = ctSnap(); ctAmbitoPrevio = v;
   acActualizar();
 }
-$('ct-ambito').addEventListener('change', async () => {
-  // Cambiar de «¿Para quién?» con cambios sin guardar: preguntar, porque se repinta con otros valores.
-  if (ctSucio() && ctBase && JSON.parse(ctBase).a === ctAmbitoPrevio && JSON.parse(ctSnap()).m) {
-    const nuevo = $('ct-ambito').value;
-    $('ct-ambito').value = ctAmbitoPrevio;
-    const r = await decidirCambios('Tienes cambios sin guardar en los tipos de pedido de esta selección. ¿Qué quieres hacer?');
-    if (r === null) return;
-    if (r === 'guardar') { try { await guardarTiposPedido(); await cargarCfgCliente(); } catch (err) { $('ct-error').textContent = err.message; return; } }
-    $('ct-ambito').value = nuevo;
-  }
-  ctPintar();
-});
+protegerSelector($('ct-ambito'), ctSucio, () => guardarClientePedidos(), ctPintar);
 for (const id of ['ct-mods', 'ct-mixto', 'ct-mesa']) $(id).addEventListener('change', acActualizar);
 $('ct-mods').addEventListener('change', (ev) => {
   const marcados = [...document.querySelectorAll('#ct-mods input')].filter((x) => x.checked);
@@ -2037,11 +2095,15 @@ function pgPintar() {
   $('pg-campos').hidden = !$('pg-activo').checked;
   $('pg-quitar').hidden = !(suc && propio);
   $('pg-nota').hidden = !(suc && !propio);
+  pgBase = pgSnap(); acActualizar();
   $('pg-nota').textContent = suc && !propio ? (mostrado ? 'Esta sucursal usa los datos de la empresa. Al guardar, tendrá los suyos.' : 'Esta sucursal todavía no tiene datos de pago: el cliente ve «paga en caja».') : '';
 }
-$('pg-ambito').addEventListener('change', pgPintar);
-$('pg-activo').addEventListener('change', () => { $('pg-campos').hidden = !$('pg-activo').checked; });
-$('pg-guardar').addEventListener('click', async () => {
+protegerSelector($('pg-ambito'), () => pgBase !== null && pgSnap() !== pgBase, guardarPago, pgPintar);
+$('pg-activo').addEventListener('change', () => { $('pg-campos').hidden = !$('pg-activo').checked; acActualizar(); });
+for (const id of ['pg-clabe', 'pg-benef', 'pg-inst']) $(id).addEventListener('input', acActualizar);
+PAG['dlg-pago'] = { sucio: () => pgBase !== null && pgSnap() !== pgBase, guardar: guardarPago };
+/** Guarda los datos de pago de lo seleccionado en «¿Para quién?». Devuelve true si salió bien. */
+async function guardarPago() {
   $('pg-error').textContent = '';
   try {
     const ambito = cfgAmbito($('pg-ambito'));
@@ -2052,8 +2114,11 @@ $('pg-guardar').addEventListener('click', async () => {
     if ($('pg-activo').checked && ($('pg-clabe').value.trim() || !(v === 'general' ? cfgCliente.general.pago : (suc.propio.pago || suc.efectivo.pago)))) await enviarJson(API + 'admin/cliente-config.php', { accion: 'pago', ...ambito, clabe: $('pg-clabe').value, beneficiario: $('pg-benef').value, institucion: $('pg-inst').value });
     avisar('Pago por transferencia guardado');
     await cargarCfgCliente();
-  } catch (err) { $('pg-error').textContent = err.message; }
-});
+    return true;
+  } catch (err) { $('pg-error').textContent = err.message; return false; }
+}
+let pgBase = null;
+const pgSnap = () => JSON.stringify({ a: $('pg-ambito').value, t: $('pg-activo').checked, c: $('pg-clabe').value, b: $('pg-benef').value, i: $('pg-inst').value });
 $('pg-quitar').addEventListener('click', async () => {
   $('pg-error').textContent = '';
   try {
@@ -2764,7 +2829,7 @@ let plAncho = new Map();       // ancho real (m) de cada zona, con lo que aún n
 let plForma = false;           // ¿se está dibujando la forma de la zona?
 let plPunto = null;            // punto del contorno elegido
 
-function plMarcarSucio(v = true) { plSucio = v; $('pl-guardar').disabled = !v; $('pl-pendiente').hidden = !v; }
+function plMarcarSucio(v = true) { plSucio = v; acActualizar(); }
 
 /** Lee el estado del servidor; con `conservar` se mantienen los cambios locales de las mesas que siguen existiendo. */
 async function plCargar(sid, conservar = false) {
@@ -2968,15 +3033,18 @@ $('pl-nueva').addEventListener('submit', async (ev) => {
     avisar('Mesa creada: tócala en «Mesas sin ubicar» para ponerla en el plano');
   } catch (err) { $('pl-error').textContent = err.message; }
 });
-$('pl-guardar').addEventListener('click', async () => {
+/** Guarda el plano de la sucursal (mesas y zonas). Devuelve true si salió bien. */
+async function guardarPlano() {
   $('pl-error').textContent = '';
   try {
     const r = await enviarJson(API + 'admin/plano.php', { accion: 'guardar', sucursal_id: pl.sucursal, mesas: plMesas.map((m) => ({ id: m.id, zona_id: m.zona_id, x: m.x, y: m.y, forma: m.forma, ancho_cm: m.ancho_cm || null, alto_cm: m.forma === 'rectangular' ? (m.alto_cm || null) : null })), zonas: pl.zonas.map((z) => ({ id: z.id, poligono: plPoli.get(z.id) || null, ancho_m: plAncho.get(z.id) || 10 })) });
     plMarcarSucio(false);
     plAplicar(r, false);
     avisar('Plano guardado');
-  } catch (err) { $('pl-error').textContent = err.message; }
-});
+    return true;
+  } catch (err) { $('pl-error').textContent = err.message; return false; }
+}
+PAG['dlg-plano'] = { sucio: () => plSucio, guardar: guardarPlano };
 $('pl-suc').addEventListener('change', async () => {
   if (!(await plConfirmarDescartar())) { $('pl-suc').value = String(pl.sucursal); return; }
   plMarcarSucio(false); plZona = null; plSel = null; plForma = false; plPunto = null;
