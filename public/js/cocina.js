@@ -632,6 +632,22 @@ function comanda(o, carril = '') {
     pie.append(mover);
   }
   c.append(pie);
+  // Mantener presionada la comanda (fuera de los botones): ofrece marcar TODOS sus platillos como completos.
+  // El pedido se queda en su carril; para mandarlo a «listas para entregar» se pulsa «✓ Listo» aparte.
+  if (!completo) {
+    let tp = null;
+    const parar = () => { clearTimeout(tp); tp = null; };
+    c.addEventListener('pointerdown', (ev) => {
+      if ((ev.pointerType === 'mouse' && ev.button !== 0) || ev.target.closest('button, a, input, select')) return;
+      parar();
+      tp = setTimeout(async () => {
+        tp = null;
+        if (await confirmar(`¿Marcar como completo el pedido #${o.turno.slice(-3)} de ${quienDe(o)}?\n\nTodos sus platillos se marcarán como listos. Después pulsa «✓ Listo» para pasarlo a «listas para entregar».`, { si: 'Marcar completo' })) todoListo(o);
+      }, 700);
+    });
+    for (const e of ['pointerup', 'pointerleave', 'pointercancel']) c.addEventListener(e, parar);
+    c.addEventListener('contextmenu', (ev) => { if (!ev.target.closest('input, select')) ev.preventDefault(); });
+  }
   return c;
 }
 
