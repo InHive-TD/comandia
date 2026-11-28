@@ -512,11 +512,60 @@ function abrirOrdenTipos() {
 $('f-ordenar-tipos').addEventListener('click', abrirOrdenTipos);
 $('f-categoria').addEventListener('change', () => { const { marcados, precios } = leerExtrasForm(); pintarExtrasProducto(marcados, precios); });
 
+/** Ventana «Agregar modificadores»: todos los modificadores por tipo; se marca un tipo completo o solo algunos. */
+function dialogoAgregarMods() {
+  const { marcados, precios } = leerExtrasForm();
+  const sel = new Set(marcados);
+  const visibles = extras.filter((x) => x.activo || sel.has(x.id));
+  const porTipo = new Map(gruposExtras.map((g) => [g, []]));
+  for (const x of visibles) { const g = x.grupo && porTipo.has(x.grupo) ? x.grupo : 'Otros'; if (!porTipo.has(g)) porTipo.set(g, []); porTipo.get(g).push(x); }
+  const d = document.createElement('dialog');
+  d.className = 'dlg-confirmar dlg-agregar-mods';
+  d.append(el('h3', '', 'Agregar modificadores al platillo'));
+  const cuerpo = el('div', 'agm-lista');
+  const refrescar = [];
+  for (const [g, lista] of porTipo) {
+    if (!lista.length) continue;
+    const caja = el('div', 'agm-tipo');
+    const cab = el('label', 'agm-cab');
+    const tc = document.createElement('input'); tc.type = 'checkbox';
+    cab.append(tc, el('strong', '', g));
+    const items = [];
+    const filas = el('div', 'agm-filas');
+    for (const x of lista) {
+      const f = el('label', 'agm-fila');
+      const c = document.createElement('input'); c.type = 'checkbox'; c.checked = sel.has(x.id);
+      f.append(c, el('span', '', (x.codigo ? `${x.codigo} · ` : '') + x.nombre + (x.precio > 0 ? ` (+${dinero.format(x.precio)})` : '')));
+      c.addEventListener('change', () => { if (c.checked) sel.add(x.id); else sel.delete(x.id); estado(); });
+      items.push([x, c]); filas.append(f);
+    }
+    const estado = () => { const n = items.filter(([, c]) => c.checked).length; tc.checked = n === items.length; tc.indeterminate = n > 0 && n < items.length; };
+    tc.addEventListener('change', () => { for (const [x, c] of items) { c.checked = tc.checked; if (tc.checked) sel.add(x.id); else sel.delete(x.id); } estado(); });
+    estado();
+    caja.append(cab, filas); cuerpo.append(caja);
+  }
+  const fila = el('div', 'confirmar-botones');
+  const cancelar = el('button', 'btn', 'Cancelar'); cancelar.type = 'button';
+  const ok = el('button', 'btn principal', 'Agregar'); ok.type = 'button';
+  cancelar.addEventListener('click', () => d.close());
+  ok.addEventListener('click', () => {
+    const conservar = Object.fromEntries(Object.entries(precios).filter(([id]) => sel.has(Number(id))));
+    pintarExtrasProducto([...sel], conservar); acActualizar(); d.close();
+  });
+  fila.append(cancelar, ok);
+  d.append(cuerpo, fila);
+  d.addEventListener('close', () => d.remove());
+  document.body.append(d); d.showModal();
+}
+$('f-agregar-mods').addEventListener('click', dialogoAgregarMods);
+
 function pintarExtrasProducto(marcados, precios = {}) {
   const caja = $('f-extras');
   caja.replaceChildren();
   const visibles = extras.filter((x) => x.activo || marcados.includes(x.id));
+  $('f-agregar-mods').hidden = visibles.length === 0;
   if (visibles.length === 0) {
+    $('f-ordenar-tipos').hidden = true;
     caja.append(el('p', 'vacio ayuda', 'Aún no hay modificadores. Créalos con el botón “Modificadores”.'));
     return;
   }
@@ -531,8 +580,11 @@ function pintarExtrasProducto(marcados, precios = {}) {
     const resto = [...grupos.keys()].filter((g) => !propio.includes(g));
     grupos = new Map([...propio, ...resto].filter((g) => grupos.has(g)).map((g) => [g, grupos.get(g)]));
   }
-  $('f-ordenar-tipos').hidden = [...grupos].filter(([, l]) => l.length).length < 2;
-  for (const [g, lista] of [...grupos].filter(([, l]) => l.length)) {
+  // Solo se muestran los tipos que tienen al menos un modificador activo en este platillo (los demás se agregan con «＋ Agregar modificadores»)
+  const mostrados = [...grupos].filter(([, l]) => l.some((x) => marcados.includes(x.id)));
+  $('f-ordenar-tipos').hidden = mostrados.length < 2;
+  if (mostrados.length === 0) caja.append(el('p', 'vacio ayuda', 'Este platillo no tiene modificadores. Agrégalos con «＋ Agregar modificadores».'));
+  for (const [g, lista] of mostrados) {
     // Encabezado de sección con acceso rápido: marcar / quitar toda la sección en este platillo
     const cab = el('div', 'grupo-cab');
     cab.append(el('p', 'grupo-titulo', g));
@@ -752,6 +804,7 @@ PAG['dlg-producto'] = {
 };
 $('form-producto').addEventListener('input', () => acActualizar());
 $('form-producto').addEventListener('change', () => acActualizar());
+$('f-disponible').addEventListener('change', () => acActualizar());
 // Guardar / Eliminar / ✕ del platillo viven en la barra superior, a la derecha
 const mostrarBarraProducto = () => { $('barra-producto').hidden = !dlgProducto.open; if (!dlgProducto.open) prBase = null; $('bp-eliminar').hidden = $('f-eliminar').hidden; };
 $('bp-guardar').addEventListener('click', () => $('f-guardar').click());
