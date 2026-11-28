@@ -63,13 +63,13 @@ async function estadoPedirPorMesa(nid: number, alcance: number | null) {
  * PRIMER carril cuya regla cumple; lo que no entra en ninguno cae en "Otros". Se guarda como JSON en ajustes:
  * `cocina_carriles` (toda la empresa) y `cocina_carriles@ID` (una sucursal; si no existe, usa el de la empresa).
  * ------------------------------------------------------------------------------------------- */
-export interface Carril { id: string; nombre: string; color: string; tipos: string[]; estaciones: number[]; categorias: string[] }
+export interface Carril { id: string; nombre: string; color: string; tipos: string[]; estaciones: number[]; categorias: string[]; productos: number[] }
 const COLORES_CARRIL = ['verde', 'naranja', 'azul', 'morado', 'rojo', 'gris'];
 const TIPOS_CARRIL = ['aqui', 'llevar', 'recoger'];
 const MAX_CARRILES = 8;
 export const CARRILES_DEFECTO: Carril[] = [
-  { id: 'aqui', nombre: '🍽 Comer aquí', color: 'verde', tipos: ['aqui'], estaciones: [], categorias: [] },
-  { id: 'llevar', nombre: '🥡 Para llevar', color: 'naranja', tipos: ['llevar', 'recoger'], estaciones: [], categorias: [] },
+  { id: 'aqui', nombre: '🍽 Comer aquí', color: 'verde', tipos: ['aqui'], estaciones: [], categorias: [], productos: [] },
+  { id: 'llevar', nombre: '🥡 Para llevar', color: 'naranja', tipos: ['llevar', 'recoger'], estaciones: [], categorias: [], productos: [] },
 ];
 
 /** Lee lo guardado con tolerancia (si el JSON está dañado se usan los carriles por defecto). */
@@ -84,6 +84,7 @@ function carrilesGuardados(valor: unknown): Carril[] | null {
       tipos: (Array.isArray(c['tipos']) ? c['tipos'] : []).map(String).filter((t) => TIPOS_CARRIL.includes(t)),
       estaciones: enteros(c['estaciones']),
       categorias: (Array.isArray(c['categorias']) ? c['categorias'] : []).map(String).slice(0, 60),
+      productos: enteros(c['productos']).slice(0, 400),
     }));
     return lista;
   } catch { return null; }
@@ -126,7 +127,9 @@ async function estadoCarriles(nid: number, alcance: number | null) {
   });
   const estaciones = (await filas('SELECT id, nombre FROM estaciones WHERE negocio_id = ? ORDER BY orden, id', [nid])).map((e) => ({ id: Number(e['id']), nombre: e['nombre'] }));
   const categorias = (await filas('SELECT nombre FROM categorias WHERE negocio_id = ? ORDER BY orden, id', [nid])).map((k) => String(k['nombre']));
-  return { puede_editar: true, puede_general: alcance === null, general: general ?? CARRILES_DEFECTO, general_propio: general !== null, defecto: CARRILES_DEFECTO, sucursales, estaciones, categorias };
+  const productos = (await filas('SELECT p.id, p.nombre, c.nombre AS categoria FROM productos p JOIN categorias c ON c.id = p.categoria_id WHERE p.negocio_id = ? ORDER BY c.orden, c.id, p.nombre', [nid]))
+    .map((p) => ({ id: Number(p['id']), nombre: String(p['nombre']), categoria: String(p['categoria']) }));
+  return { puede_editar: true, puede_general: alcance === null, general: general ?? CARRILES_DEFECTO, general_propio: general !== null, defecto: CARRILES_DEFECTO, sucursales, estaciones, categorias, productos };
 }
 
 /** Estado para el panel: interruptor general de Cocina horizontal y el efectivo de cada sucursal (el gerente solo ve la suya). */
@@ -232,6 +235,7 @@ export async function rutasPrioridades(app: FastifyInstance): Promise<void> {
         if (bruto.length < 1 || bruto.length > MAX_CARRILES) throw new ErrorHttp(400, 'validacion', `Crea entre 1 y ${MAX_CARRILES} carriles.`);
         const estacionesValidas = new Set((await c.filas('SELECT id FROM estaciones WHERE negocio_id = ?', [c.nid])).map((f) => Number(f['id'])));
         const categoriasValidas = new Set((await c.filas('SELECT nombre FROM categorias WHERE negocio_id = ?', [c.nid])).map((f) => String(f['nombre'])));
+        const productosValidos = new Set((await c.filas('SELECT id FROM productos WHERE negocio_id = ?', [c.nid])).map((f) => Number(f['id'])));
         const usados = new Set<string>();
         const lista: Carril[] = bruto.map((x, n) => {
           const nombre = String(x['nombre'] ?? '').trim();
@@ -245,6 +249,7 @@ export async function rutasPrioridades(app: FastifyInstance): Promise<void> {
             tipos: [...new Set((Array.isArray(x['tipos']) ? x['tipos'] : []).map(String).filter((t) => TIPOS_CARRIL.includes(t)))],
             estaciones: enteros(x['estaciones']).filter((e) => estacionesValidas.has(e)),
             categorias: [...new Set((Array.isArray(x['categorias']) ? x['categorias'] : []).map(String).filter((k) => categoriasValidas.has(k)))],
+            productos: [...new Set(enteros(x['productos']).filter((id) => productosValidos.has(id)))],
           };
         });
         await guardar(clave, JSON.stringify(lista));

@@ -966,3 +966,6 @@ fieldset.extras-campo { position: relative; }
 .agm-cuenta { color: #8a7a6c; font-weight: 600; }
 .agm-flecha { border: 0; background: transparent; font-size: 1rem; cursor: pointer; padding: 4px 8px; color: inherit; }
 .agm-filas[hidden] { display: none; }
+
+.cr-platillos { margin: 4px 0; border: 1px solid var(--color-borde, #d9cbbd); border-radius: 8px; padding: 4px 8px; }
+.cr-platillos > summary { cursor: pointer; font-weight: 600; padding: 4px 0; }

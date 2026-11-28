@@ -395,13 +395,13 @@ function pintar() {
   // Carriles configurables (Admin → Ajustes → Carriles de cocina). Cada pedido va al PRIMER carril cuya regla cumple;
   // lo que no entra en ninguno se muestra en "Otros". Por defecto: Comer aquí y Para llevar (llevar y recoger juntos).
   const CARRILES_DEFECTO = [
-    { id: 'aqui', nombre: '🍽 Comer aquí', color: 'verde', tipos: ['aqui'], estaciones: [], categorias: [] },
-    { id: 'llevar', nombre: '🥡 Para llevar', color: 'naranja', tipos: ['llevar', 'recoger'], estaciones: [], categorias: [] },
+    { id: 'aqui', nombre: '🍽 Comer aquí', color: 'verde', tipos: ['aqui'], estaciones: [], categorias: [], productos: [] },
+    { id: 'llevar', nombre: '🥡 Para llevar', color: 'naranja', tipos: ['llevar', 'recoger'], estaciones: [], categorias: [], productos: [] },
   ];
   const cfg = Array.isArray(datos.carriles) && datos.carriles.length ? datos.carriles : CARRILES_DEFECTO;
   const cumple = (o, c) => (!c.tipos.length || c.tipos.includes(o.modalidad))
     && (!c.estaciones.length || o.items.some((i) => c.estaciones.includes(i.estacion_id)))
-    && (!c.categorias.length || o.items.some((i) => c.categorias.includes(i.categoria)));
+    && ((!c.categorias.length && !(c.productos || []).length) || o.items.some((i) => c.categorias.includes(i.categoria) || (c.productos || []).includes(i.producto_id)));   // categoría O platillo suelto
   const sueltos = datos.ordenes.filter((o) => !o.prioritario && !o.urgente && !sigueUrg(o));
   const porCarril = new Map(cfg.map((c) => [c.id, []]));
   const otros = [];

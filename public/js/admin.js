@@ -2097,7 +2097,7 @@ let crEstado = null;     // lo que manda el servidor (carriles de la empresa y d
 let crLista = [];        // carriles que se están editando
 const COLORES_CR = [['verde', '🟢 Verde'], ['naranja', '🟠 Naranja'], ['azul', '🔵 Azul'], ['morado', '🟣 Morado'], ['rojo', '🔴 Rojo'], ['gris', '⚪ Gris']];
 const TIPOS_CR = [['aqui', '🍽 Comer aquí'], ['llevar', '🥡 Para llevar'], ['recoger', '🛍 Recoger']];
-const copiaCarriles = (l) => l.map((c) => ({ ...c, tipos: [...c.tipos], estaciones: [...c.estaciones], categorias: [...c.categorias] }));
+const copiaCarriles = (l) => l.map((c) => ({ ...c, tipos: [...c.tipos], estaciones: [...c.estaciones], categorias: [...c.categorias], productos: [...(c.productos || [])] }));
 
 function crAmbito() { const v = $('cr-ambito').value; return v === 'general' ? { ambito: 'general' } : { ambito: 'sucursal', sucursal_id: Number(v) }; }
 
@@ -2184,6 +2184,29 @@ function crPintar() {
     grupo('Tipo de pedido', TIPOS_CR, c.tipos, (v, si) => poner(c.tipos, v, si), '');
     grupo('Estación (parrilla) de los platillos', crEstado.estaciones.map((e) => [e.id, e.nombre]), c.estaciones, (v, si) => poner(c.estaciones, v, si), 'Aún no hay estaciones. Créalas en Ajustes · Cocina.');
     grupo('Categoría de los platillos', crEstado.categorias.map((k) => [k, k]), c.categorias, (v, si) => poner(c.categorias, v, si), 'Aún no hay categorías.');
+    // Platillos en específico (además de categorías enteras): agrupados por categoría y colapsados
+    if (!c.productos) c.productos = [];
+    const gp = el('fieldset', 'cr-grupo');
+    gp.append(el('legend', '', 'Platillos en específico'));
+    const porCat = new Map();
+    for (const pr of (crEstado.productos || [])) { if (!porCat.has(pr.categoria)) porCat.set(pr.categoria, []); porCat.get(pr.categoria).push(pr); }
+    if (!porCat.size) gp.append(el('p', 'ayuda', 'Aún no hay platillos.'));
+    for (const [cat, lista] of porCat) {
+      const det = el('details', 'cr-platillos');
+      det.open = lista.some((pr) => c.productos.includes(pr.id));
+      const n = lista.filter((pr) => c.productos.includes(pr.id)).length;
+      const sum = el('summary', '', `${cat}${n ? ` (${n})` : ''}`);
+      det.append(sum);
+      const fila = el('div', 'lote-lista');
+      for (const pr of lista) {
+        const x = document.createElement('input'); x.type = 'checkbox'; x.checked = c.productos.includes(pr.id); x.disabled = hereda;
+        x.addEventListener('change', () => { poner(c.productos, pr.id, x.checked); const k = lista.filter((q) => c.productos.includes(q.id)).length; sum.textContent = `${cat}${k ? ` (${k})` : ''}`; });
+        const l = el('label', 'lote-op'); l.append(x, el('span', '', pr.nombre));
+        fila.append(l);
+      }
+      det.append(fila); gp.append(det);
+    }
+    t.append(gp);
     caja.append(t);
   });
   acActualizar();
@@ -2212,7 +2235,7 @@ $('cr-heredar').addEventListener('change', () => {
 });
 $('cr-agregar').addEventListener('click', () => {
   if (crLista.length >= 8) { $('cr-error').textContent = 'Máximo 8 carriles.'; return; }
-  crLista.push({ id: 'c' + Date.now().toString(36).slice(-6), nombre: '', color: 'azul', tipos: [], estaciones: [], categorias: [] });
+  crLista.push({ id: 'c' + Date.now().toString(36).slice(-6), nombre: '', color: 'azul', tipos: [], estaciones: [], categorias: [], productos: [] });
   crPintar();
 });
 $('cr-defecto').addEventListener('click', () => { crLista = copiaCarriles(crEstado.defecto); crPintar(); });

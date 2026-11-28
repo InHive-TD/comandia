@@ -364,7 +364,7 @@ CREATE TABLE IF NOT EXISTS contactos (
 CREATE TABLE IF NOT EXISTS ajustes (
     negocio_id INT UNSIGNED NOT NULL,
     clave      VARCHAR(40) NOT NULL,
-    valor      VARCHAR(100) NOT NULL,
+    valor      TEXT NOT NULL,
     PRIMARY KEY (negocio_id, clave)
 ) ENGINE=InnoDB;
 -- (los valores iniciales de cada negocio se crean al darlo de alta: bono_llevar 5, bono_aqui 0, min_preparacion 15)

@@ -338,6 +338,8 @@ async function actualizarV2(): Promise<void> {
     INDEX idx_invm_insumo (negocio_id, sucursal_id, insumo_id, creado_en),
     INDEX idx_invm_tipo (negocio_id, sucursal_id, tipo, creado_en)
   ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4`);
+  // Los carriles de cocina (con categorías y platillos sueltos) se guardan como JSON en ajustes: necesita más espacio que 100 letras.
+  await ejecutar('ALTER TABLE ajustes MODIFY valor TEXT NOT NULL').catch((e) => console.warn('No se pudo ampliar ajustes.valor:', (e as Error).message));
   // Unidades propias de cada empresa (además de las estándar): se registran al guardar un insumo con una unidad nueva.
   await ejecutar('ALTER TABLE inv_insumos MODIFY unidad VARCHAR(20) NOT NULL DEFAULT \'pza\'');
   await ejecutar(`CREATE TABLE IF NOT EXISTS inv_unidades (
