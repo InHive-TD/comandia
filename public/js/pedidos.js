@@ -768,7 +768,12 @@ function abrirDetalle(p) {
   if (sw) {   // interruptor «Agotado» junto a la ✕: no cambia solo, primero pregunta «¿Estás seguro?»
     sw.checked = !!p.agotado;
     $('dt-agotar').title = p.agotado ? 'Agotado hoy: toca para volver a habilitarlo' : 'Marcar como agotado por hoy';
-    sw.onclick = (ev) => { ev.preventDefault(); dlgDetalle.close(); alternarAgotado(p); };
+    sw.onclick = async (ev) => {
+      ev.preventDefault();
+      dlgDetalle.close();
+      await alternarAgotado(p);
+      abrirDetalle(porId.get(p.id) || p);   // sea que confirme o cancele, se queda en el detalle del platillo
+    };
   }
   $('dt-agregar').onclick = () => { dlgDetalle.close(); tocarProducto(p); };   // con modificadores abre sus opciones; sin ellos lo agrega directo
   dlgDetalle.showModal();

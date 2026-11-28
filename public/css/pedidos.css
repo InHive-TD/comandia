@@ -484,3 +484,19 @@ main.contenedor:has(#vista-pedido:not([hidden])) { padding-top: 0; }
   #dlg-detalle .dlg-agotar input { width: 42px; height: 26px; }
   #dlg-detalle .dlg-agotar span:last-child { font-size: .78rem; }
 }
+
+/* Ventana de opciones (Agregar) en pantallas angostas: sin apachurrarse ni scroll lateral */
+#dlg-opciones { overflow-x: hidden; max-width: min(94vw, 560px); box-sizing: border-box; }
+#dlg-opciones .dialogo { min-width: 0; max-width: 100%; box-sizing: border-box; overflow-wrap: anywhere; }
+#dlg-opciones fieldset { min-width: 0; max-width: 100%; box-sizing: border-box; }
+#dlg-opciones .dlg-barra { min-width: 0; flex-wrap: nowrap; gap: 8px; }
+#dlg-opciones .dlg-barra .dlg-ok { flex: 1 1 0; min-width: 0; max-width: none; padding: 4px 12px; }
+#dlg-opciones .dlg-barra .dlg-cerrar { flex: none; width: 42px; min-height: 42px; margin-left: 0; }
+#dlg-opciones .opciones-extras label.opcion { min-width: 0; flex-wrap: nowrap; gap: 8px; padding-left: 8px; padding-right: 8px; }
+#dlg-opciones .opciones-extras label.opcion > span:first-of-type { min-width: 0; flex: 1 1 auto; }
+#dlg-opciones .cantidad { flex-wrap: nowrap; justify-content: center; }
+@media (max-width: 480px) {
+  #dlg-opciones { max-width: 96vw; }
+  #dlg-opciones .dialogo { padding: 12px; }
+  #dlg-opciones .dlg-barra.en-dialogo { margin: -12px -12px 4px; padding: 8px 10px; }
+}
