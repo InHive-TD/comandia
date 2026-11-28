@@ -733,7 +733,7 @@ function pintarProductos() {
     if (p.agotado) info.append(el('span', 'pr-agotado', 'AGOTADO HOY'));
     else if (p.extras.length) info.append(el('span', 'pr-mas', 'con opciones ›'));
     b.addEventListener('click', (ev) => { if (!ignorarClic) tocarProducto(p, !!ev.target.closest('.pr-foto')); });
-    mantenerPresionado(b, () => abrirAccionesPlato(p));
+    mantenerPresionado(b, () => abrirDetalle(p));
     caja.append(b);
   }
 }
@@ -764,6 +764,12 @@ function abrirDetalle(p) {
   const img = $('dt-foto');
   if (p.foto) { img.src = '../' + p.foto; img.hidden = false; } else { img.removeAttribute('src'); img.hidden = true; }
   $('dt-agregar').hidden = !!p.agotado;
+  const agotar = $('dt-agotar');
+  if (agotar) {   // marcar / quitar «agotado hoy» desde el mismo detalle, junto a la ✕
+    agotar.textContent = p.agotado ? 'Habilitar' : 'Agotado';
+    agotar.title = p.agotado ? 'Volver a habilitar este platillo' : 'Marcar como agotado por hoy';
+    agotar.onclick = () => { dlgDetalle.close(); alternarAgotado(p); };
+  }
   $('dt-agregar').onclick = () => { dlgDetalle.close(); tocarProducto(p); };   // con modificadores abre sus opciones; sin ellos lo agrega directo
   dlgDetalle.showModal();
 }
