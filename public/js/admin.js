@@ -1460,7 +1460,7 @@ $('btn-apariencia').addEventListener('click', async () => {
 });
 dlgApariencia.addEventListener('close', apQuitarVistaPrevia);
 $('ap-cerrar').addEventListener('click', () => dlgApariencia.close());
-/** Guarda los colores (se ven al instante como vista previa). Devuelve true si salió bien y cierra la página. */
+/** Guarda los colores (se ven al instante como vista previa). Devuelve true si salió bien; se queda en la misma página. */
 async function guardarApariencia() {
   $('ap-error').textContent = '';
   try {
@@ -1468,7 +1468,7 @@ async function guardarApariencia() {
     apDatos.colores = { ...apColores };
     apRecargarTema();
     avisar(r.avisos && r.avisos.length ? r.avisos[0] : 'Apariencia guardada', !!(r.avisos && r.avisos.length));
-    dlgApariencia.close();
+    acActualizar();
     return true;
   } catch (err) { $('ap-error').textContent = err.message; return false; }
 }
