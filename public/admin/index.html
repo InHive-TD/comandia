@@ -17,7 +17,7 @@
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Outfit:wght@600;700;800&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="../css/estilos.css?v=1795557467">
   <link rel="stylesheet" href="../css/plano.css?v=1795557467">
-  <link rel="stylesheet" href="../css/admin.css?v=202611281100">
+  <link rel="stylesheet" href="../css/admin.css?v=202611281200">
   <link rel="stylesheet" href="../css/tablero.css?v=1795557101">
   <link rel="stylesheet" href="../css/shell.css?v=1795557467">
   <link rel="stylesheet" href="../css/acceso.css?v=202611261215">
@@ -102,6 +102,7 @@
           <div class="menu-desp-items">
             <button id="btn-prioridades" data-titulo="Ajustes de cocina" class="btn nav-ico i-cocina" type="button">Ajustes</button>
             <button id="btn-carriles" data-titulo="Carriles de cocina" class="btn nav-ico i-carriles" type="button">Carriles</button>
+            <button id="btn-parrillas" data-titulo="Parrillas de cocina" class="btn nav-ico i-cocina" type="button">Parrillas</button>
           </div>
         </div>
         <p class="menu-sub">Negocio</p>
@@ -585,6 +586,18 @@
     </div>
   </dialog>
 
+  <dialog id="dlg-parrillas" class="pagina">
+    <div class="formulario dialogo cr-dialogo">
+      <h2>Parrillas de cocina</h2>
+      <p class="ayuda">Una parrilla es un puesto de cocina con su propia vista: ve los pedidos que traen platillos suyos. Cada platillo va a la <strong>primera parrilla</strong> que lo acepta (de arriba hacia abajo); lo que ninguna acepte se ve solo en la vista general. Los carriles de siempre no cambian.</p>
+      <label class="switch"><input id="pa-activo" type="checkbox"><span class="slider"></span><span>Usar parrillas <span class="tip" tabindex="0" data-tip="Apagado, la cocina se ve igual que siempre. Encendido, los cocineros con parrillas asignadas pueden cambiar a su vista desde la pantalla de cocina.">i</span></span></label>
+      <div id="pa-lista" class="cr-lista"></div>
+      <div class="ex-botones"><button id="pa-agregar" class="btn" type="button">＋ Agregar parrilla</button></div>
+      <p id="pa-error" class="msg-error" role="alert"></p>
+      <div class="acciones-dialogo"><button id="pa-cerrar" class="btn" type="button">Cerrar</button></div>
+    </div>
+  </dialog>
+
   <!-- Usuarios del equipo -->
   <dialog id="dlg-usuarios" class="pagina">
     <div class="formulario dialogo">
@@ -976,7 +989,7 @@
   <script src="../js/shell.js?v=1795841000"></script>
   <script src="../js/login.js?v=202611242250"></script>
   <script src="../js/vendor/qrcode.js"></script>
-  <script src="../js/admin.js?v=202611281100"></script>
+  <script src="../js/admin.js?v=202611281200"></script>
   <script src="../js/inventario.js?v=202611271930"></script>
   <script src="../js/recetas.js?v=202611271930"></script>
 </body>

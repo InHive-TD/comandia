@@ -12,6 +12,7 @@ import { rutasAdminProductos } from './admin/productos.js';
 import { rutasAdminImportar } from './admin/importar.js';
 import { rutasCategorias } from './admin/categorias.js';
 import { rutasEstaciones } from './admin/estaciones.js';
+import { rutasParrillas } from './admin/parrillas.js';
 import { rutasExtras } from './admin/extras.js';
 import { mesasParaElegir } from '../plano.js';
 import { rutasAdminMesas } from './admin/mesas.js';
@@ -48,7 +49,7 @@ export async function rutasEmpresa(app: FastifyInstance): Promise<void> {
   await app.register(rutasEventos);
   await app.register(rutasManifiesto);
   // Menú y administración del catálogo (cada archivo documenta sus reglas y permisos)
-  for (const grupo of [rutasPerfil, rutasMenu, rutasCategorias, rutasEstaciones, rutasExtras, rutasAdminProductos, rutasAdminImportar, rutasSucursales, rutasAdminMesas, rutasUsuarios, rutasOrdenes, rutasVoz, rutasCocina, rutasCaja, rutasPrioridades, rutasTiempos, rutasMarca, rutasReportes, rutasCliente, rutasTema, rutasClientePedidos, rutasClienteConfig, rutasAdminPlano, rutasAdminInventario, rutasAdminRecetas, rutasAcceso]) {
+  for (const grupo of [rutasPerfil, rutasMenu, rutasCategorias, rutasEstaciones, rutasParrillas, rutasExtras, rutasAdminProductos, rutasAdminImportar, rutasSucursales, rutasAdminMesas, rutasUsuarios, rutasOrdenes, rutasVoz, rutasCocina, rutasCaja, rutasPrioridades, rutasTiempos, rutasMarca, rutasReportes, rutasCliente, rutasTema, rutasClientePedidos, rutasClienteConfig, rutasAdminPlano, rutasAdminInventario, rutasAdminRecetas, rutasAcceso]) {
     await app.register(grupo);
   }
 

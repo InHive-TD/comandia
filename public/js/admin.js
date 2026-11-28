@@ -81,7 +81,7 @@ async function entrar(usuario) {
   }
   esGerente = usuario.rol === 'gerente';
   pintarUsuario(usuario);
-  for (const id of ['btn-categorias', 'btn-apariencia']) { const b = $(id); if (b) b.hidden = esGerente; }
+  for (const id of ['btn-categorias', 'btn-apariencia', 'btn-parrillas']) { const b = $(id); if (b) b.hidden = esGerente; }
   $('btn-sucursales').textContent = esGerente ? 'Mi sucursal' : 'Sucursales';
   document.querySelector('.menu-desp[data-grupo="sucursales"] .nav-sum').textContent = esGerente ? 'Mi sucursal y mesas' : 'Sucursales y mesas';
   $('btn-sucursales').dataset.titulo = esGerente ? 'Mi sucursal y mesas' : 'Sucursales y mesas';
@@ -677,7 +677,7 @@ function marcarMenu(idBoton) {
 /** Muestra una sección como página: cierra la que estuviera abierta y oculta la lista de productos. */
 /* Cada sección tiene su propia dirección: /<empresa>/admin/usuarios, /extras… (Inicio es solo /<empresa>/admin/).
    Se puede recargar, guardar en favoritos y usar "atrás". Las direcciones no llevan "#". */
-const RUTAS = { inicio: 'btn-reportes', platillos: 'btn-productos', categorias: 'btn-categorias', extras: 'btn-extras', 'carga-masiva': 'btn-carga', inventario: 'btn-inv-existencias', insumos: 'btn-inv-insumos', recetas: 'btn-inv-recetas', proveedores: 'btn-inv-proveedores', mermas: 'btn-inv-mermas', sucursales: 'btn-sucursales', usuarios: 'btn-usuarios', 'ajustes-cocina': 'btn-prioridades', 'ajustes-pedidos': 'btn-pedidos-qr', 'ajustes-pago': 'btn-pago', 'ajustes-caja': 'btn-caja-cfg', 'ajustes-plano': 'btn-plano', 'ajustes-toma': 'btn-toma-pedidos', 'ajustes-carriles': 'btn-carriles', apariencia: 'btn-apariencia' };
+const RUTAS = { inicio: 'btn-reportes', platillos: 'btn-productos', categorias: 'btn-categorias', extras: 'btn-extras', 'carga-masiva': 'btn-carga', inventario: 'btn-inv-existencias', insumos: 'btn-inv-insumos', recetas: 'btn-inv-recetas', proveedores: 'btn-inv-proveedores', mermas: 'btn-inv-mermas', sucursales: 'btn-sucursales', usuarios: 'btn-usuarios', 'ajustes-cocina': 'btn-prioridades', 'ajustes-pedidos': 'btn-pedidos-qr', 'ajustes-pago': 'btn-pago', 'ajustes-caja': 'btn-caja-cfg', 'ajustes-plano': 'btn-plano', 'ajustes-toma': 'btn-toma-pedidos', 'ajustes-carriles': 'btn-carriles', 'ajustes-parrillas': 'btn-parrillas', apariencia: 'btn-apariencia' };
 const BASE_ADMIN = location.pathname.replace(/\/admin(\/.*)?$/, '/admin/');   // "/lavale/admin/"
 const seccionDeLaDireccion = () => {
   const n = (location.pathname.startsWith(BASE_ADMIN) ? location.pathname.slice(BASE_ADMIN.length).replace(/\/+$/, '') : '') || 'inicio';
@@ -3388,3 +3388,148 @@ $('pl-punto-quitar').addEventListener('click', () => {
 
 // El logo lleva a Inicio de ESTA misma sucursal y empresa; ya no saca del portal
 document.querySelectorAll('.marca-logo').forEach((a) => a.addEventListener('click', (ev) => { ev.preventDefault(); $('btn-reportes').click(); }));
+
+/* ---- Parrillas de cocina (solo el dueño): puestos con sus reglas y los cocineros que los atienden ---- */
+const dlgParrillas = $('dlg-parrillas');
+let paEstado = null;           // lo que manda el servidor
+let paLista = [];              // parrillas que se están editando
+let paBase = null;
+const paAbiertas = new Set();  // parrillas expandidas (por defecto todas compactas)
+const paSnap = () => JSON.stringify({ a: $('pa-activo').checked, l: paLista });
+const paSucio = () => !!paEstado && paBase !== null && paSnap() !== paBase;
+
+function paPintar() {
+  const caja = $('pa-lista');
+  caja.replaceChildren();
+  if (!paLista.length) caja.append(el('p', 'vacio ayuda', 'Aún no hay parrillas. Agrega la primera con «＋ Agregar parrilla».'));
+  paLista.forEach((c, n) => {
+    const t = el('article', 'cr-carril');
+    const cab = el('div', 'cr-cab');
+    const nombre = document.createElement('input');
+    nombre.type = 'text'; nombre.maxLength = 40; nombre.value = c.nombre; nombre.placeholder = 'Ej. Parrilla 1'; nombre.setAttribute('aria-label', 'Nombre de la parrilla');
+    nombre.addEventListener('input', () => { c.nombre = nombre.value; });
+    const color = document.createElement('select'); color.setAttribute('aria-label', 'Color');
+    for (const [v, tx] of COLORES_CR) color.append(new Option(tx, v));
+    color.value = c.color; color.addEventListener('change', () => { c.color = color.value; });
+    const mover = (d) => { const j = n + d; if (j < 0 || j >= paLista.length) return; [paLista[n], paLista[j]] = [paLista[j], paLista[n]]; paPintar(); };
+    const sube = el('button', 'btn chico', '↑'); sube.type = 'button'; sube.title = 'Subir'; sube.disabled = n === 0; sube.addEventListener('click', () => mover(-1));
+    const baja = el('button', 'btn chico', '↓'); baja.type = 'button'; baja.title = 'Bajar'; baja.disabled = n === paLista.length - 1; baja.addEventListener('click', () => mover(1));
+    const borra = el('button', 'btn chico peligro', '🗑'); borra.type = 'button'; borra.title = 'Quitar parrilla';
+    borra.addEventListener('click', async () => {
+      if (!(await confirmar(`¿Quitar la parrilla “${c.nombre || 'sin nombre'}”? Se aplica al guardar.`, { si: 'Quitar', peligro: true }))) return;
+      paLista.splice(n, 1); paPintar(); acActualizar();
+    });
+    cab.append(el('span', 'cr-num', String(n + 1)), nombre, color, sube, baja, borra);
+    t.append(cab);
+
+    const poner = (lista, v, si) => { const i = lista.indexOf(v); if (si && i < 0) lista.push(v); if (!si && i >= 0) lista.splice(i, 1); };
+    const grupo = (titulo, opciones, marcados, alCambiar, vacio) => {
+      const g = el('fieldset', 'cr-grupo');
+      g.append(el('legend', '', titulo));
+      if (!opciones.length) { g.append(el('p', 'ayuda', vacio)); return g; }
+      const fila = el('div', 'lote-lista');
+      for (const [v, tx] of opciones) {
+        const x = document.createElement('input'); x.type = 'checkbox'; x.checked = marcados.includes(v);
+        x.addEventListener('change', () => alCambiar(v, x.checked));
+        const l = el('label', 'lote-op'); l.append(x, el('span', '', tx));
+        fila.append(l);
+      }
+      g.append(fila); return g;
+    };
+    const cuerpo = el('div', 'cr-cuerpo');
+    cuerpo.append(
+      grupo('Tipo de pedido (si no marcas nada, todos)', TIPOS_CR, c.tipos, (v, si) => poner(c.tipos, v, si), ''),
+      grupo('Categorías que prepara', paEstado.categorias.map((k) => [k, k]), c.categorias, (v, si) => poner(c.categorias, v, si), 'Aún no hay categorías.'),
+    );
+    const gp = el('fieldset', 'cr-grupo');
+    gp.append(el('legend', '', 'Platillos en específico'));
+    const porCat = new Map();
+    for (const pr of paEstado.productos) { if (!porCat.has(pr.categoria)) porCat.set(pr.categoria, []); porCat.get(pr.categoria).push(pr); }
+    if (!porCat.size) gp.append(el('p', 'ayuda', 'Aún no hay platillos.'));
+    for (const [cat, lista] of porCat) {
+      const det = el('details', 'cr-platillos');
+      det.open = lista.some((pr) => c.productos.includes(pr.id));
+      const sum = el('summary', '', cat);
+      const cuenta = () => { const k = lista.filter((q) => c.productos.includes(q.id)).length; sum.textContent = k ? `${cat} (${k})` : cat; };
+      cuenta(); det.append(sum);
+      const fila = el('div', 'lote-lista');
+      for (const pr of lista) {
+        const x = document.createElement('input'); x.type = 'checkbox'; x.checked = c.productos.includes(pr.id);
+        x.addEventListener('change', () => { poner(c.productos, pr.id, x.checked); cuenta(); });
+        const l = el('label', 'lote-op'); l.append(x, el('span', '', pr.nombre)); fila.append(l);
+      }
+      det.append(fila); gp.append(det);
+    }
+    cuerpo.append(gp);
+    const gv = el('fieldset', 'cr-grupo');
+    gv.append(el('legend', '', 'En su pantalla muestra'));
+    const filaV = el('div', 'lote-lista');
+    for (const [v, tx] of [['completo', 'El pedido completo (lo suyo resaltado)'], ['mios', 'Solo sus platillos']]) {
+      const x = document.createElement('input'); x.type = 'radio'; x.name = 'pa-ver-' + c._k; x.checked = (c.ver || 'completo') === v;
+      x.addEventListener('change', () => { c.ver = v; });
+      const l = el('label', 'lote-op'); l.append(x, el('span', '', tx)); filaV.append(l);
+    }
+    gv.append(filaV);
+    cuerpo.append(gv);
+    cuerpo.append(grupo('Quién la atiende', paEstado.usuarios.map((u) => [u.id, `${u.nombre} (${u.rol})`]), c.usuarios, (v, si) => poner(c.usuarios, v, si), 'Aún no hay usuarios de cocina. Créalos en Usuarios.'));
+
+    const abierto = paAbiertas.has(c._k);
+    cuerpo.hidden = !abierto;
+    const partes = [];
+    if (c.tipos.length) partes.push(c.tipos.map((v) => (TIPOS_CR.find((x) => x[0] === v) || [v, v])[1]).join(' + '));
+    if (c.categorias.length) partes.push(`${c.categorias.length} categoría${c.categorias.length === 1 ? '' : 's'}`);
+    if (c.productos.length) partes.push(`${c.productos.length} platillo${c.productos.length === 1 ? '' : 's'}`);
+    if (c.usuarios.length) partes.push(`${c.usuarios.length} cocinero${c.usuarios.length === 1 ? '' : 's'}`);
+    const resumen = el('p', 'cr-resumen ayuda', partes.length ? partes.join(' · ') : 'Sin reglas todavía');
+    resumen.hidden = abierto;
+    const flecha = el('button', 'btn chico cr-flecha', abierto ? '▾' : '▸'); flecha.type = 'button'; flecha.title = 'Compactar o expandir';
+    flecha.addEventListener('click', () => {
+      const ab = cuerpo.hidden; cuerpo.hidden = !ab; resumen.hidden = ab;
+      if (ab) paAbiertas.add(c._k); else paAbiertas.delete(c._k);
+      flecha.textContent = ab ? '▾' : '▸';
+    });
+    cab.prepend(flecha);
+    t.append(resumen, cuerpo);
+    caja.append(t);
+  });
+  acActualizar();
+}
+
+function paCargar(r) {
+  paEstado = r;
+  $('pa-activo').checked = r.activo;
+  paLista = r.parrillas.map((x) => ({ id: x.id, _k: 'p' + x.id, nombre: x.nombre, ver: x.ver || 'completo', color: x.color, tipos: [...x.tipos], categorias: [...x.categorias], productos: [...x.productos], usuarios: [...x.usuarios] }));
+  paPintar();
+  paBase = paSnap();
+  acActualizar();
+}
+
+$('btn-parrillas').addEventListener('click', async () => {
+  $('pa-error').textContent = '';
+  let r;
+  try { r = await pedir(API + 'admin/parrillas.php'); } catch (err) { avisar(err.message, true); return; }
+  paCargar(r);
+  abrirPagina(dlgParrillas, 'btn-parrillas');
+});
+$('pa-agregar').addEventListener('click', () => {
+  if (paLista.length >= 12) { $('pa-error').textContent = 'Máximo 12 parrillas.'; return; }
+  const k = 'n' + Date.now().toString(36);
+  paLista.push({ id: null, _k: k, nombre: `Parrilla ${paLista.length + 1}`, ver: 'completo', color: 'azul', tipos: [], categorias: [], productos: [], usuarios: [] });
+  paAbiertas.add(k);   // una parrilla nueva se abre para llenarla
+  paPintar();
+});
+$('pa-activo').addEventListener('change', () => acActualizar());
+$('pa-lista').addEventListener('input', () => setTimeout(acActualizar, 0));
+$('pa-lista').addEventListener('change', () => setTimeout(acActualizar, 0));
+
+/** Guarda las parrillas. Devuelve true si salió bien. */
+async function guardarParrillas() {
+  $('pa-error').textContent = '';
+  try {
+    const r = await enviarJson(API + 'admin/parrillas.php', { accion: 'guardar', activo: $('pa-activo').checked, parrillas: paLista.map(({ _k, ...x }) => x) });
+    paCargar(r);
+    avisar('Parrillas guardadas');
+    return true;
+  } catch (err) { $('pa-error').textContent = err.message; avisar(err.message, true); return false; }
+}
+PAG['dlg-parrillas'] = { sucio: paSucio, guardar: guardarParrillas };
