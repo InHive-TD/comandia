@@ -764,11 +764,11 @@ function abrirDetalle(p) {
   const img = $('dt-foto');
   if (p.foto) { img.src = '../' + p.foto; img.hidden = false; } else { img.removeAttribute('src'); img.hidden = true; }
   $('dt-agregar').hidden = !!p.agotado;
-  const agotar = $('dt-agotar');
-  if (agotar) {   // marcar / quitar «agotado hoy» desde el mismo detalle, junto a la ✕
-    agotar.textContent = p.agotado ? 'Habilitar' : 'Agotado';
-    agotar.title = p.agotado ? 'Volver a habilitar este platillo' : 'Marcar como agotado por hoy';
-    agotar.onclick = () => { dlgDetalle.close(); alternarAgotado(p); };
+  const sw = $('dt-agotar-sw');
+  if (sw) {   // interruptor «Agotado» junto a la ✕: no cambia solo, primero pregunta «¿Estás seguro?»
+    sw.checked = !!p.agotado;
+    $('dt-agotar').title = p.agotado ? 'Agotado hoy: toca para volver a habilitarlo' : 'Marcar como agotado por hoy';
+    sw.onclick = (ev) => { ev.preventDefault(); dlgDetalle.close(); alternarAgotado(p); };
   }
   $('dt-agregar').onclick = () => { dlgDetalle.close(); tocarProducto(p); };   // con modificadores abre sus opciones; sin ellos lo agrega directo
   dlgDetalle.showModal();

@@ -332,6 +332,7 @@ document.addEventListener('DOMContentLoaded', () => {
       principal.classList.add('dlg-ok');
       barra.append(principal);
     }
+    for (const x of acc.querySelectorAll('.dlg-agotar')) barra.append(x);   // interruptor junto a la ✕
     barra.append(cerrar);
     padre.prepend(barra);
     if (!acc.children.length) acc.remove();

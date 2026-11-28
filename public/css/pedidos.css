@@ -463,3 +463,7 @@ main.contenedor:has(#vista-pedido:not([hidden])) { padding-top: 0; }
 .dlg-foto-grande::backdrop { background: rgba(0,0,0,.88); }
 .dlg-foto-grande img { max-width: 96vw; max-height: 92vh; object-fit: contain; border-radius: 10px; }
 .fg-cerrar { position: fixed; top: 12px; right: 12px; width: 48px; height: 48px; border-radius: 50%; border: 0; background: #fff; color: #111; font-size: 1.4rem; cursor: pointer; z-index: 2; }
+
+.dlg-barra .dlg-agotar { flex: none; min-height: 46px; gap: 6px; font-size: .9rem; margin-left: auto; }
+.dlg-barra .dlg-agotar + .dlg-cerrar { margin-left: 0; }
+.dlg-barra .dlg-agotar input:checked + .slider { background: var(--color-peligro, #b3261e); }
