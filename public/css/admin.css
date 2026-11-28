@@ -843,7 +843,7 @@ body.menu-compacto .menu-desp-items { display: block; padding-left: 0; }
 .inv-nuevo { margin: .8rem 0; border: 1px solid #ddd; border-radius: 8px; padding: .6rem .8rem; }
 .inv-nuevo summary { cursor: pointer; font-weight: 600; }
 .inv-form { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: .6rem; margin-top: .6rem; align-items: end; }
-.inv-linea { display: grid; grid-template-columns: 2fr 1fr 1fr auto; gap: .4rem; margin: .4rem 0; }
+.inv-linea { display: grid; grid-template-columns: 2fr 1fr 1.4fr 1fr auto; gap: .4rem; margin: .4rem 0; }
 .inv-editor { border: 1px solid #601020; border-radius: 8px; padding: .6rem .8rem; margin: .8rem 0; }
 
 /* Formulario de modificador */
@@ -906,3 +906,19 @@ body.menu-compacto .menu-desp-items { display: block; padding-left: 0; }
 #dlg-receta-editor { width: min(640px, calc(100vw - 24px)); }
 @media (max-width: 520px) { .rc-linea, .rc-linea.con-modo { grid-template-columns: 1fr 5rem 4rem auto; } .rc-linea.con-modo select:first-child { grid-column: 1 / -1; } }
 .menu-desp[hidden] { display: none !important; }
+
+.inv-filtro { display: flex; align-items: center; gap: .5rem; margin: .4rem 0; }
+.inv-filtro select { max-width: 14rem; }
+.inv-cats { display: flex; flex-wrap: wrap; gap: .4rem; margin: .4rem 0; }
+.inv-cat { display: inline-flex; align-items: center; gap: .25rem; background: #f3eee9; border-radius: 999px; padding: .1rem .2rem .1rem .7rem; }
+.inv-cat .btn { padding: .1rem .4rem; min-height: 0; }
+.inv-cat-nueva { display: flex; gap: .4rem; max-width: 26rem; }
+.inv-pres { grid-column: 1 / -1; border-top: 1px solid #e5ddd5; padding-top: .5rem; }
+.inv-pres h4 { margin: 0 0 .2rem; }
+.inv-pres-fila { display: grid; grid-template-columns: 1.2fr .8fr 1fr auto 1fr 1fr 1fr auto; gap: .3rem; align-items: center; margin: .35rem 0; }
+.inv-pres-fila .inv-pres-res { grid-column: 1 / -2; color: #601020; }
+.inv-pres-fila .inv-de { color: #777; font-size: .8rem; }
+@media (max-width: 700px) { .inv-pres-fila { grid-template-columns: 1fr 1fr; } .inv-linea { grid-template-columns: 1fr 1fr; } }
+.inv-off { opacity: .55; text-decoration: line-through; }
+.inv-est { color: #777; }
+.inv-acc { display: inline-flex; gap: .3rem; flex-wrap: wrap; }

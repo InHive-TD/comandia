@@ -3,7 +3,7 @@ const dlgRecetas = $('dlg-recetas');
 const dlgRecetaEd = $('dlg-receta-editor');
 const rc = { datos: null, tab: 'platillos', q: '', abiertas: new Set(), editando: null };
 /* Familias de unidades convertibles (factor respecto a la base de cada familia). Una unidad propia (caja, bolsa…) solo se usa tal cual. */
-const RC_FACTOR = { mg: 0.001, g: 1, kg: 1000, oz: 28.3495, lb: 453.592, ml: 1, cl: 10, l: 1000, cdta: 5, cda: 15, taza: 240, pza: 1, docena: 12 };
+const RC_FACTOR = U_FACTOR;
 const RC_FAMILIAS = [['mg', 'g', 'kg', 'oz', 'lb'], ['ml', 'cl', 'l', 'cdta', 'cda', 'taza'], ['pza', 'docena']];
 const rcFamilia = (u) => RC_FAMILIAS.find((f) => f.includes(u)) || [u];
 const RC_TXT = UNIDAD_TXT;

@@ -6,7 +6,8 @@
  *   GET  /admin/inventario/estado                         → { activo, recetas }
  *   GET  /admin/inventario?sucursal=ID                    → insumos con existencia, proveedores, compras recientes y resumen
  *   GET  /admin/inventario/movimientos?sucursal=ID&insumo=ID  → últimos movimientos (kárdex)
- *   POST { accion: 'insumo_crear' | 'insumo_editar' | 'insumo_archivar', ... }       (solo el dueño)
+ *   POST { accion: 'insumo_crear' | 'insumo_editar' | 'insumo_archivar', ... }       (dueño: todos; gerente: crea los suyos y solo edita/archiva los suyos)
+ *   POST { accion: 'insumo_toggle', id, sucursal_id?, habilitado }                    (habilitar/deshabilitar en una sucursal)
  *   POST { accion: 'proveedor_crear' | 'proveedor_editar' | 'proveedor_archivar', ... }   (solo el dueño)
  *   POST { accion: 'compra', sucursal_id, proveedor_id?, referencia?, nota?, recibir, items: [{ insumo_id, cantidad, costo }] }
  *   POST { accion: 'compra_recibir' | 'compra_cancelar', id }
@@ -25,6 +26,18 @@ import { entero, esDuplicado, largo } from '../../util.js';
 
 /** Unidades estándar (peso, volumen, conteo). Cada empresa puede agregar las suyas (caja, bolsa, manojo…). */
 const UNIDADES = ['mg', 'g', 'kg', 'oz', 'lb', 'ml', 'cl', 'l', 'cdta', 'cda', 'taza', 'pza', 'docena'];
+/** Equivalencias dentro de una misma familia (valor en la unidad base de la familia: g, ml o pza). Una unidad propia no convierte. */
+const FACTOR: Record<string, [string, number]> = {
+  mg: ['peso', 0.001], g: ['peso', 1], kg: ['peso', 1000], oz: ['peso', 28.3495], lb: ['peso', 453.592],
+  ml: ['vol', 1], cl: ['vol', 10], l: ['vol', 1000], cdta: ['vol', 5], cda: ['vol', 15], taza: ['vol', 240],
+  pza: ['cont', 1], docena: ['cont', 12],
+};
+/** Unidad natural compatible (g, ml, pza) y cuántas vale una unidad madre. Las unidades propias son su propia unidad natural. */
+function estandarDe(unidad: string): [string, number] {
+  const f = FACTOR[unidad];
+  if (!f) return [unidad, 1];
+  return [f[0] === 'peso' ? 'g' : f[0] === 'vol' ? 'ml' : 'pza', f[1]];
+}
 const MOTIVOS_MERMA: Record<string, string> = {
   caducado: 'Caducó',
   danado: 'Dañado o se cayó',
@@ -73,6 +86,15 @@ async function mover(tx: Tx, o: { nid: number; sid: number; insumo: number; tipo
 async function existenciaActual(tx: Tx, insumo: number, sid: number): Promise<number> {
   const r = await tx.filas('SELECT cantidad FROM inv_existencias WHERE insumo_id = ? AND sucursal_id = ? FOR UPDATE', [insumo, sid]);
   return r[0] ? Number(r[0]['cantidad']) : 0;
+}
+
+/** Categorías de insumos en orden alfabético; adopta las que ya estaban escritas en algún insumo. */
+async function listarCategorias(nid: number): Promise<string[]> {
+  await ejecutar(
+    `INSERT IGNORE INTO inv_categorias (negocio_id, nombre) SELECT DISTINCT ?, categoria FROM inv_insumos WHERE negocio_id = ? AND categoria IS NOT NULL AND categoria <> ''`,
+    [nid, nid],
+  );
+  return (await filas('SELECT nombre FROM inv_categorias WHERE negocio_id = ? ORDER BY nombre', [nid])).map((c) => String(c['nombre']));
 }
 
 export async function rutasAdminInventario(app: FastifyInstance): Promise<void> {
@@ -131,10 +153,14 @@ export async function rutasAdminInventario(app: FastifyInstance): Promise<void> 
         if (!activo) return { ok: true, activo: false, recetas: false };
         const sid = await sucursal((req.query as Record<string, unknown>)['sucursal']);
         const insumos = await filas(
-          `SELECT i.id, i.nombre, i.categoria, i.unidad, i.costo, i.minimo, i.proveedor_id, i.activo, COALESCE(e.cantidad, 0) AS existencia
+          `SELECT i.id, i.nombre, i.categoria, i.unidad, i.costo, i.minimo, i.proveedor_id, i.activo, i.sucursal_id, i.estandar, i.factor_estandar,
+                  su.nombre AS sucursal_nombre, COALESCE(e.cantidad, 0) AS existencia,
+                  EXISTS(SELECT 1 FROM inv_insumo_off o WHERE o.insumo_id = i.id AND o.sucursal_id = ?) AS deshabilitado
              FROM inv_insumos i LEFT JOIN inv_existencias e ON e.insumo_id = i.id AND e.sucursal_id = ?
-            WHERE i.negocio_id = ? AND i.activo = 1 ORDER BY i.categoria IS NULL, i.categoria, i.nombre`,
-          [sid, nid],
+             LEFT JOIN sucursales su ON su.id = i.sucursal_id
+            WHERE i.negocio_id = ? AND i.activo = 1${yo.alcance === null ? '' : ' AND (i.sucursal_id IS NULL OR i.sucursal_id = ?)'}
+            ORDER BY i.categoria IS NULL, i.categoria, i.nombre`,
+          yo.alcance === null ? [sid, sid, nid] : [sid, sid, nid, yo.alcance],
         );
         const proveedores = await filas('SELECT id, nombre, contacto, telefono, correo, dias_entrega, minimo_compra, notas FROM inv_proveedores WHERE negocio_id = ? AND activo = 1 ORDER BY nombre', [nid]);
         const compras = await filas(
@@ -149,11 +175,19 @@ export async function rutasAdminInventario(app: FastifyInstance): Promise<void> 
             GROUP BY motivo ORDER BY valor DESC`,
           [nid, sid],
         );
-        const lista = insumos.map((i) => {
+        const pres = new Map<number, { id: number; nombre: string; factor: number; detalle: string | null; precio: number | null }[]>();
+        for (const p of await filas('SELECT id, insumo_id, nombre, factor, detalle, precio FROM inv_presentaciones WHERE negocio_id = ? ORDER BY id', [nid])) {
+          const k = Number(p['insumo_id']);
+          pres.set(k, [...(pres.get(k) ?? []), { id: Number(p['id']), nombre: String(p['nombre']), factor: Number(p['factor']), detalle: (p['detalle'] as string | null) ?? null, precio: p['precio'] === null ? null : Number(p['precio']) }]);
+        }
+        const todos = insumos.map((i) => {
           const existencia = Number(i['existencia']);
           const minimo = Number(i['minimo']);
-          return { id: Number(i['id']), nombre: i['nombre'], categoria: i['categoria'] ?? null, unidad: i['unidad'], costo: Number(i['costo']), minimo, proveedor_id: i['proveedor_id'] === null ? null : Number(i['proveedor_id']), existencia, bajo: minimo > 0 && existencia <= minimo };
+          const origen = i['sucursal_id'] === null ? null : Number(i['sucursal_id']);
+          return { sucursal_id: origen, sucursal: (i['sucursal_nombre'] as string | null) ?? null, deshabilitado: Number(i['deshabilitado']) === 1, propio: yo.alcance === null || origen === yo.alcance, estandar: (i['estandar'] as string | null) ?? String(i['unidad']), factor_estandar: Number(i['factor_estandar']), id: Number(i['id']), presentaciones: pres.get(Number(i['id'])) ?? [], nombre: i['nombre'], categoria: i['categoria'] ?? null, unidad: i['unidad'], costo: Number(i['costo']), minimo, proveedor_id: i['proveedor_id'] === null ? null : Number(i['proveedor_id']), existencia, bajo: minimo > 0 && existencia <= minimo };
         });
+        // Catálogo = todo lo que esta persona gestiona; lista de trabajo = lo habilitado y propio de la sucursal (generales + los de esa sucursal).
+        const lista = todos.filter((i) => !i.deshabilitado && (i.sucursal_id === null || i.sucursal_id === sid));
         return {
           ok: true,
           activo: true,
@@ -161,8 +195,11 @@ export async function rutasAdminInventario(app: FastifyInstance): Promise<void> 
           puede_editar_catalogo: yo.alcance === null,
           motivos_merma: Object.entries(MOTIVOS_MERMA).map(([id, nombre]) => ({ id, nombre })),
           unidades: UNIDADES,
+          categorias: await listarCategorias(nid),
           unidades_propias: (await filas('SELECT nombre FROM inv_unidades WHERE negocio_id = ? ORDER BY nombre', [nid])).map((u) => String(u['nombre'])),
+          puede_crear_insumos: true,
           insumos: lista,
+          catalogo: todos.filter((i) => i.sucursal_id === null || i.sucursal_id === sid || yo.alcance === null),
           proveedores: proveedores.map((p) => ({ id: Number(p['id']), nombre: p['nombre'], contacto: p['contacto'], telefono: p['telefono'], correo: p['correo'], dias_entrega: Number(p['dias_entrega']), minimo_compra: Number(p['minimo_compra']), notas: p['notas'] })),
           compras: compras.map((c) => ({ id: Number(c['id']), estado: c['estado'], referencia: c['referencia'], nota: c['nota'], total: Number(c['total']), fecha: c['creado_en'], recibida: c['recibida_en'], proveedor: c['proveedor'] ?? null })),
           resumen: {
@@ -180,8 +217,14 @@ export async function rutasAdminInventario(app: FastifyInstance): Promise<void> 
 
       /** El insumo debe ser de esta empresa. */
       const insumoPropio = async (id: number) => {
-        const i = await fila('SELECT id, nombre, unidad, costo FROM inv_insumos WHERE id = ? AND negocio_id = ? AND activo = 1', [id, nid]);
+        const i = await fila('SELECT id, nombre, unidad, costo, sucursal_id FROM inv_insumos WHERE id = ? AND negocio_id = ? AND activo = 1', [id, nid]);
         if (!i) throw new ErrorHttp(404, 'validacion', 'Ese insumo no existe.');
+        return i;
+      };
+      /** El administrador cambia cualquiera; un gerente solo los que su sucursal agregó (los generales solo se deshabilitan). */
+      const insumoMio = async (id: number) => {
+        const i = await insumoPropio(id);
+        if (yo.alcance !== null && Number(i['sucursal_id'] ?? 0) !== yo.alcance) throw new ErrorHttp(403, 'sin_permiso', 'Ese insumo es general: solo puedes deshabilitarlo en tu sucursal. Lo edita el administrador.');
         return i;
       };
       const proveedorOpcional = async (v: unknown): Promise<number | null> => {
@@ -196,7 +239,6 @@ export async function rutasAdminInventario(app: FastifyInstance): Promise<void> 
         /* ---------------- Catálogo de insumos ---------------- */
         case 'insumo_crear':
         case 'insumo_editar': {
-          soloDueno();
           const nombre = texto(d['nombre'], 'El nombre', 80, true) as string;
           const unidad = String(d['unidad'] ?? 'pza').trim();
           if (!UNIDADES.includes(unidad)) {
@@ -209,24 +251,101 @@ export async function rutasAdminInventario(app: FastifyInstance): Promise<void> 
           const costo = redondo(numero(d['costo'] ?? 0, 'El costo'), 4);
           const minimo = redondo(numero(d['minimo'] ?? 0, 'El mínimo'), 3);
           const categoria = texto(d['categoria'], 'La categoría', 40);
+          if (categoria && yo.alcance !== null && !(await fila('SELECT 1 AS x FROM inv_categorias WHERE negocio_id = ? AND nombre = ?', [nid, categoria]))) throw fallo('Elige una de las categorías existentes; el administrador crea las nuevas.');
+          if (categoria) await ejecutar('INSERT IGNORE INTO inv_categorias (negocio_id, nombre) VALUES (?, ?)', [nid, categoria]);
           const prov = await proveedorOpcional(d['proveedor_id']);
           try {
             if (accion === 'insumo_crear') {
-              const r = await ejecutar('INSERT INTO inv_insumos (negocio_id, nombre, categoria, unidad, costo, minimo, proveedor_id) VALUES (?, ?, ?, ?, ?, ?, ?)', [nid, nombre, categoria, unidad, costo, minimo, prov]);
+              const [est, fe] = estandarDe(unidad);
+              const r = await ejecutar('INSERT INTO inv_insumos (negocio_id, nombre, categoria, unidad, costo, minimo, proveedor_id, sucursal_id, creado_por, estandar, factor_estandar) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)', [nid, nombre, categoria, unidad, costo, minimo, prov, yo.alcance, yo.id, est, fe]);
               reply.code(201);
               return { ok: true, id: r.insertId };
             }
             const id = entero(d['id']);
-            await insumoPropio(id);
-            await ejecutar('UPDATE inv_insumos SET nombre = ?, categoria = ?, unidad = ?, costo = ?, minimo = ?, proveedor_id = ? WHERE id = ? AND negocio_id = ?', [nombre, categoria, unidad, costo, minimo, prov, id, nid]);
+            const previo = await insumoMio(id);
+            const antes = String(previo['unidad']);
+            let k = 1;   // cuántas unidades nuevas vale una unidad vieja (ej. kg → g: 1000)
+            if (antes !== unidad) {
+              const a = FACTOR[antes]; const b = FACTOR[unidad];
+              if (!a || !b || a[0] !== b[0]) throw fallo(`No se puede pasar de ${antes} a ${unidad} porque no son del mismo tipo (peso, volumen o conteo). Crea un insumo nuevo con esa unidad.`);
+              k = a[1] / b[1];
+            }
+            await transaccion(async (tx) => {
+              await tx.ejecutar('UPDATE inv_insumos SET nombre = ?, categoria = ?, unidad = ?, costo = ?, minimo = ?, proveedor_id = ?, estandar = ?, factor_estandar = ? WHERE id = ? AND negocio_id = ?', [nombre, categoria, unidad, costo, minimo, prov, ...estandarDe(unidad), id, nid]);   // costo y mínimo llegan ya en la unidad nueva (la pantalla los convierte)
+              if (k !== 1) {
+                // Todo lo ya guardado de este insumo se convierte a la unidad nueva: existencias, historial, compras y recetas.
+                await tx.ejecutar('UPDATE inv_existencias SET cantidad = cantidad * ? WHERE insumo_id = ?', [k, id]);
+                await tx.ejecutar('UPDATE inv_movimientos SET cantidad = cantidad * ?, costo = costo / ? WHERE insumo_id = ?', [k, k, id]);
+                await tx.ejecutar('UPDATE inv_compra_items SET cantidad = cantidad * ?, costo = costo / ? WHERE insumo_id = ?', [k, k, id]);
+                await tx.ejecutar('UPDATE inv_recetas SET cantidad = cantidad * ? WHERE insumo_id = ?', [k, id]);
+                await tx.ejecutar('UPDATE inv_receta_extras SET cantidad = cantidad * ? WHERE insumo_id = ?', [k, id]);
+                await tx.ejecutar('UPDATE inv_presentaciones SET factor = factor * ? WHERE insumo_id = ?', [k, id]);
+              }
+            });
             return { ok: true };
           } catch (e) {
             if (esDuplicado(e)) throw new ErrorHttp(409, 'validacion', 'Ya tienes un insumo con ese nombre.');
             throw e;
           }
         }
-        case 'insumo_archivar': {
+        case 'categoria_crear':
+        case 'categoria_renombrar':
+        case 'categoria_eliminar': {
+          // Categorías de insumos (solo el administrador). Eliminar NO borra insumos: quedan «Sin categoría».
           soloDueno();
+          const nombre = texto(d['nombre'], 'El nombre', 40, true) as string;
+          if (accion === 'categoria_crear') {
+            const r = await ejecutar('INSERT IGNORE INTO inv_categorias (negocio_id, nombre) VALUES (?, ?)', [nid, nombre]);
+            if (r.affectedRows === 0) throw new ErrorHttp(409, 'validacion', `Ya existe la categoría “${nombre}”.`);
+            reply.code(201);
+            return { ok: true };
+          }
+          await listarCategorias(nid);
+          const actual = String(d['actual'] ?? d['nombre'] ?? '').trim();
+          if (!(await fila('SELECT 1 AS x FROM inv_categorias WHERE negocio_id = ? AND nombre = ?', [nid, actual]))) throw new ErrorHttp(404, 'validacion', 'Esa categoría ya no existe.');
+          if (accion === 'categoria_eliminar') {
+            await transaccion(async (tx) => {
+              await tx.ejecutar('UPDATE inv_insumos SET categoria = NULL WHERE negocio_id = ? AND categoria = ?', [nid, actual]);
+              await tx.ejecutar('DELETE FROM inv_categorias WHERE negocio_id = ? AND nombre = ?', [nid, actual]);
+            });
+            return { ok: true };
+          }
+          if (nombre.toLowerCase() !== actual.toLowerCase() && (await fila('SELECT 1 AS x FROM inv_categorias WHERE negocio_id = ? AND nombre = ?', [nid, nombre]))) throw new ErrorHttp(409, 'validacion', `Ya existe la categoría “${nombre}”.`);
+          await transaccion(async (tx) => {
+            await tx.ejecutar('UPDATE inv_categorias SET nombre = ? WHERE negocio_id = ? AND nombre = ?', [nombre, nid, actual]);
+            await tx.ejecutar('UPDATE inv_insumos SET categoria = ? WHERE negocio_id = ? AND categoria = ?', [nombre, nid, actual]);
+          });
+          return { ok: true };
+        }
+        case 'presentaciones_guardar': {
+          // Presentaciones de compra de un insumo (caja, costal…): reemplaza la lista completa. `factor` va en unidades madre.
+          const id = entero(d['insumo_id']);
+          await insumoMio(id);
+          const crudas = Array.isArray(d['presentaciones']) ? (d['presentaciones'] as Record<string, unknown>[]).slice(0, 20) : [];
+          const lista = crudas.map((p) => ({
+            nombre: texto(p['nombre'], 'El nombre de la presentación', 40, true) as string,
+            factor: redondo(numero(p['factor'], 'El contenido', { min: 0, permitirCero: false }), 4),
+            detalle: texto(p['detalle'], 'El detalle', 80),
+            precio: String(p['precio'] ?? '').trim() === '' ? null : redondo(numero(p['precio'], 'El precio'), 2),
+          }));
+          await transaccion(async (tx) => {
+            await tx.ejecutar('DELETE FROM inv_presentaciones WHERE insumo_id = ? AND negocio_id = ?', [id, nid]);
+            for (const p of lista) await tx.ejecutar('INSERT INTO inv_presentaciones (negocio_id, insumo_id, nombre, factor, detalle, precio) VALUES (?, ?, ?, ?, ?, ?)', [nid, id, p.nombre, p.factor, p.detalle, p.precio]);
+          });
+          return { ok: true };
+        }
+        case 'insumo_toggle': {
+          // Habilitar / deshabilitar un insumo en una sucursal (no borra nada).
+          const sid = await sucursal(d['sucursal_id']);
+          const id = entero(d['id']);
+          const i = await insumoPropio(id);
+          if (i['sucursal_id'] !== null && Number(i['sucursal_id']) !== sid) throw new ErrorHttp(404, 'validacion', 'Ese insumo no existe en esta sucursal.');
+          if (d['habilitado']) await ejecutar('DELETE FROM inv_insumo_off WHERE insumo_id = ? AND sucursal_id = ?', [id, sid]);
+          else await ejecutar('INSERT IGNORE INTO inv_insumo_off (insumo_id, sucursal_id) VALUES (?, ?)', [id, sid]);
+          return { ok: true };
+        }
+        case 'insumo_archivar': {
+          await insumoMio(entero(d['id']));
           // Se archiva (no se borra) para no perder el historial de movimientos.
           await ejecutar('UPDATE inv_insumos SET activo = 0, nombre = CONCAT(nombre, \' (archivado \', id, \')\') WHERE id = ? AND negocio_id = ?', [entero(d['id']), nid]);
           return { ok: true };

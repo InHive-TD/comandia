@@ -21,7 +21,7 @@ async function iniciarInventario() {
   try {
     const e = await pedir(API + 'admin/inventario/estado.php');
     $('grupo-inventario').hidden = !e.activo;
-    $('btn-inv-insumos').hidden = esGerente;                       // el catálogo y las recetas los edita el administrador
+    // Insumos: el gerente también entra (agrega los suyos y deshabilita los generales); las recetas siguen siendo del administrador
     $('btn-inv-recetas').hidden = esGerente || !e.recetas;
   } catch { $('grupo-inventario').hidden = true; }
 }
@@ -62,43 +62,162 @@ function pintarInventario() {
   if (!pg.tabs.includes(inv.tab)) inv.tab = pg.tabs[0];
   $('inv-tabs').hidden = pg.tabs.length < 2;
   for (const b of document.querySelectorAll('#inv-tabs [data-tab]')) { b.hidden = !pg.tabs.includes(b.dataset.tab); b.classList.toggle('activo', b.dataset.tab === inv.tab); }
-  $('inv-catalogo-aviso').hidden = d.puede_editar_catalogo;
+  $('inv-catalogo-aviso').hidden = d.puede_editar_catalogo || inv.tab !== 'proveedores';
   const r = d.resumen;
   const res = el('div', 'inv-resumen');
   for (const [t, v] of [['Valor del inventario', dinero.format(r.valor_inventario)], ['Insumos por debajo del mínimo', String(r.bajo_minimo)], ['Mermas (30 días)', dinero.format(r.mermas_30d)]]) {
     const k = el('div', 'inv-kpi'); k.append(el('small', '', t), el('strong', '', v)); res.append(k);
   }
   if (pg.kpi) c.append(res);
-  ({ existencias: tabExistencias, insumos: tabInsumos, compras: tabCompras, mermas: tabMermas, proveedores: tabProveedores, movimientos: tabMovimientos })[inv.tab](c, d);
+  // Filtro por categoría de insumo (se comparte entre existencias, insumos, compras y mermas)
+  let dv = d;
+  if (['existencias', 'insumos', 'compras', 'mermas'].includes(inv.tab) && d.categorias.length) {
+    if (inv.cat && !d.categorias.includes(inv.cat) && inv.cat !== '__sin') inv.cat = '';
+    const fs = selector([['', 'Todas las categorías'], ...d.categorias.map((k) => [k, k]), ['__sin', 'Sin categoría']], inv.cat || '');
+    fs.addEventListener('change', () => { inv.cat = fs.value; pintarInventario(); });
+    const fb = el('div', 'inv-filtro'); fb.append(el('small', '', 'Categoría:'), fs); c.append(fb);
+    if (inv.cat) dv = { ...d, insumos: d.insumos.filter((i) => (inv.cat === '__sin' ? !i.categoria : i.categoria === inv.cat)) };
+  }
+  ({ existencias: tabExistencias, insumos: tabInsumos, compras: tabCompras, mermas: tabMermas, proveedores: tabProveedores, movimientos: tabMovimientos })[inv.tab](c, dv);
+}
+
+/* Equivalencias dentro de una familia (peso, volumen, conteo). Una unidad propia no convierte con nada. */
+const U_FACTOR = { mg: 0.001, g: 1, kg: 1000, oz: 28.3495, lb: 453.592, ml: 1, cl: 10, l: 1000, cdta: 5, cda: 15, taza: 240, pza: 1, docena: 12 };
+const U_FAMILIA = { mg: 'peso', g: 'peso', kg: 'peso', oz: 'peso', lb: 'peso', ml: 'vol', cl: 'vol', l: 'vol', cdta: 'vol', cda: 'vol', taza: 'vol', pza: 'cont', docena: 'cont' };
+/** Cuántas `base` vale una unidad `x` (NaN si no se pueden convertir). */
+function uConv(x, base) {
+  if (x === base) return 1;
+  return U_FAMILIA[x] && U_FAMILIA[x] === U_FAMILIA[base] ? U_FACTOR[x] / U_FACTOR[base] : NaN;
+}
+const r6 = (n) => Math.round(n * 1e6) / 1e6;
+
+/** Lista de unidades para un <select>: estándar por grupo + las propias de la empresa (+ opcional «Otra unidad…»). */
+function llenarUnidades(sel, d, { otra = false, extra = null } = {}) {
+  for (const [g, lista] of UNIDAD_GRUPOS) { const og = document.createElement('optgroup'); og.label = g; for (const [v, t] of lista) og.append(new Option(t, v)); sel.append(og); }
+  const propias = [...(d.unidades_propias || [])];
+  if (extra && !d.unidades.includes(extra) && !propias.includes(extra)) propias.push(extra);
+  if (propias.length) { const og = document.createElement('optgroup'); og.label = 'Mis unidades'; for (const u of propias) og.append(new Option(u, u)); sel.append(og); }
+  if (otra) sel.append(new Option('＋ Otra unidad…', '__otra'));
+}
+
+/** Contenido en unidades madre de una presentación: «Trae n u» o «Trae n u (pzas) de m u2» (ej. 24 pza de 355 ml). */
+function presFactor(r, base) {
+  const n = Number(r.n); const m = Number(r.m);
+  if (!(n > 0)) return NaN;
+  if (m > 0) {
+    const cuenta = n * (r.u === 'docena' ? 12 : 1);          // cuántas piezas trae
+    const tam = uConv(r.u2, base);                            // cuánto vale cada pieza, en la unidad madre
+    if (Number.isFinite(tam)) return cuenta * m * tam;
+    if (base === 'pza' || U_FAMILIA[base] === 'cont') return cuenta;   // la unidad madre se cuenta en piezas: el tamaño es solo informativo
+    return NaN;
+  }
+  return n * uConv(r.u, base);
+}
+const presTexto = (r) => (Number(r.m) > 0 ? `${r.n} ${UNIDAD_TXT[r.u]} de ${r.m} ${UNIDAD_TXT[r.u2]}` : `${r.n} ${UNIDAD_TXT[r.u]}`);
+
+/** Editor de presentaciones de compra (caja, costal…) de un insumo; devuelve { nodo, leer(base) }. */
+function editorPresentaciones(d, i, baseSel, costoInput) {
+  const caja = el('div', 'inv-pres');
+  caja.append(el('h4', '', 'Presentaciones de compra'));
+  const ayuda = el('small', 'ef-nota', 'Cómo lo compras (caja, costal, paquete…). Con el precio se calcula solo el costo por unidad madre.');
+  caja.append(ayuda);
+  const filas = el('div', 'inv-pres-filas'); caja.append(filas);
+  const base = () => baseSel();
+  const nuevaFila = (p) => {
+    const dat = (() => { try { return JSON.parse(p?.detalle || ''); } catch { return null; } })() || { n: p ? p.factor : '', u: baseSel(), m: '', u2: 'ml' };
+    const nombre = entrada('text', p?.nombre || '', { maxLength: 40, placeholder: 'Ej. Caja, Costal' });
+    const n = entrada('number', dat.n, { min: 0, step: 'any', placeholder: 'Trae' });
+    const u = el('select'); llenarUnidades(u, d, { extra: dat.u }); u.value = dat.u;
+    const m = entrada('number', dat.m || '', { min: 0, step: 'any', placeholder: 'de c/u (opc.)' });
+    const u2 = el('select'); llenarUnidades(u2, d, { extra: dat.u2 }); u2.value = dat.u2 || 'ml';
+    const precio = entrada('number', p?.precio ?? '', { min: 0, step: '0.01', placeholder: 'Precio $' });
+    const res = el('small', 'inv-pres-res');
+    const f = el('div', 'inv-pres-fila');
+    const usar = boton('Usar como costo', () => { const fa = presFactor({ n: n.value, u: u.value, m: m.value, u2: u2.value }, base()); if (Number.isFinite(fa) && fa > 0 && Number(precio.value) > 0) costoInput.value = String(r6(Number(precio.value) / fa)); });
+    const calc = () => {
+      const fa = presFactor({ n: n.value, u: u.value, m: m.value, u2: u2.value }, base());
+      const pr = Number(precio.value); const piezas = Number(n.value) * (u.value === 'docena' ? 12 : 1);
+      const mon = (x) => r6(x).toLocaleString('es-MX', { maximumFractionDigits: 4 });
+      const porPieza = Number(m.value) > 0 && pr > 0 && piezas > 0 ? ` · $${mon(pr / piezas)} por ${UNIDAD_TXT[u.value] === 'docena' ? 'pieza' : UNIDAD_TXT[u.value]}` : '';
+      const unit = pr > 0 && fa > 0 ? `${porPieza} · $${mon(pr / fa)} por ${UNIDAD_TXT[base()]}` : '';
+      res.textContent = Number.isFinite(fa) && fa > 0 ? `= ${num(fa)} ${UNIDAD_TXT[base()]}${unit}` : (n.value ? 'No se puede convertir a la unidad madre' : '');
+      usar.hidden = !(Number.isFinite(fa) && fa > 0 && Number(precio.value) > 0);
+    };
+    for (const x of [nombre, n, u, m, u2, precio]) x.addEventListener('input', calc);
+    baseSel.cambios.push(calc);
+    f.append(nombre, n, u, el('span', 'inv-de', 'de'), m, u2, precio, boton('✕', () => f.remove()), res, usar);
+    f.leer = () => {
+      if (!nombre.value.trim() && !n.value) return null;
+      const fa = presFactor({ n: n.value, u: u.value, m: m.value, u2: u2.value }, base());
+      return { ok: !!nombre.value.trim() && Number.isFinite(fa) && fa > 0, nombre: nombre.value.trim(), factor: fa, detalle: JSON.stringify({ n: Number(n.value), u: u.value, m: Number(m.value) || '', u2: u2.value }), precio: precio.value };
+    };
+    filas.append(f); calc();
+  };
+  for (const p of (i?.presentaciones || [])) nuevaFila(p);
+  caja.append(boton('＋ Presentación', () => nuevaFila(null)));
+  return { nodo: caja, leer: () => [...filas.children].map((f) => f.leer()).filter(Boolean) };
 }
 
 function formInsumo(i) {
   const d = inv.datos;
   const nombre = entrada('text', i?.nombre, { maxLength: 80, placeholder: 'Ej. Tortilla de maíz' });
-  const cat = entrada('text', i?.categoria, { maxLength: 40, placeholder: 'Ej. Abarrotes, Carnes…' });
-  // Unidad: estándar por grupos + las propias de la empresa + «Otra unidad…» (se escribe y queda guardada para los demás insumos)
-  const uniSel = el('select');
-  for (const [g, lista] of UNIDAD_GRUPOS) { const og = document.createElement('optgroup'); og.label = g; for (const [v, t] of lista) og.append(new Option(t, v)); uniSel.append(og); }
-  const propias = [...(d.unidades_propias || [])];
-  if (i && !d.unidades.includes(i.unidad) && !propias.includes(i.unidad)) propias.push(i.unidad);
-  if (propias.length) { const og = document.createElement('optgroup'); og.label = 'Mis unidades'; for (const u of propias) og.append(new Option(u, u)); uniSel.append(og); }
-  uniSel.append(new Option('＋ Otra unidad…', '__otra'));
-  uniSel.value = i?.unidad || 'pza';
+  // Categoría: las de la empresa + «Nueva categoría…»
+  const catSel = el('select');
+  catSel.append(new Option('Sin categoría', ''));
+  for (const c of d.categorias) catSel.append(new Option(c, c));
+  if (d.puede_editar_catalogo) catSel.append(new Option('＋ Nueva categoría…', '__nueva'));
+  catSel.value = i?.categoria || '';
+  const catNueva = entrada('text', '', { maxLength: 40, placeholder: 'Ej. Carnes, Abarrotes, Lácteos' }); catNueva.hidden = true;
+  catSel.addEventListener('change', () => { catNueva.hidden = catSel.value !== '__nueva'; if (!catNueva.hidden) catNueva.focus(); });
+  const cat = el('div', 'inv-unidad'); cat.append(catSel, catNueva);
+  Object.defineProperty(cat, 'value', { get: () => (catSel.value === '__nueva' ? catNueva.value.trim() : catSel.value) });
+  // Unidad madre: en ella se guarda todo (existencias, costo, recetas). Al cambiarla dentro de la misma familia se convierte lo escrito.
+  const uniSel = el('select'); llenarUnidades(uniSel, d, { otra: true, extra: i?.unidad });
+  uniSel.value = i?.unidad || 'g';
   const uniNueva = entrada('text', '', { maxLength: 20, placeholder: 'Ej. caja, bolsa, manojo, lata' }); uniNueva.hidden = true;
-  uniSel.addEventListener('change', () => { uniNueva.hidden = uniSel.value !== '__otra'; if (!uniNueva.hidden) uniNueva.focus(); });
+  const costo = entrada('number', i?.costo ?? 0, { min: 0, step: 'any' });
+  const min = entrada('number', i?.minimo ?? 0, { min: 0, step: 'any' });
+  const valorUni = () => (uniSel.value === '__otra' ? uniNueva.value.trim() : uniSel.value);
+  let uniPrevia = uniSel.value;
+  const baseSel = () => valorUni() || 'pza'; baseSel.cambios = [];
+  uniSel.addEventListener('change', () => {
+    uniNueva.hidden = uniSel.value !== '__otra'; if (!uniNueva.hidden) uniNueva.focus();
+    const k = uConv(uniPrevia, uniSel.value);   // cuántas unidades nuevas vale una vieja
+    if (Number.isFinite(k) && k !== 1) {
+      if (Number(costo.value) > 0) costo.value = String(r6(Number(costo.value) / k));
+      if (Number(min.value) > 0) min.value = String(r6(Number(min.value) * k));
+    }
+    if (uniSel.value !== '__otra') uniPrevia = uniSel.value;
+    for (const fn of baseSel.cambios) fn();
+  });
+  uniNueva.addEventListener('input', () => { for (const fn of baseSel.cambios) fn(); });
   const uni = el('div', 'inv-unidad'); uni.append(uniSel, uniNueva);
-  Object.defineProperty(uni, 'value', { get: () => (uniSel.value === '__otra' ? uniNueva.value.trim() : uniSel.value) });
-  const costo = entrada('number', i?.costo ?? 0, { min: 0, step: '0.01' });
-  const min = entrada('number', i?.minimo ?? 0, { min: 0, step: '0.001' });
   const prov = selector([['', 'Sin proveedor'], ...d.proveedores.map((p) => [p.id, p.nombre])], i?.proveedor_id ?? '');
+  const etqUni = el('label', ''); etqUni.append(document.createTextNode('Unidad madre '), tipInv('Es la unidad en la que se guarda todo: existencias, costo y recetas (por ejemplo gramos para la carne, ml para líquidos, pza para piezas). Cambiarla convierte lo ya guardado si son del mismo tipo (kg ↔ g).'), uni);
+  const etqCosto = el('label', ''); const costoTxt = document.createTextNode('Costo por unidad madre '); etqCosto.append(costoTxt, tipInv('Lo que cuesta UNA unidad madre (un gramo, un ml, una pieza). Puedes calcularlo con una presentación de compra más abajo.'), costo);
   const f = el('div', 'inv-form');
-  f.append(campo('Nombre', nombre), campo('Categoría', cat), campo('Unidad', uni), campo('Costo por unidad', costo), campo('Mínimo (avisa al llegar a esta cantidad)', min), campo('Proveedor habitual', prov));
+  f.append(campo('Nombre', nombre), campo('Categoría', cat), etqUni, etqCosto, campo('Mínimo (avisa al llegar a esta cantidad)', min), campo('Proveedor habitual', prov));
+  const pres = editorPresentaciones(d, i, baseSel, costo);
+  pres.nodo.style.gridColumn = '1 / -1'; f.append(pres.nodo);
   const fila = el('div', 'acciones-dialogo');
-  fila.append(boton(i ? 'Guardar' : 'Agregar insumo', () => invEnviar({ accion: i ? 'insumo_editar' : 'insumo_crear', id: i?.id, nombre: nombre.value, categoria: cat.value, unidad: uni.value, costo: costo.value, minimo: min.value, proveedor_id: prov.value }, i ? 'Insumo actualizado' : 'Insumo agregado'), 'btn primario'));
+  fila.append(boton(i ? 'Guardar' : 'Agregar insumo', async () => {
+    invError('');
+    const lp = pres.leer();
+    if (lp.some((x) => !x.ok)) { invError('Cada presentación necesita nombre y un contenido que se pueda convertir a la unidad madre (o bórrala).'); return; }
+    try {
+      const r = await enviarJson(API + 'admin/inventario.php', { accion: i ? 'insumo_editar' : 'insumo_crear', id: i?.id, nombre: nombre.value, categoria: cat.value, unidad: valorUni(), costo: costo.value, minimo: min.value, proveedor_id: prov.value });
+      const idIns = i ? i.id : r.id;
+      if (lp.length || (i?.presentaciones || []).length) await enviarJson(API + 'admin/inventario.php', { accion: 'presentaciones_guardar', insumo_id: idIns, presentaciones: lp.map((x) => ({ nombre: x.nombre, factor: x.factor, detalle: x.detalle, precio: x.precio })) });
+      avisar(i ? 'Insumo actualizado' : 'Insumo agregado');
+      await cargarInventario();
+    } catch (err) { invError(err.message); }
+  }, 'btn primario'));
   if (i) fila.append(boton('Archivar', async () => { if (await confirmar('¿Archivar ' + i.nombre + '? Conserva su historial.')) invEnviar({ accion: 'insumo_archivar', id: i.id }, 'Insumo archivado'); }));
   f.append(fila);
   return f;
 }
+/** Signo de información con texto al pasar el cursor (mismo estilo que en el resto del panel). */
+function tipInv(texto) { const t = el('span', 'tip', 'i'); t.dataset.tip = texto; t.tabIndex = 0; return t; }
 
 function tabExistencias(c, d) {
   const filas = d.insumos.map((i) => [
@@ -123,14 +242,45 @@ function tabExistencias(c, d) {
 
 /** Catálogo de ingredientes: unidad, costo, mínimo y proveedor (solo el administrador). */
 function tabInsumos(c, d) {
-  const filas = d.insumos.map((i) => [
-    i.nombre, i.categoria || '—', UNIDAD_TXT[i.unidad], dinero.format(i.costo), i.minimo ? num(i.minimo) + ' ' + UNIDAD_TXT[i.unidad] : '—',
-    (d.proveedores.find((p) => p.id === i.proveedor_id) || {}).nombre || '—',
-    d.puede_editar_catalogo ? boton('Editar', () => { const w = $('inv-editor'); w.replaceChildren(el('h3', '', 'Editar ' + i.nombre), formInsumo(i)); w.hidden = false; w.scrollIntoView({ behavior: 'smooth' }); }) : '',
-  ]);
-  c.append(filas.length ? tabla(['Insumo', 'Categoría', 'Unidad', 'Costo', 'Mínimo', 'Proveedor', ''], filas) : el('p', 'ayuda', 'Aún no hay insumos. Agrega el primero.'));
+  const dueno = d.puede_editar_catalogo;
+  const cat = d.catalogo || d.insumos;
+  const abrir = (i) => { const w = $('inv-editor'); w.replaceChildren(el('h3', '', 'Editar ' + i.nombre), formInsumo(i)); w.hidden = false; w.scrollIntoView({ behavior: 'smooth' }); };
+  const vis = inv.cat ? cat.filter((i) => (inv.cat === '__sin' ? !i.categoria : i.categoria === inv.cat)) : cat;
+  const filas = vis.map((i) => {
+    const acc = el('span', 'inv-acc');
+    if (i.propio) acc.append(boton('Editar', () => abrir(i)));
+    // Deshabilitar solo afecta a la sucursal que se está viendo; los generales nunca se borran desde una sucursal.
+    if (i.sucursal_id === null || i.sucursal_id === Number(inv.sucursal)) acc.append(boton(i.deshabilitado ? 'Habilitar' : 'Deshabilitar', () => invEnviar({ accion: 'insumo_toggle', id: i.id, sucursal_id: inv.sucursal, habilitado: i.deshabilitado }, i.deshabilitado ? 'Insumo habilitado' : 'Insumo deshabilitado')));
+    const u = UNIDAD_TXT[i.unidad];
+    const est = i.estandar && i.estandar !== i.unidad ? el('small', 'inv-est', ' ≈ ' + num(i.factor_estandar) + ' ' + UNIDAD_TXT[i.estandar]) : '';
+    const nom = el('span', i.deshabilitado ? 'inv-off' : ''); nom.append(i.nombre, i.deshabilitado ? ' (deshabilitado)' : '');
+    const unid = el('span'); unid.append(u, est);
+    const origen = i.sucursal_id === null ? 'General' : (i.sucursal || 'Sucursal');
+    return [nom, i.categoria || '—', unid, dinero.format(i.costo), i.minimo ? num(i.minimo) + ' ' + u : '—',
+      (d.proveedores.find((p) => p.id === i.proveedor_id) || {}).nombre || '—', origen, acc];
+  });
+  c.append(filas.length ? tabla(['Insumo', 'Categoría', 'Unidad madre', 'Costo', 'Mínimo', 'Proveedor', 'Origen', ''], filas) : el('p', 'ayuda', 'Aún no hay insumos. Agrega el primero.'));
   const w = el('div', 'inv-editor'); w.id = 'inv-editor'; w.hidden = true; c.append(w);
-  if (d.puede_editar_catalogo) { const n = el('details', 'inv-nuevo'); n.open = !filas.length; n.append(el('summary', '', '+ Nuevo insumo'), formInsumo(null)); c.append(n); }
+  if (dueno) c.append(panelCategorias(inv.datos));
+  const n = el('details', 'inv-nuevo'); n.open = !filas.length; n.append(el('summary', '', '+ Nuevo insumo'), formInsumo(null)); c.append(n);
+}
+
+/** Categorías de insumos (carnes, abarrotes…): se usan al filtrar existencias, compras, mermas y proveedores. */
+function panelCategorias(d) {
+  const det = el('details', 'inv-nuevo'); det.open = !d.categorias.length;
+  det.append(el('summary', '', 'Categorías de insumos'));
+  const lista = el('div', 'inv-cats');
+  for (const k of d.categorias) {
+    const ch = el('span', 'inv-cat');
+    ch.append(el('span', '', k),
+      boton('✎', async () => { const n = prompt('Nuevo nombre de la categoría', k); if (n && n.trim() && n.trim() !== k) invEnviar({ accion: 'categoria_renombrar', actual: k, nombre: n.trim() }, 'Categoría renombrada'); }),
+      boton('✕', async () => { if (await confirmar('¿Eliminar la categoría ' + k + '? Sus insumos quedan sin categoría.')) invEnviar({ accion: 'categoria_eliminar', nombre: k }, 'Categoría eliminada'); }));
+    lista.append(ch);
+  }
+  const nueva = entrada('text', '', { maxLength: 40, placeholder: 'Nueva categoría (Ej. Carnes)' });
+  const fila = el('div', 'inv-cat-nueva'); fila.append(nueva, boton('＋ Agregar', () => { if (nueva.value.trim()) invEnviar({ accion: 'categoria_crear', nombre: nueva.value.trim() }, 'Categoría agregada'); }, 'btn primario'));
+  det.append(lista, fila);
+  return det;
 }
 
 function tabCompras(c, d) {
@@ -143,10 +293,25 @@ function tabCompras(c, d) {
     const ins = selector(d.insumos.map((i) => [i.id, i.nombre + ' (' + UNIDAD_TXT[i.unidad] + ')']), d.insumos[0]?.id);
     const cant = entrada('number', '', { min: 0, step: '0.001', placeholder: 'Cantidad' });
     const cos = entrada('number', '', { min: 0, step: '0.01', placeholder: 'Costo unitario' });
+    const pres = el('select');
     const sel = () => d.insumos.find((x) => String(x.id) === ins.value);
-    ins.addEventListener('change', () => { if (sel()) cos.value = sel().costo || ''; });
-    if (sel()) cos.value = sel().costo || '';
-    const f = el('div', 'inv-linea'); f.append(ins, cant, cos, boton('✕', () => f.remove())); f._v = () => ({ insumo_id: ins.value, cantidad: cant.value, costo: cos.value });
+    // Opciones de compra: la unidad madre, otras unidades de su familia y las presentaciones (caja, costal…). Todo se convierte a unidad madre al guardar.
+    const opciones = () => {
+      const i = sel(); pres.replaceChildren(); if (!i) return [];
+      const o = [{ v: 'u:' + i.unidad, t: UNIDAD_TXT[i.unidad], k: 1, costoK: 1 }];
+      for (const u of Object.keys(U_FACTOR)) { const k = uConv(u, i.unidad); if (u !== i.unidad && Number.isFinite(k)) o.push({ v: 'u:' + u, t: UNIDAD_TXT[u], k, costoK: k }); }
+      for (const pr of i.presentaciones || []) o.push({ v: 'p:' + pr.id, t: pr.nombre + ' (' + presTexto(JSON.parse(pr.detalle || 'null') || { n: pr.factor, u: i.unidad }) + ')', k: pr.factor, costoK: pr.factor, precio: pr.precio });
+      for (const x of o) pres.append(new Option(x.t, x.v));
+      return o;
+    };
+    let ops = opciones();
+    const cur = () => ops.find((x) => x.v === pres.value) || ops[0];
+    const poner = () => { const i = sel(); const o = cur(); if (!i || !o) return; cos.value = o.precio > 0 ? o.precio : (i.costo ? r6(i.costo * o.costoK) : ''); cos.placeholder = 'Costo por ' + o.t.split(' (')[0]; };
+    ins.addEventListener('change', () => { ops = opciones(); poner(); });
+    pres.addEventListener('change', poner);
+    poner();
+    const f = el('div', 'inv-linea'); f.append(ins, cant, pres, cos, boton('✕', () => f.remove()));
+    f._v = () => { const o = cur(); const k = o ? o.k : 1; return { insumo_id: ins.value, cantidad: cant.value === '' ? '' : r6(Number(cant.value) * k), costo: cos.value === '' ? '' : r6(Number(cos.value) / k) }; };
     lineas.append(f);
   };
   if (d.insumos.length) agregarLinea(); else n.append(el('p', 'ayuda', 'Primero agrega insumos en Existencias.'));

@@ -345,6 +345,40 @@ async function actualizarV2(): Promise<void> {
     nombre VARCHAR(20) NOT NULL,
     PRIMARY KEY (negocio_id, nombre)
   ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci`);
+  // Alcance del insumo: sucursal_id NULL = general (lo creó el administrador de la empresa y aparece en todas las sucursales);
+  // con valor = lo creó el administrador de esa sucursal. `estandar`/`factor_estandar`: la unidad natural compatible (g, ml, pza)
+  // y cuántas de ellas vale una unidad madre, para calcular siempre con las mismas unidades.
+  await asegurarColumna('inv_insumos', 'sucursal_id', 'INT UNSIGNED NULL');
+  await asegurarColumna('inv_insumos', 'creado_por', 'INT UNSIGNED NULL');
+  await asegurarColumna('inv_insumos', 'estandar', 'VARCHAR(20) NULL');
+  await asegurarColumna('inv_insumos', 'factor_estandar', 'DECIMAL(18,6) NOT NULL DEFAULT 1');
+  await ejecutar(`UPDATE inv_insumos SET estandar = CASE
+      WHEN unidad IN ('mg','g','kg','oz','lb') THEN 'g' WHEN unidad IN ('ml','cl','l','cdta','cda','taza') THEN 'ml' WHEN unidad IN ('pza','docena') THEN 'pza' ELSE unidad END,
+    factor_estandar = CASE unidad WHEN 'mg' THEN 0.001 WHEN 'kg' THEN 1000 WHEN 'oz' THEN 28.3495 WHEN 'lb' THEN 453.592 WHEN 'cl' THEN 10 WHEN 'l' THEN 1000 WHEN 'cdta' THEN 5 WHEN 'cda' THEN 15 WHEN 'taza' THEN 240 WHEN 'docena' THEN 12 ELSE 1 END
+    WHERE estandar IS NULL`);
+  await ejecutar(`CREATE TABLE IF NOT EXISTS inv_insumo_off (
+    insumo_id INT UNSIGNED NOT NULL,
+    sucursal_id INT UNSIGNED NOT NULL,
+    PRIMARY KEY (insumo_id, sucursal_id)
+  ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4`);
+  // Categorías de insumos (Carnes, Abarrotes, Lácteos…): el insumo guarda el nombre en inv_insumos.categoria.
+  await ejecutar(`CREATE TABLE IF NOT EXISTS inv_categorias (
+    negocio_id INT UNSIGNED NOT NULL,
+    nombre VARCHAR(40) NOT NULL,
+    orden INT NOT NULL DEFAULT 0,
+    PRIMARY KEY (negocio_id, nombre)
+  ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci`);
+  // Presentaciones de compra de un insumo (caja, costal, paquete…): `factor` = cuántas unidades madre trae una presentación.
+  await ejecutar(`CREATE TABLE IF NOT EXISTS inv_presentaciones (
+    id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+    negocio_id INT UNSIGNED NOT NULL,
+    insumo_id INT UNSIGNED NOT NULL,
+    nombre VARCHAR(40) NOT NULL,
+    factor DECIMAL(16,4) NOT NULL,
+    detalle VARCHAR(80) NULL,
+    precio DECIMAL(12,2) NULL,
+    INDEX idx_invpres_insumo (insumo_id)
+  ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci`);
   // Recetas: insumos que gasta un platillo por porción, y lo que suma o resta un modificador (cantidad en la unidad del insumo).
   await ejecutar(`CREATE TABLE IF NOT EXISTS inv_recetas (
     producto_id INT UNSIGNED NOT NULL,
