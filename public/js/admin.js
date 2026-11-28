@@ -3322,3 +3322,6 @@ $('pl-punto-quitar').addEventListener('click', () => {
   if (!poli || plPunto === null || poli.length <= 3) return;
   poli.splice(plPunto, 1); plPunto = null; plMarcarSucio(); plPintar();
 });
+
+// El logo lleva a Inicio de ESTA misma sucursal y empresa; ya no saca del portal
+document.querySelectorAll('.marca-logo').forEach((a) => a.addEventListener('click', (ev) => { ev.preventDefault(); $('btn-reportes').click(); }));

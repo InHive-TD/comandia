@@ -68,7 +68,7 @@
   const nav = nodo('nav', 'menu-lateral'); nav.id = 'menu-principal'; nav.setAttribute('aria-label', 'Menú');
   const caja = nodo('div', 'menu-caja');
   const marca = nodo('div', 'menu-marca');
-  marca.innerHTML = '<a class="marca-logo" href="../" aria-label="Comandia"><svg viewBox="0 0 120 120" aria-hidden="true"><path d="M18 80A42 42 0 0 1 102 80Z" fill="#FF7A30"/><rect x="8" y="84" width="104" height="12" rx="6" fill="#F3F7F4"/><circle cx="60" cy="30" r="8" fill="#F3F7F4"/></svg><span>coman<b>dia</b></span></a>' + '<span id="menu-negocio" class="menu-negocio"></span>';
+  marca.innerHTML = '<a class="marca-logo" href="./" aria-label="Comandia"><svg viewBox="0 0 120 120" aria-hidden="true"><path d="M18 80A42 42 0 0 1 102 80Z" fill="#FF7A30"/><rect x="8" y="84" width="104" height="12" rx="6" fill="#F3F7F4"/><circle cx="60" cy="30" r="8" fill="#F3F7F4"/></svg><span>coman<b>dia</b></span></a>' + '<span id="menu-negocio" class="menu-negocio"></span>';
   const lista = nodo('div', 'menu-lista');
 
   // Elemento de la pantalla actual (Cocina no tiene botones de navegación propios)
@@ -103,7 +103,7 @@
   const derecha = nodo('div', 'panel-derecha');
   const movil = nodo('div', 'barra-movil');
   const hamb = nodo('button', 'btn-menu'); hamb.id = 'btn-menu-shell'; hamb.type = 'button'; hamb.setAttribute('aria-label', 'Abrir menú'); hamb.setAttribute('aria-expanded', 'false');
-  const marcaMovil = nodo('div', 'marca-logo'); marcaMovil.innerHTML = '<a class="marca-logo" href="../" aria-label="Comandia"><svg viewBox="0 0 120 120" aria-hidden="true"><path d="M18 80A42 42 0 0 1 102 80Z" fill="#FF7A30"/><rect x="8" y="84" width="104" height="12" rx="6" fill="#F3F7F4"/><circle cx="60" cy="30" r="8" fill="#F3F7F4"/></svg><span>coman<b>dia</b></span></a>'.replace(/^<a /, '<span ').replace(/<\/a>$/, '</span>');
+  const marcaMovil = nodo('div', 'marca-logo'); marcaMovil.innerHTML = '<a class="marca-logo" href="./" aria-label="Comandia"><svg viewBox="0 0 120 120" aria-hidden="true"><path d="M18 80A42 42 0 0 1 102 80Z" fill="#FF7A30"/><rect x="8" y="84" width="104" height="12" rx="6" fill="#F3F7F4"/><circle cx="60" cy="30" r="8" fill="#F3F7F4"/></svg><span>coman<b>dia</b></span></a>'.replace(/^<a /, '<span ').replace(/<\/a>$/, '</span>');
   const avatarMovil = nodo('button', 'avatar chico avatar-btn'); avatarMovil.type = 'button'; avatarMovil.id = 'usuario-ini-movil'; avatarMovil.setAttribute('aria-label', 'Mi perfil');
   movil.append(hamb, marcaMovil, avatarMovil);
   const barra = nodo('div', 'barra-panel');
