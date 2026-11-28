@@ -17,7 +17,7 @@
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Outfit:wght@600;700;800&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="../css/estilos.css?v=1795557467">
   <link rel="stylesheet" href="../css/plano.css?v=1795557467">
-  <link rel="stylesheet" href="../css/admin.css?v=202611280010">
+  <link rel="stylesheet" href="../css/admin.css?v=202611280030">
   <link rel="stylesheet" href="../css/tablero.css?v=1795557101">
   <link rel="stylesheet" href="../css/shell.css?v=1795557467">
   <link rel="stylesheet" href="../css/acceso.css?v=202611261215">
@@ -143,6 +143,7 @@
         <!-- Guardar de la página abierta (hoy: Ajustes de cliente); a la derecha de la barra -->
         <!-- Acciones del formulario de platillo (Guardar, Eliminar, ✕) -->
         <span id="barra-producto" class="barra-der barra-guardar" hidden>
+          <small id="bp-pendiente" class="ac-pendiente" hidden>● Cambios sin guardar</small>
           <button id="bp-guardar" class="btn principal" type="button">Guardar</button>
           <button id="bp-eliminar" class="btn peligro" type="button" hidden>Eliminar</button>
           <button id="bp-cerrar" class="btn btn-x" type="button" title="Cerrar sin guardar" aria-label="Cerrar sin guardar">✕</button>
@@ -972,7 +973,7 @@
   <script src="../js/shell.js?v=1795557467"></script>
   <script src="../js/login.js?v=202611242250"></script>
   <script src="../js/vendor/qrcode.js"></script>
-  <script src="../js/admin.js?v=202611280010"></script>
+  <script src="../js/admin.js?v=202611280030"></script>
   <script src="../js/inventario.js?v=202611271930"></script>
   <script src="../js/recetas.js?v=202611271930"></script>
 </body>

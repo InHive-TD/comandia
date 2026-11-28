@@ -506,7 +506,7 @@ function abrirOrdenTipos() {
     tip: 'Por defecto este platillo usa el orden de su categoría y, si la categoría no tiene, el de la pestaña Modificadores. Aquí lo cambias solo para este platillo; «Usar el de la categoría» vuelve al de siempre.',
     textoEstandar: 'Usar el de la categoría',
     leer: tiposEnFormulario,
-    aplicar: (nuevo) => { const { marcados, precios } = leerExtrasForm(); fGruposOrden = nuevo; pintarExtrasProducto(marcados, precios); },
+    aplicar: (nuevo) => { const { marcados, precios } = leerExtrasForm(); fGruposOrden = nuevo; pintarExtrasProducto(marcados, precios); acActualizar(); },
   });
 }
 $('f-ordenar-tipos').addEventListener('click', abrirOrdenTipos);
@@ -725,6 +725,7 @@ function abrirFormulario(p = null, categoriaId = null) {
   $('f-quitar-fila').hidden = !(p && p.foto);
   $('f-eliminar').hidden = !p;
   $('f-eliminar').dataset.nombre = p ? p.nombre : '';
+  prBase = productoSnap();
   abrirPagina(dlgProducto, 'btn-productos');
   mostrarBarraProducto();
 }
@@ -732,8 +733,27 @@ function abrirFormulario(p = null, categoriaId = null) {
 $('btn-nuevo').addEventListener('click', () => abrirFormulario());
 $('f-cancelar').addEventListener('click', () => dlgProducto.close());
 dlgProducto.addEventListener('close', limpiarVistaPrevia);
+// Cambios sin guardar del platillo: foto de la ficha tal como se abrió contra como está ahora
+let prBase = null;
+const productoSnap = () => JSON.stringify([
+  ['f-nombre', 'f-codigo', 'f-porcion', 'f-categoria', 'f-precio', 'f-descripcion', 'f-grupo-oblig'].map((i) => $(i).value),
+  ['f-disponible', 'f-pedir', 'f-obligatoria', 'f-quitar'].map((i) => $(i).checked),
+  [...$('f-extras').querySelectorAll('input[type=checkbox]')].map((c) => c.checked),
+  [...$('f-extras').querySelectorAll('input.precio-extra-prod')].map((c) => c.value),
+  fGruposOrden || [], $('f-foto').files.length,
+]);
+PAG['dlg-producto'] = {
+  sucio: () => prBase !== null && dlgProducto.open && productoSnap() !== prBase,
+  guardar: async () => {
+    $('f-guardar').click();
+    for (let i = 0; i < 100; i++) { await new Promise((r) => setTimeout(r, 150)); if (!dlgProducto.open) return true; if (!$('f-guardar').disabled && i > 2) break; }
+    return !dlgProducto.open;
+  },
+};
+$('form-producto').addEventListener('input', () => acActualizar());
+$('form-producto').addEventListener('change', () => acActualizar());
 // Guardar / Eliminar / ✕ del platillo viven en la barra superior, a la derecha
-const mostrarBarraProducto = () => { $('barra-producto').hidden = !dlgProducto.open; $('bp-eliminar').hidden = $('f-eliminar').hidden; };
+const mostrarBarraProducto = () => { $('barra-producto').hidden = !dlgProducto.open; if (!dlgProducto.open) prBase = null; $('bp-eliminar').hidden = $('f-eliminar').hidden; };
 $('bp-guardar').addEventListener('click', () => $('f-guardar').click());
 $('bp-eliminar').addEventListener('click', () => $('f-eliminar').click());
 $('bp-cerrar').addEventListener('click', () => dlgProducto.close());
@@ -1738,8 +1758,10 @@ function acActualizar() {
   const r = regAbierto();
   const barra = $('barra-accion');
   if (!barra) return;
-  barra.hidden = !r;
-  if (!r) return;
+  const prod = !!r && r === PAG['dlg-producto'];
+  barra.hidden = !r || prod;
+  const pend = $('bp-pendiente'); if (pend) pend.hidden = !(prod && r.sucio());
+  if (!r || prod) return;
   const sucio = !!r.sucio();
   $('ac-guardar').disabled = !sucio || !!(r.bloqueado && r.bloqueado());
   $('ac-pendiente').hidden = !sucio;
@@ -1853,7 +1875,7 @@ $('ac-guardar').addEventListener('click', async () => { const r = regAbierto(); 
 $('ac-extra').addEventListener('click', () => { const r = regAbierto(); if (r && r.extra) r.extra.fn(); });
 document.addEventListener('click', async (ev) => {
   if (acSaltar || !acSucio()) return;
-  const b = ev.target.closest('.menu-lateral .nav-ico, .barra-movil button, dialog.pagina [id$="-cerrar"]:not(#pl-cerrar), #ct-ir-pago');
+  const b = ev.target.closest('.menu-lateral .nav-ico, .barra-movil button, dialog.pagina [id$="-cerrar"]:not(#pl-cerrar), #bp-cerrar, #ct-ir-pago');
   if (!b || b.id === 'ac-guardar' || b.id === 'ac-extra') return;
   if (b.classList.contains('activo')) return;   // el botón de la misma página
   ev.preventDefault(); ev.stopImmediatePropagation();
