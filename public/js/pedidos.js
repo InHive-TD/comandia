@@ -779,8 +779,8 @@ async function alternarAgotado(p) {
   const habilitar = !!p.agotado;
   const pregunta = habilitar
     ? `¿Volver a habilitar “${p.nombre}”?`
-    : `¿Marcar “${p.nombre}” como AGOTADO por hoy?\n\nYa no se podrá pedir (tampoco desde el celular del cliente). Mañana vuelve a estar habilitado solo.`;
-  if (!(await confirmar(pregunta, habilitar ? { si: 'Habilitar' } : { si: 'Marcar agotado', peligro: true }))) return;
+    : `¿Estás seguro de marcar “${p.nombre}” como AGOTADO por hoy?\n\nYa no se podrá pedir (tampoco desde el celular del cliente). Mañana vuelve a estar habilitado solo.`;
+  if (!(await confirmar(pregunta, habilitar ? { si: 'Habilitar' } : { si: 'Sí, marcar agotado', peligro: true }))) return;
   try {
     await enviarJson(API + 'agotar.php', { producto_id: p.id, disponible: habilitar });
     await cargarMenu();
