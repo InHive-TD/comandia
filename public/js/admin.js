@@ -1587,10 +1587,38 @@ let cpOriginal = null;   // estado guardado en el servidor: { general, puede_gen
 
 /** Compara lo marcado en pantalla con lo guardado; habilita el botón solo si hay cambios. */
 function cpActualizarPendiente() {
-  if (!cpOriginal) return;
-  const cambios = cpCambios().length > 0;
-  $('cp-guardar').disabled = !cambios;
-  $('cp-pendiente').hidden = !cambios;
+  acActualizar();
+}
+
+/* Ajustes de cliente: un solo botón «Guardar» en la barra superior para tipos de pedido y pestañas. */
+let ctBase = null;       // foto de los tipos de pedido tal como se pintaron (para saber si hay cambios)
+let ctAmbitoPrevio = null;
+const ctSnap = () => JSON.stringify({ a: $('ct-ambito').value, m: [...document.querySelectorAll('#ct-mods input')].filter((x) => x.checked).map((x) => x.dataset.mod), x: $('ct-mixto').checked, s: $('ct-mesa').value });
+const ctSucio = () => ctBase !== null && ctSnap() !== ctBase;
+const acSucio = () => !!cpOriginal && (cpCambios().length > 0 || ctSucio());
+function acActualizar() {
+  const sucio = acSucio();
+  $('ac-guardar').disabled = !sucio;
+  $('ac-pendiente').hidden = !sucio;
+}
+/** Pregunta qué hacer con los cambios pendientes: 'guardar', 'descartar' o null (seguir editando). */
+function decidirCambios(mensaje) {
+  return new Promise((resolver) => {
+    const d = document.createElement('dialog');
+    d.className = 'dlg-confirmar';
+    const p = el('p', 'confirmar-texto', mensaje);
+    const fila = el('div', 'confirmar-botones');
+    let r = null;
+    for (const [txt, val, clase] of [['Cancelar', null, 'btn'], ['Descartar', 'descartar', 'btn peligro'], ['Guardar', 'guardar', 'btn principal']]) {
+      const b = el('button', clase, txt); b.type = 'button';
+      b.addEventListener('click', () => { r = val; d.close(); });
+      fila.append(b);
+    }
+    d.append(p, fila);
+    d.addEventListener('close', () => { d.remove(); resolver(r); });
+    document.body.append(d);
+    d.showModal();
+  });
 }
 
 /** Lista de cambios (en el orden en que deben aplicarse): primero el general, luego cada sucursal. */
@@ -1658,19 +1686,35 @@ async function cargarClientePedidos() {
   cpActualizarPendiente();
 }
 
-/** Envía al servidor todos los cambios pendientes y vuelve a leer el estado real. */
+/** Envía al servidor todos los cambios pendientes (tipos de pedido y pestañas) y vuelve a leer el estado real. Devuelve true si todo se guardó. */
 async function guardarClientePedidos() {
-  $('cp-error').textContent = '';
-  const boton = $('cp-guardar');
-  boton.disabled = true;
+  $('cp-error').textContent = ''; $('ct-error').textContent = '';
+  $('ac-guardar').disabled = true;
+  let ok = true;
   try {
+    if (ctSucio()) await guardarTiposPedido();
     for (const cambio of cpCambios()) await enviarJson(API + 'admin/cliente-pedidos.php', cambio);
     avisar('Configuración guardada');
-  } catch (err) { $('cp-error').textContent = err.message; }
-  try { await cargarClientePedidos(); } catch { /* se queda como estaba */ }
+  } catch (err) { ok = false; $('cp-error').textContent = err.message; }
+  try { await cargarClientePedidos(); await cargarCfgCliente(); } catch { /* se queda como estaba */ }
+  return ok;
 }
 $('cp-general').addEventListener('change', cpActualizarPendiente);
-$('cp-guardar').addEventListener('click', guardarClientePedidos);
+$('ac-guardar').addEventListener('click', guardarClientePedidos);
+
+/* Al salir de la página con cambios sin guardar se pregunta: Guardar / Descartar / Cancelar. */
+let acSaltar = false;
+document.addEventListener('click', async (ev) => {
+  if (acSaltar || !dlgPedidosQr.open || !acSucio()) return;
+  const b = ev.target.closest('.menu-lateral .nav-ico, .barra-movil button, #cp-cerrar, #ct-ir-pago');
+  if (!b || b.id === 'btn-pedidos-qr' || b.id === 'ac-guardar') return;
+  ev.preventDefault(); ev.stopImmediatePropagation();
+  const r = await decidirCambios('Tienes cambios sin guardar en Ajustes de cliente. ¿Qué quieres hacer?');
+  if (r === null) return;
+  if (r === 'guardar' && !(await guardarClientePedidos())) return;
+  acSaltar = true; b.click(); acSaltar = false;
+}, true);
+window.addEventListener('beforeunload', (ev) => { if (dlgPedidosQr.open && acSucio()) { ev.preventDefault(); ev.returnValue = ''; } });
 
 async function guardarLote() {
   $('pr-error').textContent = '';
@@ -1910,7 +1954,9 @@ $('btn-pedidos-qr').addEventListener('click', async () => {
   $('cp-error').textContent = '';
   try { await cargarClientePedidos(); await cargarCfgCliente(); } catch (err) { avisar(err.message, true); return; }
   abrirPagina(dlgPedidosQr, 'btn-pedidos-qr');
+  $('barra-accion').hidden = false;
 });
+dlgPedidosQr.addEventListener('close', () => { $('barra-accion').hidden = true; });
 
 /* Tipos de pedido, plato por plato y datos de pago: por empresa (dueño) y por sucursal (dueño o gerente) */
 let cfgCliente = null;   // lo que manda el servidor: { puede_general, general, sucursales: [{ id, nombre, propio, efectivo }] }
@@ -1943,8 +1989,22 @@ function ctPintar() {
   $('ct-mesa').value = v === 'general' ? (cfgCliente.general.mesa || 'opcional') : (suc.efectivo.mesa || 'opcional');
   $('ct-nota').hidden = !heredado;
   $('ct-nota').textContent = heredado ? 'Esta sucursal usa la configuración de la empresa. Al guardar, tendrá la suya.' : '';
+  ctBase = ctSnap(); ctAmbitoPrevio = v;
+  acActualizar();
 }
-$('ct-ambito').addEventListener('change', ctPintar);
+$('ct-ambito').addEventListener('change', async () => {
+  // Cambiar de «¿Para quién?» con cambios sin guardar: preguntar, porque se repinta con otros valores.
+  if (ctSucio() && ctBase && JSON.parse(ctBase).a === ctAmbitoPrevio && JSON.parse(ctSnap()).m) {
+    const nuevo = $('ct-ambito').value;
+    $('ct-ambito').value = ctAmbitoPrevio;
+    const r = await decidirCambios('Tienes cambios sin guardar en los tipos de pedido de esta selección. ¿Qué quieres hacer?');
+    if (r === null) return;
+    if (r === 'guardar') { try { await guardarTiposPedido(); await cargarCfgCliente(); } catch (err) { $('ct-error').textContent = err.message; return; } }
+    $('ct-ambito').value = nuevo;
+  }
+  ctPintar();
+});
+for (const id of ['ct-mods', 'ct-mixto', 'ct-mesa']) $(id).addEventListener('change', acActualizar);
 $('ct-mods').addEventListener('change', (ev) => {
   const marcados = [...document.querySelectorAll('#ct-mods input')].filter((x) => x.checked);
   if (marcados.length === 0) { ev.target.checked = true; avisar('Deja al menos un tipo de pedido.', true); }
@@ -1953,15 +2013,11 @@ $('ct-mods').addEventListener('change', (ev) => {
   $('ct-mixto').disabled = !dos;
   if (!dos) $('ct-mixto').checked = false;
 });
-$('ct-guardar').addEventListener('click', async () => {
-  $('ct-error').textContent = '';
+/** Guarda los tipos de pedido de lo que está seleccionado en «¿Para quién?». Lanza el error si falla. */
+async function guardarTiposPedido() {
   const modalidades = [...document.querySelectorAll('#ct-mods input')].filter((x) => x.checked).map((x) => x.dataset.mod);
-  try {
-    await enviarJson(API + 'admin/cliente-config.php', { accion: 'tipos', ...cfgAmbito($('ct-ambito')), modalidades, mixto: $('ct-mixto').checked, mesa: $('ct-mesa').value });
-    avisar('Tipos de pedido guardados');
-    await cargarCfgCliente();
-  } catch (err) { $('ct-error').textContent = err.message; }
-});
+  await enviarJson(API + 'admin/cliente-config.php', { accion: 'tipos', ...cfgAmbito($('ct-ambito')), modalidades, mixto: $('ct-mixto').checked, mesa: $('ct-mesa').value });
+}
 
 const dlgPago = $('dlg-pago');
 function pgPintar() {

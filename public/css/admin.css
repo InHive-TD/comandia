@@ -922,3 +922,6 @@ body.menu-compacto .menu-desp-items { display: block; padding-left: 0; }
 .inv-off { opacity: .55; text-decoration: line-through; }
 .inv-est { color: #777; }
 .inv-acc { display: inline-flex; gap: .3rem; flex-wrap: wrap; }
+.barra-guardar { align-items: center; flex-wrap: nowrap; }
+.ac-pendiente { color: #b45309; font-weight: 600; white-space: nowrap; }
+@media (max-width: 700px) { .ac-pendiente { display: none; } }

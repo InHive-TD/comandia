@@ -17,7 +17,7 @@
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Outfit:wght@600;700;800&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="../css/estilos.css?v=1795557467">
   <link rel="stylesheet" href="../css/plano.css?v=1795557467">
-  <link rel="stylesheet" href="../css/admin.css?v=202611271900">
+  <link rel="stylesheet" href="../css/admin.css?v=202611271950">
   <link rel="stylesheet" href="../css/tablero.css?v=1795557101">
   <link rel="stylesheet" href="../css/shell.css?v=1795557467">
   <link rel="stylesheet" href="../css/acceso.css?v=202611261215">
@@ -140,6 +140,11 @@
       <div class="barra-panel">
         <h2 id="titulo-seccion">Inicio</h2>
         <span id="chip-sucursal" class="chip-sucursal" hidden></span>
+        <!-- Guardar de la página abierta (hoy: Ajustes de cliente); a la derecha de la barra -->
+        <span id="barra-accion" class="barra-der barra-guardar" hidden>
+          <small id="ac-pendiente" class="ac-pendiente" hidden>● Cambios sin guardar</small>
+          <button id="ac-guardar" class="btn principal" type="button" disabled>Guardar</button>
+        </span>
       </div>
       <div class="panel-contenido" id="panel-contenido">
         <!-- Página de Platillos: barra de acciones (categorías de platillos, expandir/colapsar) + lista por categoría -->
@@ -942,14 +947,11 @@
         <p id="ct-nota" class="ayuda" hidden></p>
         <p id="ct-error" class="msg-error" role="alert"></p>
         <div class="ex-botones">
-          <button id="ct-guardar" class="btn principal" type="button">Guardar tipos de pedido</button>
           <button id="ct-ir-pago" class="btn" type="button">💳 Datos de pago por transferencia…</button>
         </div>
         <h4 class="cp-sub">Pestañas que ve el cliente</h4>
         <p class="ayuda">Elige qué pestañas aparecen: <strong>Menú</strong>, <strong>Mi pedido</strong> y <strong>Pagar</strong>. Debe quedar al menos una. Si solo queda una, desaparece la barra de pestañas. Sin <strong>Menú</strong>, el cliente no puede armar pedidos.</p>
         <div id="cp-pestanas"></div>
-        <p id="cp-pendiente" class="ayuda" hidden>Tienes cambios sin guardar.</p>
-        <button id="cp-guardar" class="btn principal" type="button" disabled>Guardar configuración</button>
       </div>
       <p id="cp-error" class="msg-error" role="alert"></p>
       <div class="acciones-dialogo">
@@ -966,7 +968,7 @@
   <script src="../js/shell.js?v=1795557467"></script>
   <script src="../js/login.js?v=202611242250"></script>
   <script src="../js/vendor/qrcode.js"></script>
-  <script src="../js/admin.js?v=202611271730"></script>
+  <script src="../js/admin.js?v=202611271950"></script>
   <script src="../js/inventario.js?v=202611271930"></script>
   <script src="../js/recetas.js?v=202611271930"></script>
 </body>
