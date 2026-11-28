@@ -764,7 +764,7 @@ function abrirDetalle(p) {
   const img = $('dt-foto');
   if (p.foto) { img.src = '../' + p.foto; img.hidden = false; } else { img.removeAttribute('src'); img.hidden = true; }
   $('dt-agregar').hidden = !!p.agotado;
-  $('dt-agregar').onclick = () => { dlgDetalle.close(); tocarProducto(p); };
+  $('dt-agregar').onclick = () => { dlgDetalle.close(); tocarProducto(p); };   // con modificadores abre sus opciones; sin ellos lo agrega directo
   dlgDetalle.showModal();
 }
 $('dt-cerrar').addEventListener('click', () => dlgDetalle.close());

@@ -520,3 +520,11 @@ function prepararDefectos(caja, p, marcar) {
   nota.style.cssText = 'font-size:.72rem;color:#777;margin:.4rem 0 0;line-height:1.25';
   caja.append(nota);
 }
+
+/* Foto del platillo en grande: clic en la foto del detalle; ✕ o clic en cualquier parte para minimizarla. */
+document.addEventListener('DOMContentLoaded', () => {
+  const dlg = document.getElementById('dlg-foto-grande'), foto = document.getElementById('dt-foto');
+  if (!dlg || !foto) return;
+  foto.addEventListener('click', () => { if (!foto.getAttribute('src')) return; document.getElementById('fg-img').src = foto.src; dlg.showModal(); });
+  dlg.addEventListener('click', () => dlg.close());
+});

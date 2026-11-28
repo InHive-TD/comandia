@@ -17,8 +17,8 @@
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Outfit:wght@600;700;800&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="css/estilos.css?v=1795842000">
   <link rel="stylesheet" href="css/admin.css?v=1795557467">
-  <link rel="stylesheet" href="css/pedidos.css?v=1795557467">
-  <link rel="stylesheet" href="css/cliente.css?v=1795557467">
+  <link rel="stylesheet" href="css/pedidos.css?v=1795844000">
+  <link rel="stylesheet" href="css/cliente.css?v=1795844000">
   <link rel="stylesheet" href="css/plano.css?v=1795557467">
   <link rel="stylesheet" href="api/tema.php">
 </head>
@@ -192,6 +192,11 @@
 
   <!-- Elegir extras y cantidad -->
   <!-- Detalle del platillo: foto grande y descripción completa (con o sin pedidos activos) -->
+  <dialog id="dlg-foto-grande" class="dlg-foto-grande" aria-label="Foto del platillo">
+    <button id="fg-cerrar" class="fg-cerrar" type="button" aria-label="Minimizar foto" title="Minimizar">✕</button>
+    <img id="fg-img" alt="">
+  </dialog>
+
   <dialog id="dlg-detalle">
     <div class="formulario dialogo detalle-plato">
       <img id="dt-foto" class="dt-foto" alt="" hidden>
@@ -249,9 +254,9 @@
 
   <div id="toast" class="toast" role="status" hidden></div>
 
-  <script src="js/comun.js?v=1795813000"></script>
+  <script src="js/comun.js?v=1795844000"></script>
   <script src="js/eventos.js?v=1795557467"></script>
   <script src="js/selectorMesa.js?v=1795557467"></script>
-  <script src="js/cliente.js?v=1795840000"></script>
+  <script src="js/cliente.js?v=1795844000"></script>
 </body>
 </html>
