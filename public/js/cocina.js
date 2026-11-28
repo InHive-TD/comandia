@@ -13,6 +13,7 @@ const NIVEL_TEXTO = ['', '⚡ ALTA', '⚡⚡ URGENTE'];
 let estacionId = null;          // 0 = vista general
 let estaciones = [];
 let datos = null;               // última respuesta de cocina.php
+let soloMios = false;           // true = «solo mis platillos»; por defecto, pedido completo
 let vistaParrillas = [];        // ids de las parrillas elegidas en «Vista» ([] = vista general)
 let recibidoEn = 0;             // performance.now() de esa respuesta
 let firma = '';
@@ -242,14 +243,14 @@ async function cargar(forzar = false) {
   if (cargando) { if (!forzar) return; while (cargando) await new Promise((r) => setTimeout(r, 50)); }
   cargando = true;
   try {
-    const r = await pedir(API + `cocina.php?estacion=${estacionId}` + (vistaParrillas.length ? `&parrillas=${vistaParrillas.join(',')}` : ''));
+    const r = await pedir(API + `cocina.php?estacion=${estacionId}` + (vistaParrillas.length ? `&parrillas=${vistaParrillas.join(',')}` : '') + (soloMios ? '&solo=1' : ''));
     datos = r;
     ajustarVista(r.parrillas);
     $('tablero').classList.toggle('horizontal', !!r.horizontal);   // ajuste del administrador: una fila con scroll lateral
     recibidoEn = performance.now();
     detectarNuevos();
     detectarEdiciones();
-    const nueva = JSON.stringify([vistaParrillas, r.ordenes.map(quitarEspera), r.listas.map((o) => o.id), (r.programadas || []).map((o) => o.id)]);
+    const nueva = JSON.stringify([vistaParrillas, soloMios, r.ordenes.map(quitarEspera), r.listas.map((o) => o.id), (r.programadas || []).map((o) => o.id)]);
     if (nueva !== firma) { firma = nueva; pintar(); }
     pintarListas();
     pintarProgramadas();
@@ -919,6 +920,13 @@ function abrirVista() {
       abrirVista();
     }, 'checkbox');
   }
+  const sep = el('p', 'ayuda', 'En esta vista mostrar:'); lista.append(sep);
+  for (const [v, tx] of [[false, 'Pedido completo (lo mío resaltado)'], [true, 'Solo mis platillos']]) {
+    const l = el('label', 'vista-op');
+    const c = el('input'); c.type = 'radio'; c.name = 'vista-solo'; c.checked = soloMios === v;
+    c.addEventListener('change', () => { soloMios = v; guardar('cocina_solo', v ? '1' : ''); firma = ''; cargar(true); });
+    l.append(c, el('span', '', tx)); lista.append(l);
+  }
   if (!$('dlg-vista').open) $('dlg-vista').showModal();
 }
 function aplicarVista(ids) {
@@ -930,3 +938,5 @@ function aplicarVista(ids) {
 $('btn-vista').addEventListener('click', abrirVista);
 $('vista-cerrar').addEventListener('click', () => $('dlg-vista').close());
 vistaParrillas = (leer('cocina_vista') || '').split(',').map(Number).filter((n) => n > 0);
+
+soloMios = leer('cocina_solo') === '1';

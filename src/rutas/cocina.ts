@@ -119,7 +119,8 @@ export async function rutasCocina(app: FastifyInstance): Promise<void> {
         const ofrecidas = permitidas === null ? listaParrillas : listaParrillas.filter((p) => permitidas.includes(p.id));
         const pedidas = String(q['parrillas'] ?? '').split(',').map((v) => Number(v)).filter((v) => ofrecidas.some((p) => p.id === v));
         const seleccion = parrillasOn ? [...new Set(pedidas)] : [];
-        const soloMios = seleccion.length > 0 && listaParrillas.filter((p) => seleccion.includes(p.id)).every((p) => p.ver === 'mios');
+        // «Solo mis platillos» lo elige quien está en la cocina (por defecto, pedido completo).
+        const soloMios = q['solo'] === '1' && (seleccion.length > 0 || permitidas !== null);
         const nombreParrilla = new Map(listaParrillas.map((p) => [p.id, p.nombre]));
         const bonoModalidad = await bonosModalidad(c);
         type FilaCocina = Record<string, unknown> & { id: number; prioritario: boolean; modalidad: string; prio_ts: number; orden_ts: number; faltan: number | null; items: ItemCocina[] };

@@ -62,7 +62,7 @@ async function estado(nid: number) {
     parrillasDe(nid),
     filas('SELECT nombre FROM categorias WHERE negocio_id = ? ORDER BY orden, id', [nid]),
     filas('SELECT p.id, p.nombre, c.nombre AS categoria FROM productos p JOIN categorias c ON c.id = p.categoria_id WHERE p.negocio_id = ? ORDER BY c.orden, c.id, p.nombre', [nid]),
-    filas("SELECT id, nombre, usuario, rol FROM usuarios WHERE negocio_id = ? AND activo = 1 AND rol IN ('taquero','caja','gerente') ORDER BY nombre", [nid]),
+    filas("SELECT id, nombre, usuario, rol FROM usuarios WHERE negocio_id = ? AND activo = 1 AND rol = 'taquero' ORDER BY nombre", [nid]),
   ]);
   return {
     ok: true, activo, parrillas,

@@ -3437,41 +3437,69 @@ function paPintar() {
       g.append(fila); return g;
     };
     const cuerpo = el('div', 'cr-cuerpo');
-    cuerpo.append(
-      grupo('Tipo de pedido (si no marcas nada, todos)', TIPOS_CR, c.tipos, (v, si) => poner(c.tipos, v, si), ''),
-      grupo('Categorías que prepara', paEstado.categorias.map((k) => [k, k]), c.categorias, (v, si) => poner(c.categorias, v, si), 'Aún no hay categorías.'),
-    );
+    // Tipo de pedido: «Todos» por defecto; al marcar uno en particular se quita «Todos».
+    const gt = el('fieldset', 'cr-grupo');
+    gt.append(el('legend', '', 'Tipo de pedido'));
+    const filaT = el('div', 'lote-lista');
+    const opT = (v, tx, marcado, alCambiar) => {
+      const x = document.createElement('input'); x.type = 'checkbox'; x.checked = marcado;
+      x.addEventListener('change', () => alCambiar(x.checked));
+      const l = el('label', 'lote-op'); l.append(x, el('span', '', tx)); filaT.append(l);
+    };
+    opT('todos', 'Todos', c.tipos.length === 0, () => { c.tipos.length = 0; paPintar(); });
+    for (const [v, tx] of TIPOS_CR) opT(v, tx, c.tipos.includes(v), (si) => { poner(c.tipos, v, si); if (c.tipos.length >= TIPOS_CR.length) c.tipos.length = 0; paPintar(); });
+    gt.append(filaT); cuerpo.append(gt);
+
+    // Qué prepara: cada categoría con su casilla (toda la categoría) y, al expandirla, sus platillos.
     const gp = el('fieldset', 'cr-grupo');
-    gp.append(el('legend', '', 'Platillos en específico'));
+    gp.append(el('legend', '', 'Qué prepara'));
     const porCat = new Map();
+    for (const k of paEstado.categorias) porCat.set(k, []);
     for (const pr of paEstado.productos) { if (!porCat.has(pr.categoria)) porCat.set(pr.categoria, []); porCat.get(pr.categoria).push(pr); }
-    if (!porCat.size) gp.append(el('p', 'ayuda', 'Aún no hay platillos.'));
+    if (!porCat.size) gp.append(el('p', 'ayuda', 'Aún no hay categorías ni platillos.'));
     for (const [cat, lista] of porCat) {
       const det = el('details', 'cr-platillos');
       det.open = lista.some((pr) => c.productos.includes(pr.id));
-      const sum = el('summary', '', cat);
-      const cuenta = () => { const k = lista.filter((q) => c.productos.includes(q.id)).length; sum.textContent = k ? `${cat} (${k})` : cat; };
-      cuenta(); det.append(sum);
+      const sum = el('summary', '');
+      const xc = document.createElement('input'); xc.type = 'checkbox'; xc.checked = c.categorias.includes(cat); xc.setAttribute('aria-label', 'Toda la categoría ' + cat);
+      const cuenta = el('span', 'ayuda');
+      const pintaCuenta = () => { const k = lista.filter((q) => c.productos.includes(q.id)).length; cuenta.textContent = xc.checked ? ' · toda' : (k ? ` · ${k} de ${lista.length}` : ''); };
+      sum.append(xc, el('span', '', ' ' + cat), cuenta);
+      pintaCuenta(); det.append(sum);
       const fila = el('div', 'lote-lista');
+      const cajas = [];
+      const bloquea = () => cajas.forEach((x) => { x.disabled = xc.checked; });
       for (const pr of lista) {
-        const x = document.createElement('input'); x.type = 'checkbox'; x.checked = c.productos.includes(pr.id);
-        x.addEventListener('change', () => { poner(c.productos, pr.id, x.checked); cuenta(); });
+        const x = document.createElement('input'); x.type = 'checkbox'; x.checked = xc.checked || c.productos.includes(pr.id);
+        x.addEventListener('change', () => { poner(c.productos, pr.id, x.checked); pintaCuenta(); });
+        cajas.push(x);
         const l = el('label', 'lote-op'); l.append(x, el('span', '', pr.nombre)); fila.append(l);
       }
+      xc.addEventListener('change', () => {
+        poner(c.categorias, cat, xc.checked);
+        for (const pr of lista) poner(c.productos, pr.id, false);
+        cajas.forEach((x) => { x.checked = xc.checked; });
+        bloquea(); pintaCuenta();
+      });
+      bloquea();
+      if (!lista.length) fila.append(el('p', 'ayuda', 'Sin platillos.'));
       det.append(fila); gp.append(det);
     }
     cuerpo.append(gp);
-    const gv = el('fieldset', 'cr-grupo');
-    gv.append(el('legend', '', 'En su pantalla muestra'));
-    const filaV = el('div', 'lote-lista');
-    for (const [v, tx] of [['completo', 'El pedido completo (lo suyo resaltado)'], ['mios', 'Solo sus platillos']]) {
-      const x = document.createElement('input'); x.type = 'radio'; x.name = 'pa-ver-' + c._k; x.checked = (c.ver || 'completo') === v;
-      x.addEventListener('change', () => { c.ver = v; });
-      const l = el('label', 'lote-op'); l.append(x, el('span', '', tx)); filaV.append(l);
+
+    // Quién la atiende: lista que se abre y se cierra (solo personal de cocina).
+    const gu = el('details', 'cr-platillos cr-usuarios');
+    gu.open = false;
+    const sumU = el('summary', '', c.usuarios.length ? `Quién la atiende (${c.usuarios.length})` : 'Quién la atiende');
+    gu.append(sumU);
+    const filaU = el('div', 'lote-lista');
+    if (!paEstado.usuarios.length) filaU.append(el('p', 'ayuda', 'Aún no hay usuarios de cocina. Créalos en Usuarios.'));
+    for (const u of paEstado.usuarios) {
+      const x = document.createElement('input'); x.type = 'checkbox'; x.checked = c.usuarios.includes(u.id);
+      x.addEventListener('change', () => { poner(c.usuarios, u.id, x.checked); sumU.textContent = c.usuarios.length ? `Quién la atiende (${c.usuarios.length})` : 'Quién la atiende'; });
+      const l = el('label', 'lote-op'); l.append(x, el('span', '', u.nombre)); filaU.append(l);
     }
-    gv.append(filaV);
-    cuerpo.append(gv);
-    cuerpo.append(grupo('Quién la atiende', paEstado.usuarios.map((u) => [u.id, `${u.nombre} (${u.rol})`]), c.usuarios, (v, si) => poner(c.usuarios, v, si), 'Aún no hay usuarios de cocina. Créalos en Usuarios.'));
+    gu.append(filaU); cuerpo.append(gu);
 
     const abierto = paAbiertas.has(c._k);
     cuerpo.hidden = !abierto;
