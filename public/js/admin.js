@@ -973,6 +973,7 @@ $('btn-categorias').addEventListener('click', () => {
   abrirPagina(dlgCategorias, 'btn-categorias');
 });
 $('c-cerrar').addEventListener('click', () => dlgCategorias.close());
+$('c-volver').addEventListener('click', () => $('btn-productos').click());
 
 $('form-nueva-categoria').addEventListener('submit', async (ev) => {
   ev.preventDefault();

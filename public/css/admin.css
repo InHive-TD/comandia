@@ -936,3 +936,6 @@ fieldset.extras-campo { position: relative; }
 .ord-tipo { display: flex; align-items: center; gap: 6px; }
 .ord-tipo .ord-nombre { flex: 1; font-weight: 600; text-align: left; }
 .extras-campo .ordenar-tipos { border: 1px solid #d9cbbd; border-radius: 6px; padding: 2px 8px; font-size: .78rem; cursor: pointer; color: #6b5a4c; }
+
+.cab-pagina { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
+.cab-pagina h2 { margin: 0; }
