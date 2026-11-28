@@ -55,8 +55,15 @@ export async function rutasMenu(app: FastifyInstance): Promise<void> {
       const k = Number(x['producto_id']);
       extras.set(k, [...(extras.get(k) ?? []), { id: Number(x['id']), nombre: x['nombre'], precio: Number(x['precio']), codigo: x['codigo'], grupo: x['grupo'], grupo_codigo: x['grupo_codigo'] ?? null, defecto: Boolean(Number(x['defecto'])) }]);
     }
+    // ... o el de su categoría de platillos
+    const ordenesCat = new Map<number, string[]>();
+    for (const o of await filas('SELECT o.categoria_id, o.grupo FROM categoria_grupo_orden o JOIN categorias c ON c.id = o.categoria_id WHERE c.negocio_id = ? ORDER BY o.categoria_id, o.orden', [nid])) {
+      const k = Number(o['categoria_id']);
+      ordenesCat.set(k, [...(ordenesCat.get(k) ?? []), String(o['grupo'])]);
+    }
+    const catDe = new Map(prods.map((f) => [Number(f['id']), Number(f['categoria_id'])]));
     for (const [k, lista] of extras) {
-      const orden = ordenes.get(k);
+      const orden = ordenes.get(k) ?? ordenesCat.get(catDe.get(k) ?? 0);
       if (!orden) continue;
       const lugar = (x: unknown): number => { const i = orden.indexOf(String((x as { grupo: string | null }).grupo ?? 'Otros')); return i < 0 ? orden.length : i; };
       extras.set(k, [...lista].sort((a, b) => lugar(a) - lugar(b)));   // sort estable: dentro de cada tipo queda el orden estándar

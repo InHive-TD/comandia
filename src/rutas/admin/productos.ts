@@ -252,7 +252,10 @@ async function listar(nid: number, alcance: number | null): Promise<Record<strin
         WHERE c.negocio_id = ? GROUP BY c.id, c.nombre, c.orden ORDER BY c.orden, c.id`,
       [nid],
     )
-  ).map((c) => ({ id: Number(c['id']), nombre: c['nombre'], orden: Number(c['orden']), productos: Number(c['productos']) }));
+  ).map((c) => ({ id: Number(c['id']), nombre: c['nombre'], orden: Number(c['orden']), productos: Number(c['productos']), grupos_orden: [] as string[] }));
+  for (const o of await filas('SELECT o.categoria_id, o.grupo FROM categoria_grupo_orden o JOIN categorias c ON c.id = o.categoria_id WHERE c.negocio_id = ? ORDER BY o.categoria_id, o.orden', [nid])) {
+    categorias.find((c) => c.id === Number(o['categoria_id']))?.grupos_orden.push(String(o['grupo']));
+  }
 
   const estaciones = (await filas('SELECT id, nombre FROM estaciones WHERE negocio_id = ? ORDER BY orden, id', [nid])).map((e) => ({ id: Number(e['id']), nombre: e['nombre'] }));
   // Modificadores: el administrador ve todos (marcando de qué sucursal es cada uno); el gerente, los generales y los suyos.

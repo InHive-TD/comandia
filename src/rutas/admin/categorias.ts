@@ -1,7 +1,7 @@
 /**
  * Administración de categorías del menú (Tacos, Bebidas, Postres...). Solo el dueño de la empresa.
  *
- *   POST (JSON) → { accion: 'crear' | 'renombrar' | 'ordenar' | 'eliminar', ... }
+ *   POST (JSON) → { accion: 'crear' | 'renombrar' | 'ordenar' | 'grupos_orden' | 'eliminar', ... }
  *
  * La lista de categorías no se pide aquí: viene dentro de GET /admin/productos.
  * Todas las consultas filtran por negocio_id para que una empresa nunca toque datos de otra.
@@ -54,10 +54,21 @@ export async function rutasCategorias(app: FastifyInstance): Promise<void> {
           });
           return { ok: true };
         }
+        case 'grupos_orden': {
+          // Orden de los tipos de modificador para los platillos de esta categoría (lista vacía = el estándar de Modificadores).
+          if (!(await fila('SELECT 1 AS x FROM categorias WHERE id = ? AND negocio_id = ?', [id, nid]))) throw fallo('Esa categoría no existe.');
+          const grupos = Array.isArray(d['grupos']) ? [...new Set((d['grupos'] as unknown[]).map((g) => String(g).trim()).filter((g) => g !== '' && g.length <= 80))].slice(0, 40) : [];
+          await transaccion(async (tx) => {
+            await tx.ejecutar('DELETE FROM categoria_grupo_orden WHERE categoria_id = ?', [id]);
+            for (const [i, g] of grupos.entries()) await tx.ejecutar('INSERT INTO categoria_grupo_orden (categoria_id, grupo, orden) VALUES (?, ?, ?)', [id, g, i]);
+          });
+          return { ok: true };
+        }
         case 'eliminar': {
           // No se borra una categoría con productos: se perdería el menú sin querer.
           const n = await fila('SELECT COUNT(*) AS n FROM productos WHERE categoria_id = ? AND negocio_id = ?', [id, nid]);
           if (Number(n?.['n']) > 0) throw fallo('Esa categoría todavía tiene productos. Muévelos o elimínalos primero.');
+          await ejecutar('DELETE FROM categoria_grupo_orden WHERE categoria_id = ?', [id]);
           await ejecutar('DELETE FROM categorias WHERE id = ? AND negocio_id = ?', [id, nid]);
           return { ok: true };
         }

@@ -451,25 +451,24 @@ function leerExtrasForm() {
 /** Tipos de modificador que muestra el formulario, en el orden que se ve. */
 const tiposEnFormulario = () => [...$('f-extras').querySelectorAll('.grupo-cab .grupo-titulo')].map((t) => t.textContent);
 
-/** Ventanita para reordenar los tipos de modificador de este platillo (se guarda al guardar el platillo). */
-function abrirOrdenTipos() {
+/** Ventanita para reordenar los tipos de modificador (de un platillo o de una categoría).
+ *  leer(): tipos en el orden actual · aplicar(lista | null): guarda el nuevo orden (null = volver al de más arriba). */
+function dialogoOrdenTipos({ titulo, tip, textoEstandar, leer, aplicar }) {
   const d = document.createElement('dialog');
   d.className = 'dlg-confirmar';
-  const titulo = el('p', 'confirmar-texto', 'Orden de los tipos de modificador en este platillo ');
-  const tip = el('span', 'tip', 'i'); tip.dataset.tip = 'Por defecto se usa el orden de la pestaña Modificadores. Aquí lo cambias solo para este platillo; con «Orden estándar» vuelve al de siempre.'; tip.tabIndex = 0;
-  titulo.append(tip);
+  const cab = el('p', 'confirmar-texto', titulo + ' ');
+  const info = el('span', 'tip', 'i'); info.dataset.tip = tip; info.tabIndex = 0;
+  cab.append(info);
   const lista = el('div', 'ord-tipos');
   const pintar = () => {
     lista.replaceChildren();
-    const orden = tiposEnFormulario();
+    const orden = leer();
     orden.forEach((g, i) => {
       const fila = el('div', 'ord-tipo');
-      const mover = (dir) => {
+      const mover = async (dir) => {
         const nuevo = [...orden]; const j = i + dir;
         [nuevo[i], nuevo[j]] = [nuevo[j], nuevo[i]];
-        const { marcados, precios } = leerExtrasForm();
-        fGruposOrden = nuevo;
-        pintarExtrasProducto(marcados, precios);
+        await aplicar(nuevo);
         pintar();
       };
       const sube = el('button', 'btn chico', '↑'); sube.type = 'button'; sube.disabled = i === 0; sube.addEventListener('click', () => mover(-1));
@@ -479,18 +478,33 @@ function abrirOrdenTipos() {
     });
   };
   const botones = el('div', 'confirmar-botones');
-  const estandar = el('button', 'btn', 'Orden estándar'); estandar.type = 'button';
-  estandar.addEventListener('click', () => { const { marcados, precios } = leerExtrasForm(); fGruposOrden = null; pintarExtrasProducto(marcados, precios); pintar(); });
+  const estandar = el('button', 'btn', textoEstandar); estandar.type = 'button';
+  estandar.addEventListener('click', async () => { await aplicar(null); pintar(); });
   const listo = el('button', 'btn principal', 'Listo'); listo.type = 'button';
   listo.addEventListener('click', () => d.close());
   botones.append(estandar, listo);
-  d.append(titulo, lista, botones);
+  d.append(cab, lista, botones);
   d.addEventListener('close', () => d.remove());
   document.body.append(d);
   pintar();
   d.showModal();
 }
+
+/** Orden propio de la categoría elegida en el formulario (vacío = el estándar). */
+const ordenDeCategoria = (id) => ((categorias.find((c) => String(c.id) === String(id)) || {}).grupos_orden || []);
+
+/** Reordenar los tipos de modificador solo en este platillo (se guarda al guardar el platillo). */
+function abrirOrdenTipos() {
+  dialogoOrdenTipos({
+    titulo: 'Orden de los tipos de modificador en este platillo',
+    tip: 'Por defecto este platillo usa el orden de su categoría y, si la categoría no tiene, el de la pestaña Modificadores. Aquí lo cambias solo para este platillo; «Usar el de la categoría» vuelve al de siempre.',
+    textoEstandar: 'Usar el de la categoría',
+    leer: tiposEnFormulario,
+    aplicar: (nuevo) => { const { marcados, precios } = leerExtrasForm(); fGruposOrden = nuevo; pintarExtrasProducto(marcados, precios); },
+  });
+}
 $('f-ordenar-tipos').addEventListener('click', abrirOrdenTipos);
+$('f-categoria').addEventListener('change', () => { const { marcados, precios } = leerExtrasForm(); pintarExtrasProducto(marcados, precios); });
 
 function pintarExtrasProducto(marcados, precios = {}) {
   const caja = $('f-extras');
@@ -506,9 +520,10 @@ function pintarExtrasProducto(marcados, precios = {}) {
     if (!grupos.has(g)) grupos.set(g, []);
     grupos.get(g).push(x);
   }
-  if (fGruposOrden && fGruposOrden.length) {   // orden propio de este platillo; los tipos que no estén en su lista van después, en el orden estándar
-    const resto = [...grupos.keys()].filter((g) => !fGruposOrden.includes(g));
-    grupos = new Map([...fGruposOrden, ...resto].filter((g) => grupos.has(g)).map((g) => [g, grupos.get(g)]));
+  const propio = fGruposOrden && fGruposOrden.length ? fGruposOrden : ordenDeCategoria($('f-categoria').value);   // el del platillo; si no tiene, el de su categoría
+  if (propio.length) {   // los tipos que no estén en esa lista van después, en el orden estándar
+    const resto = [...grupos.keys()].filter((g) => !propio.includes(g));
+    grupos = new Map([...propio, ...resto].filter((g) => grupos.has(g)).map((g) => [g, grupos.get(g)]));
   }
   $('f-ordenar-tipos').hidden = [...grupos].filter(([, l]) => l.length).length < 2;
   for (const [g, lista] of [...grupos].filter(([, l]) => l.length)) {
@@ -699,6 +714,7 @@ function abrirFormulario(p = null, categoriaId = null) {
     pintarGrupoObligatorio('');
     ponerVistaPrevia(null);
   }
+  { const ex = leerExtrasForm(); pintarExtrasProducto(ex.marcados, ex.precios); }   // ya con la categoría elegida: usa su orden de tipos
 
   $('f-quitar-fila').hidden = !(p && p.foto);
   $('f-eliminar').hidden = !p;
@@ -863,7 +879,20 @@ function pintarCategorias() {
       }
     });
 
-    fila.append(mover, nombre, guardar, borrar, el('span', 'cuenta', c.productos === 1 ? '1 platillo' : `${c.productos} platillos`));
+    const tipos = el('button', 'btn', '↕ Tipos');
+    tipos.type = 'button';
+    tipos.title = 'Orden de los tipos de modificador en los platillos de esta categoría';
+    tipos.addEventListener('click', () => dialogoOrdenTipos({
+      titulo: `Orden de los tipos de modificador · ${c.nombre}`,
+      tip: 'Vale para todos los platillos de esta categoría que no tengan un orden propio (se cambia al editar el platillo). «Orden estándar» usa el de la pestaña Modificadores.',
+      textoEstandar: 'Orden estándar',
+      leer: () => { const propio = ordenDeCategoria(c.id); const todos = [...new Set([...gruposExtras, 'Otros'])]; return [...propio.filter((g) => todos.includes(g)), ...todos.filter((g) => !propio.includes(g))]; },
+      aplicar: async (nuevo) => {
+        try { await enviarJson(API + 'admin/categorias.php', { accion: 'grupos_orden', id: c.id, grupos: nuevo || [] }); await cargarCatalogo(); avisar(nuevo ? 'Orden guardado para esta categoría' : 'Esta categoría usa el orden estándar'); }
+        catch (err) { avisar(err.message, true); }
+      },
+    }));
+    fila.append(mover, nombre, guardar, tipos, borrar, el('span', 'cuenta', c.productos === 1 ? '1 platillo' : `${c.productos} platillos`));
     caja.append(fila);
   });
 }
