@@ -939,3 +939,7 @@ fieldset.extras-campo { position: relative; }
 
 .cab-pagina { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
 .cab-pagina h2 { margin: 0; }
+
+/* Botón de orden de tipos: visible, en su propia fila arriba de los modificadores */
+.extras-campo .ordenar-tipos { position: static; display: block; margin: 0 0 8px auto; background: var(--color-tarjeta, #fff); border: 1px solid var(--color-borde, #d9cbbd); border-radius: 8px; padding: 6px 12px; font-size: .85rem; color: inherit; }
+.extras-campo .ordenar-tipos[hidden] { display: none; }
