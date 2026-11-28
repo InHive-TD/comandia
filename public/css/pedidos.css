@@ -467,3 +467,20 @@ main.contenedor:has(#vista-pedido:not([hidden])) { padding-top: 0; }
 .dlg-barra .dlg-agotar { flex: none; min-height: 46px; gap: 6px; font-size: .9rem; margin-left: auto; }
 .dlg-barra .dlg-agotar + .dlg-cerrar { margin-left: 0; }
 .dlg-barra .dlg-agotar input:checked + .slider { background: var(--color-peligro, #b3261e); }
+
+/* Detalle del platillo en pantallas angostas: nada se sale del margen y no hay scroll lateral */
+#dlg-detalle { overflow-x: hidden; max-width: min(94vw, 560px); box-sizing: border-box; }
+#dlg-detalle .detalle-plato { min-width: 0; max-width: 100%; box-sizing: border-box; overflow-wrap: anywhere; }
+#dlg-detalle .dt-foto { max-width: 100%; height: auto; }
+#dlg-detalle .dlg-barra { min-width: 0; gap: 8px; flex-wrap: nowrap; }
+#dlg-detalle .dlg-barra .dlg-ok { flex: 1 1 0; min-width: 0; padding: 6px 12px; }
+#dlg-detalle .dlg-barra .dlg-cerrar { flex: none; width: 42px; min-height: 42px; margin-left: 0; }
+#dlg-detalle .dlg-agotar { flex: none; margin-left: 0; gap: 6px; }
+@media (max-width: 480px) {
+  #dlg-detalle .dlg-barra { padding: 8px 10px; }
+  #dlg-detalle .dlg-agotar .slider { width: 42px; height: 26px; }
+  #dlg-detalle .dlg-agotar .slider::after { width: 20px; height: 20px; top: 3px; left: 3px; }
+  #dlg-detalle .dlg-agotar input:checked + .slider::after { transform: translateX(16px); }
+  #dlg-detalle .dlg-agotar input { width: 42px; height: 26px; }
+  #dlg-detalle .dlg-agotar span:last-child { font-size: .78rem; }
+}
